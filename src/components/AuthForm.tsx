@@ -6,13 +6,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface AuthFormProps {
   onClose: () => void;
-  onAuthSuccess: () => void;
 }
 
-const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
+const AuthForm = ({ onClose }: AuthFormProps) => {
+  const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -26,14 +27,18 @@ const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
 
     setIsLoading(true);
     
-    // This is a placeholder for Supabase Auth
-    // In real implementation, we would use Supabase Auth API here
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success(`${action === "login" ? "Logged in" : "Signed up"} successfully!`);
-      onAuthSuccess();
+    try {
+      if (action === "login") {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password);
+      }
       onClose();
-    }, 1000);
+    } catch (error) {
+      console.error("Auth error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTabChange = (value: string) => {
@@ -123,7 +128,7 @@ const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
               onClick={() => handleSubmit(activeTab as "login" | "signup")}
             >
               {isLoading ? (activeTab === "login" ? "Logging in..." : "Signing up...") : 
-               (activeTab === "login" ? "Login" : "Create Account")}
+              (activeTab === "login" ? "Login" : "Create Account")}
             </Button>
           </CardFooter>
         </Tabs>

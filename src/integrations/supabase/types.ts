@@ -9,13 +9,138 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      family_members: {
+        Row: {
+          birth_year: string | null
+          created_at: string
+          family_tree_id: string
+          generation: number
+          id: string
+          name: string
+          parent_id: string | null
+          relationship: string
+          updated_at: string
+        }
+        Insert: {
+          birth_year?: string | null
+          created_at?: string
+          family_tree_id: string
+          generation: number
+          id?: string
+          name: string
+          parent_id?: string | null
+          relationship: string
+          updated_at?: string
+        }
+        Update: {
+          birth_year?: string | null
+          created_at?: string
+          family_tree_id?: string
+          generation?: number
+          id?: string
+          name?: string
+          parent_id?: string | null
+          relationship?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_tree_id_fkey"
+            columns: ["family_tree_id"]
+            isOneToOne: false
+            referencedRelation: "family_trees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_members_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      family_trees: {
+        Row: {
+          clan: string
+          created_at: string
+          id: string
+          surname: string
+          tribe: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clan: string
+          created_at?: string
+          id?: string
+          surname: string
+          tribe: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clan?: string
+          created_at?: string
+          id?: string
+          surname?: string
+          tribe?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_trees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+      }
     }
     Enums: {
       [_ in never]: never

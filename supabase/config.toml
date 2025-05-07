@@ -1,2 +1,5 @@
 
 project_id = "jiqnkvmyfdbivxllmemc"
+
+[functions.generate-family-tree]
+verify_jwt = true

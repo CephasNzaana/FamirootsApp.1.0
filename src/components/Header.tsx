@@ -1,16 +1,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { User } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 
 interface HeaderProps {
-  user: User | null;
   onLogin: () => void;
   onSignup: () => void;
-  onLogout: () => void;
 }
 
-const Header = ({ user, onLogin, onSignup, onLogout }: HeaderProps) => {
+const Header = ({ onLogin, onSignup }: HeaderProps) => {
+  const { user, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -32,11 +31,11 @@ const Header = ({ user, onLogin, onSignup, onLogout }: HeaderProps) => {
           {user ? (
             <>
               <span className="text-sm text-gray-600">
-                Hello, {user.email.split('@')[0]}
+                Hello, {user.email?.split('@')[0]}
               </span>
               <Button 
                 variant="outline" 
-                onClick={onLogout}
+                onClick={() => signOut()}
                 className="btn-outline"
               >
                 Logout
@@ -79,12 +78,12 @@ const Header = ({ user, onLogin, onSignup, onLogout }: HeaderProps) => {
             {user ? (
               <>
                 <span className="text-sm text-gray-600">
-                  Hello, {user.email.split('@')[0]}
+                  Hello, {user.email?.split('@')[0]}
                 </span>
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    onLogout();
+                    signOut();
                     setIsMenuOpen(false);
                   }}
                   className="btn-outline w-full"

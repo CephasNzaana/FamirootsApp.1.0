@@ -1,27 +1,19 @@
-import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
+
+import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
 import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
-import { User, TreeFormData, FamilyTree, FamilyMember } from "@/types";
+import { TreeFormData, FamilyTree } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [familyTree, setFamilyTree] = useState<FamilyTree | null>(null);
-
-  // Mock authentication for demo purposes
-  useEffect(() => {
-    // Check if user is in localStorage (demo only)
-    const storedUser = localStorage.getItem("famiRootsUser");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
 
   const handleLogin = () => {
     setShowAuth(true);
@@ -29,23 +21,6 @@ const Index = () => {
 
   const handleSignup = () => {
     setShowAuth(true);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("famiRootsUser");
-    setFamilyTree(null);
-    toast.success("Logged out successfully");
-  };
-
-  const handleAuthSuccess = () => {
-    // Create a mock user for demo purposes
-    const newUser = {
-      id: uuidv4(),
-      email: "demo@famiroots.com",
-    };
-    setUser(newUser);
-    localStorage.setItem("famiRootsUser", JSON.stringify(newUser));
   };
 
   const generateFamilyTree = async (formData: TreeFormData) => {
@@ -58,12 +33,21 @@ const Index = () => {
     setIsLoading(true);
 
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        throw new Error(sessionError?.message || "No active session found");
+      }
+
       // Call our Supabase Edge Function to generate a family tree
       const { data, error } = await supabase.functions.invoke("generate-family-tree", {
         body: {
           surname: formData.surname,
           tribe: formData.tribe,
           clan: formData.clan
+        },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`
         }
       });
 
@@ -71,18 +55,16 @@ const Index = () => {
         throw new Error(error.message || "Failed to generate family tree");
       }
 
-      let members: FamilyMember[] = [];
+      let members = data.members;
+      const treeId = data.treeId;
 
       if (data.fallback) {
         toast.info("Using fallback family tree data. The AI response could not be processed.");
-        members = data.members;
-      } else {
-        members = data.members;
       }
 
       // Create family tree
       const newTree: FamilyTree = {
-        id: uuidv4(),
+        id: treeId,
         userId: user.id,
         surname: formData.surname,
         tribe: formData.tribe,
@@ -104,10 +86,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header
-        user={user}
         onLogin={handleLogin}
         onSignup={handleSignup}
-        onLogout={handleLogout}
       />
 
       <main className="flex-grow py-8 px-4">
@@ -214,10 +194,7 @@ const Index = () => {
       </footer>
       
       {showAuth && (
-        <AuthForm 
-          onClose={() => setShowAuth(false)} 
-          onAuthSuccess={handleAuthSuccess}
-        />
+        <AuthForm onClose={() => setShowAuth(false)} />
       )}
     </div>
   );

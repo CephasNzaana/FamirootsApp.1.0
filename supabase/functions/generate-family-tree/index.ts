@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,39 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authorization header from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client with the user's JWT
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+    
+    // Get the user's ID from the JWT
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Authentication failed", details: userError?.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { surname, tribe, clan } = await req.json();
     
     if (!surname || !tribe || !clan) {
@@ -62,18 +96,73 @@ serve(async (req) => {
       console.log("Raw response:", openAIData.choices[0].message.content);
       
       // Return fallback data
+      familyMembers = generateFallbackMembers(surname);
+      
       return new Response(
         JSON.stringify({ 
           error: "Failed to parse AI response",
           fallback: true,
-          members: generateFallbackMembers(surname)
+          members: familyMembers
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Create a new family tree in the database
+    const { data: familyTree, error: familyTreeError } = await supabaseClient
+      .from('family_trees')
+      .insert({
+        user_id: user.id,
+        surname,
+        tribe,
+        clan
+      })
+      .select()
+      .single();
+
+    if (familyTreeError) {
+      console.error("Error creating family tree:", familyTreeError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to save family tree to database",
+          message: familyTreeError.message,
+          members: familyMembers
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Save all family members to the database
+    const familyMembersToInsert = familyMembers.map(member => ({
+      family_tree_id: familyTree.id,
+      name: member.name,
+      relationship: member.relationship,
+      birth_year: member.birthYear,
+      generation: member.generation,
+      parent_id: member.parentId
+    }));
+
+    const { error: familyMembersError } = await supabaseClient
+      .from('family_members')
+      .insert(familyMembersToInsert);
+
+    if (familyMembersError) {
+      console.error("Error creating family members:", familyMembersError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Failed to save family members to database",
+          message: familyMembersError.message,
+          members: familyMembers
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ members: familyMembers }),
+      JSON.stringify({ 
+        members: familyMembers,
+        treeId: familyTree.id
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
