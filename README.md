@@ -1,73 +1,111 @@
-# Welcome to your Lovable project
+# FamiRoots: Preserving Ugandan Heritage
 
-## Project info
+FamiRoots is an AI-powered genealogical platform crafted to preserve and explore Uganda's rich family heritage through advanced technology. It enables users to build, visualize, and explore their family trees while maintaining cultural authenticity and reflecting Uganda's tribal heritage.
 
-**URL**: https://lovable.dev/projects/243e5f79-c4ad-41ef-a462-27634d8456d7
+## 🌟 Key Features
 
-## How can I edit this code?
+- **Interactive Family Tree Builder**: Automatically create and visualize family relationships with an intuitive interface.
+- **AI-Powered Insights**: Generate family stories, analyze relationship patterns, and receive personalized suggestions.
+- **Cultural Heritage Integration**: Connect family histories to Ugandan tribal and clan traditions, including verified elders.
+- **Elder Verification System**: Allow experts to verify elders and maintain an accurate database for genealogical tracing.
+- **Relationship Analyzer**: Analyze and determine relationships between individuals based on shared elder connections.
+- **Elder Edits/Corrections**: Submit elder information corrections, which experts can review and approve.
+- **Privacy Controls**: Approve connection requests before sharing full details or connecting via a private chat.
+- **Family Tree Expansion**: Automatically expand user family trees over time as new connections are discovered.
+- **Tribes and Clans Directory**: Explore tribes and clans, with verified elders and family trees displayed by family name (e.g., "Bagorogoza Family").
+- **Rich Cultural Resources**: Access traditional knowledge, customs, and practices tied to families, clans, and tribes.
 
-There are several ways of editing your application.
+## 🔧 Technology Stack
 
-**Use Lovable**
+- **Frontend**: React with TypeScript
+- **Backend**: Supabase with PostgreSQL and Drizzle ORM
+- **UI Framework**: Tailwind CSS with shadcn/ui components
+- **AI Integration**: OpenAI API for relationship discovery and story generation
+- **Authentication**: Supabase Auth
+- **Real-time Updates**: Automated deployment via Netlify
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/243e5f79-c4ad-41ef-a462-27634d8456d7) and start prompting.
+## 🚀 Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js (v18+)
+- PostgreSQL database (Supabase)
+- OpenAI API key 
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/famiroots.git
+   cd famiroots
+   ```
 
-Follow these steps:
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Set up environment variables:
+   Create a `.env` file with:
+   ```
+   DATABASE_URL=supabaseurl://username:password
+   OPENAI_API_KEY=your_openai_api_key
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+4. Initialize the database:
+   ```bash
+   npm run db:push
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## 🧠 AI Features
 
-**Edit a file directly in GitHub**
+FamiRoots leverages AI to enhance the family history and relationship discovery process:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Name and Relationship Analysis**: Automatically identify relationships and cultural significance of names.
+- **Story Generation**: Create rich narratives using minimal family data.
+- **Family Tree Generator**: Build and expand family trees based on verified elder connections.
+- **Elder-Based Relationship Mapping**: Suggest connections limited to verified elders and their families.
+- **Cultural Patterns and Traditions**: Analyze and link generations through traditions and customs.
+- **Lineage Verification**: Identify inconsistencies and suggest corrections.
 
-**Use GitHub Codespaces**
+## 📚 Data Model
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The application's core entities include:
 
-## What technologies are used for this project?
+- **Users**: Manage user accounts, including general users, experts, and admins.
+- **Verified Elders**: Records of verified elders maintained by genealogy experts.
+- **Family Members**: Individual records with relationships and metadata.
+- **Tribes and Clans**: Uganda's ethnic groups and sub-divisions with historical and cultural information.
+- **Families**: Family trees displayed by family name (e.g., "Bagorogoza Family").
+- **Cultural Resources**: Traditions, customs, and heritage tied to tribes and clans.
 
-This project is built with:
+## 🔒 Privacy and Safety
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+FamiRoots prioritizes privacy and user safety:
+- Only limited details are displayed for suggested connections until users approve requests.
+- Connections can be blocked or reported for inappropriate behavior.
+- Approved connections enable private chat for meaningful interactions.
 
-## How can I deploy this project?
+## 🤝 Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/243e5f79-c4ad-41ef-a462-27634d8456d7) and click on Share -> Publish.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Can I connect a custom domain to my Lovable project?
+## 📝 License
 
-Yes, you can!
+This project is licensed under the Creative Commons License - see the LICENSE file for details.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📞 Contact
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+For inquiries, reach us at **info@famiroots.com**. Follow us on social media @famiroots for updates.  
+(No phone number or address is currently available.)
+
+## 🙏 Acknowledgements
+
+- Uganda National Cultural Centre for tribal heritage consultation.
+- Tribal elder councils for their guidance on customs and traditions.
+- All contributors who have participated in the development of this project.
