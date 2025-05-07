@@ -16,6 +16,7 @@ const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("login");
 
   const handleSubmit = async (action: "login" | "signup") => {
     if (!email || !password) {
@@ -35,10 +36,14 @@ const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
     }, 1000);
   };
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md bg-white animate-fade-in">
-        <Tabs defaultValue="login">
+        <Tabs defaultValue="login" onValueChange={handleTabChange}>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="text-2xl font-bold">
@@ -112,26 +117,14 @@ const AuthForm = ({ onClose, onAuthSuccess }: AuthFormProps) => {
             </TabsContent>
           </CardContent>
           <CardFooter>
-            <Tabs.Root value="login">
-              <TabsContent value="login" className="w-full">
-                <Button 
-                  className="btn-primary w-full" 
-                  disabled={isLoading}
-                  onClick={() => handleSubmit("login")}
-                >
-                  {isLoading ? "Logging in..." : "Login"}
-                </Button>
-              </TabsContent>
-              <TabsContent value="signup" className="w-full">
-                <Button 
-                  className="btn-primary w-full" 
-                  disabled={isLoading}
-                  onClick={() => handleSubmit("signup")}
-                >
-                  {isLoading ? "Signing up..." : "Create Account"}
-                </Button>
-              </TabsContent>
-            </Tabs.Root>
+            <Button 
+              className="btn-primary w-full" 
+              disabled={isLoading}
+              onClick={() => handleSubmit(activeTab as "login" | "signup")}
+            >
+              {isLoading ? (activeTab === "login" ? "Logging in..." : "Signing up...") : 
+               (activeTab === "login" ? "Login" : "Create Account")}
+            </Button>
           </CardFooter>
         </Tabs>
       </Card>
