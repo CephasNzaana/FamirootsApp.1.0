@@ -22,6 +22,17 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
     .map(gen => parseInt(gen))
     .sort((a, b) => a - b);
 
+  // Build parent-child relationships for visualization
+  const familyConnections: {parent: string, child: string}[] = [];
+  tree.members.forEach(member => {
+    if (member.parentId) {
+      familyConnections.push({
+        parent: member.parentId,
+        child: member.id
+      });
+    }
+  });
+
   return (
     <Card className="w-full bg-white shadow-lg border-2 border-uganda-black animation-fade-in">
       <CardHeader className="border-b border-uganda-black border-opacity-20">
@@ -40,12 +51,18 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                 {membersByGeneration[gen].map(member => (
                   <div 
                     key={member.id} 
-                    className="tree-node bg-white relative animate-slide-up"
+                    className="tree-node bg-white p-3 rounded-lg border border-uganda-yellow shadow-md relative animate-slide-up"
+                    id={`member-${member.id}`}
                   >
                     <div className="font-medium">{member.name}</div>
                     <div className="text-xs text-gray-500">{member.relationship}</div>
                     {member.birthYear && (
                       <div className="text-xs text-gray-400">b. {member.birthYear}</div>
+                    )}
+                    {member.parentId && (
+                      <div className="text-xs text-gray-400 italic">
+                        Child of {tree.members.find(m => m.id === member.parentId)?.name.split(' ')[1] || 'Unknown'}
+                      </div>
                     )}
                   </div>
                 ))}

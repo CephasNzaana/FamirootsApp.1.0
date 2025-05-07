@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "@/components/ui/sonner";
@@ -7,6 +6,7 @@ import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
 import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 import { User, TreeFormData, FamilyTree, FamilyMember } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -58,81 +58,29 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // This is where we would call OpenAI API in a real implementation
-      // For now, we'll create a mock family tree
+      // Call our Supabase Edge Function to generate a family tree
+      const { data, error } = await supabase.functions.invoke("generate-family-tree", {
+        body: {
+          surname: formData.surname,
+          tribe: formData.tribe,
+          clan: formData.clan
+        }
+      });
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (error) {
+        throw new Error(error.message || "Failed to generate family tree");
+      }
 
-      // Generate mock family tree members
-      const members: FamilyMember[] = [
-        {
-          id: uuidv4(),
-          name: `${formData.surname} John`,
-          relationship: "Great Grandfather",
-          birthYear: "1920",
-          generation: 1,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Mary`,
-          relationship: "Great Grandmother",
-          birthYear: "1925",
-          generation: 1,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Robert`,
-          relationship: "Grandfather",
-          birthYear: "1950",
-          generation: 2,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Sarah`,
-          relationship: "Grandmother",
-          birthYear: "1952",
-          generation: 2,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Michael`,
-          relationship: "Father",
-          birthYear: "1975",
-          generation: 3,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Lisa`,
-          relationship: "Mother",
-          birthYear: "1978",
-          generation: 3,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} David`,
-          relationship: "Brother",
-          birthYear: "2000",
-          generation: 4,
-          parentId: null,
-        },
-        {
-          id: uuidv4(),
-          name: `${formData.surname} Emma`,
-          relationship: "Sister",
-          birthYear: "2002",
-          generation: 4,
-          parentId: null,
-        },
-      ];
+      let members: FamilyMember[] = [];
 
-      // Create mock family tree
+      if (data.fallback) {
+        toast.info("Using fallback family tree data. The AI response could not be processed.");
+        members = data.members;
+      } else {
+        members = data.members;
+      }
+
+      // Create family tree
       const newTree: FamilyTree = {
         id: uuidv4(),
         userId: user.id,
