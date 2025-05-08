@@ -1,6 +1,7 @@
 
 import { FamilyTree, FamilyMember } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface FamilyTreeDisplayProps {
   tree: FamilyTree;
@@ -51,7 +52,7 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                 {membersByGeneration[gen].map(member => (
                   <div 
                     key={member.id} 
-                    className="tree-node bg-white p-3 rounded-lg border border-uganda-yellow shadow-md relative animate-slide-up"
+                    className={`tree-node bg-white p-3 rounded-lg border ${member.isElder ? 'border-uganda-red border-2' : 'border-uganda-yellow'} shadow-md relative animate-slide-up`}
                     id={`member-${member.id}`}
                   >
                     <div className="font-medium">{member.name}</div>
@@ -63,6 +64,9 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                       <div className="text-xs text-gray-400 italic">
                         Child of {tree.members.find(m => m.id === member.parentId)?.name.split(' ')[1] || 'Unknown'}
                       </div>
+                    )}
+                    {member.isElder && (
+                      <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white">Elder</Badge>
                     )}
                   </div>
                 ))}

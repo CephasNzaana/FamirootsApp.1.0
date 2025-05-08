@@ -69,11 +69,37 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are an AI specialized in African family history and genealogy. Generate realistic family trees based on provided information."
+            content: `You are an AI specialized in Ugandan family history, tribal structures, and clan systems. 
+            You have deep knowledge about how Ugandan family trees are organized, including:
+            - The importance of clan elders and their role as ancestral anchors
+            - The proper naming conventions for different tribes
+            - How family relationships are structured within clans
+            - Traditional roles and relationships in Ugandan family systems
+            
+            Focus on creating historically plausible and culturally accurate family trees.`
           },
           {
             role: "user",
-            content: `Generate a realistic Ugandan family tree for the ${surname} family of the ${tribe} tribe and ${clan} clan. Create 8-12 family members across 3-4 generations, including their relationships, birth years, and generation numbers. Format the response as a JSON array of objects, each with id (UUID), name, relationship, birthYear, generation (number), and parentId (can be null for first generation or reference another member's id for children). No explanations, just the JSON array.`
+            content: `Generate a detailed Ugandan family tree for the ${surname} family of the ${tribe} tribe and ${clan} clan.
+            
+            Create 10-15 family members across 3-4 generations, including:
+            - Proper relationship designations according to ${tribe} cultural norms
+            - Historically appropriate birth years (1920-2010)
+            - Generation numbers (starting with 1 for oldest)
+            - Clear parent-child relationships with parentId references
+            - At least 1-2 clan elders of significance
+            - Typical naming patterns for the ${tribe} tribe
+            
+            Format the response as a JSON array of objects, each with:
+            - id (UUID)  
+            - name (following ${tribe} naming conventions)
+            - relationship (in English, but culturally appropriate)
+            - birthYear (string)  
+            - generation (number)
+            - parentId (null for first generation, or reference to another member's id)
+            - isElder (boolean, true for significant clan elders)
+            
+            Return ONLY the JSON array with no explanations or additional text.`
           }
         ]
       })
@@ -91,12 +117,27 @@ serve(async (req) => {
       if (!Array.isArray(familyMembers)) {
         throw new Error("Response is not an array");
       }
+      
+      // Validate the structure of family members
+      familyMembers = familyMembers.map(member => {
+        // Ensure all required fields are present
+        return {
+          id: member.id || crypto.randomUUID(),
+          name: member.name || `${surname} Unknown`,
+          relationship: member.relationship || "Unknown",
+          birthYear: member.birthYear || "Unknown",
+          generation: member.generation || 1,
+          parentId: member.parentId || null,
+          isElder: member.isElder || false
+        };
+      });
+      
     } catch (error) {
       console.error("Failed to parse OpenAI response:", error);
       console.log("Raw response:", openAIData.choices[0].message.content);
       
       // Return fallback data
-      familyMembers = generateFallbackMembers(surname);
+      familyMembers = generateFallbackMembers(surname, tribe, clan);
       
       return new Response(
         JSON.stringify({ 
@@ -139,7 +180,8 @@ serve(async (req) => {
       relationship: member.relationship,
       birth_year: member.birthYear,
       generation: member.generation,
-      parent_id: member.parentId
+      parent_id: member.parentId,
+      is_elder: member.isElder || false
     }));
 
     const { error: familyMembersError } = await supabaseClient
@@ -178,71 +220,110 @@ serve(async (req) => {
   }
 });
 
-function generateFallbackMembers(surname: string) {
+function generateFallbackMembers(surname: string, tribe: string, clan: string) {
+  // Create more culturally appropriate fallback data
+  const currentYear = new Date().getFullYear();
+  const elderGeneration = currentYear - 90; // Elders born around 90 years ago
+  const parentGeneration = currentYear - 60; // Parents born around 60 years ago
+  const adultGeneration = currentYear - 35; // Adults born around 35 years ago
+  const youngGeneration = currentYear - 15; // Young people born around 15 years ago
+  
+  const elder1Id = crypto.randomUUID();
+  const elder2Id = crypto.randomUUID();
+  const parent1Id = crypto.randomUUID();
+  const parent2Id = crypto.randomUUID();
+  const adult1Id = crypto.randomUUID();
+  
   return [
     {
-      id: crypto.randomUUID(),
-      name: `${surname} John`,
-      relationship: "Great Grandfather",
-      birthYear: "1920",
+      id: elder1Id,
+      name: `${surname} Mukasa`,
+      relationship: "Clan Elder",
+      birthYear: elderGeneration.toString(),
       generation: 1,
       parentId: null,
+      isElder: true
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Mary`,
-      relationship: "Great Grandmother",
-      birthYear: "1925",
+      id: elder2Id,
+      name: `${surname} Nakami`,
+      relationship: "Elder's Spouse",
+      birthYear: (elderGeneration + 2).toString(),
       generation: 1,
       parentId: null,
+      isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Robert`,
-      relationship: "Grandfather",
-      birthYear: "1950",
+      id: parent1Id,
+      name: `${surname} Kato`,
+      relationship: "Family Head",
+      birthYear: parentGeneration.toString(),
+      generation: 2,
+      parentId: elder1Id,
+      isElder: false
+    },
+    {
+      id: parent2Id,
+      name: `${surname} Nantongo`,
+      relationship: "Family Head's Spouse",
+      birthYear: (parentGeneration + 3).toString(),
       generation: 2,
       parentId: null,
+      isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Sarah`,
-      relationship: "Grandmother",
-      birthYear: "1952",
-      generation: 2,
-      parentId: null,
-    },
-    {
-      id: crypto.randomUUID(),
-      name: `${surname} Michael`,
-      relationship: "Father",
-      birthYear: "1975",
+      id: adult1Id,
+      name: `${surname} Wasswa`,
+      relationship: "First Born Son",
+      birthYear: adultGeneration.toString(),
       generation: 3,
-      parentId: null,
+      parentId: parent1Id,
+      isElder: false
     },
     {
       id: crypto.randomUUID(),
-      name: `${surname} Lisa`,
-      relationship: "Mother",
-      birthYear: "1978",
+      name: `${surname} Nakato`,
+      relationship: "First Born Daughter",
+      birthYear: (adultGeneration + 2).toString(),
       generation: 3,
-      parentId: null,
+      parentId: parent1Id,
+      isElder: false
     },
     {
       id: crypto.randomUUID(),
-      name: `${surname} David`,
-      relationship: "Brother",
-      birthYear: "2000",
-      generation: 4,
-      parentId: null,
+      name: `${surname} Kizza`,
+      relationship: "Second Born Son",
+      birthYear: (adultGeneration + 4).toString(),
+      generation: 3,
+      parentId: parent1Id,
+      isElder: false
     },
     {
       id: crypto.randomUUID(),
-      name: `${surname} Emma`,
-      relationship: "Sister",
-      birthYear: "2002",
-      generation: 4,
-      parentId: null,
+      name: `${surname} Babirye`,
+      relationship: "Third Born Daughter",
+      birthYear: (adultGeneration + 6).toString(),
+      generation: 3,
+      parentId: parent1Id,
+      isElder: false
     },
+    {
+      id: crypto.randomUUID(),
+      name: `${surname} Okello`,
+      relationship: "First Grandchild",
+      birthYear: youngGeneration.toString(),
+      generation: 4,
+      parentId: adult1Id,
+      isElder: false
+    },
+    {
+      id: crypto.randomUUID(),
+      name: `${surname} Auma`,
+      relationship: "Second Grandchild",
+      birthYear: (youngGeneration + 2).toString(),
+      generation: 4,
+      parentId: adult1Id,
+      isElder: false
+    }
   ];
 }

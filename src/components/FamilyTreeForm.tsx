@@ -36,18 +36,24 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     onSubmit(formData);
   };
 
+  // Common Ugandan tribes for suggestions
+  const commonTribes = [
+    "Baganda", "Banyankole", "Basoga", "Bakiga", "Iteso", 
+    "Langi", "Acholi", "Bagisu", "Lugbara", "Banyoro"
+  ];
+
   return (
     <Card className="w-full max-w-md bg-white shadow-lg border-2 border-uganda-black">
       <form onSubmit={handleSubmit}>
         <CardHeader>
           <CardTitle className="text-xl font-bold text-uganda-black">Discover Your Roots</CardTitle>
           <CardDescription>
-            Enter your elder's information to generate your family tree
+            Enter your family information to generate your clan-based family tree
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="surname">Elder's Surname</Label>
+            <Label htmlFor="surname">Family Surname</Label>
             <Input
               id="surname"
               name="surname"
@@ -62,11 +68,18 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
             <Input
               id="tribe"
               name="tribe"
+              list="tribes"
               placeholder="e.g. Baganda"
               value={formData.tribe}
               onChange={handleChange}
               className="focus:border-uganda-yellow focus:ring-uganda-yellow"
             />
+            <datalist id="tribes">
+              {commonTribes.map((tribe) => (
+                <option key={tribe} value={tribe} />
+              ))}
+            </datalist>
+            <p className="text-xs text-gray-500">Common examples: Baganda, Banyankole, Basoga, Bakiga</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="clan">Clan</Label>
@@ -83,7 +96,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         <CardFooter>
           <Button 
             type="submit" 
-            className="w-full btn-primary"
+            className="w-full bg-uganda-red hover:bg-uganda-red/90 text-white"
             disabled={isLoading}
           >
             {isLoading ? "Generating Tree..." : "Generate Family Tree"}

@@ -84,7 +84,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
       <Header
         onLogin={handleLogin}
         onSignup={handleSignup}
@@ -96,8 +96,8 @@ const Index = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-uganda-black">
               Discover Your <span className="text-uganda-red">Family Legacy</span>
             </h1>
-            <p className="text-lg md:text-xl max-w-2xl mx-auto text-gray-600">
-              Connect with your roots and learn about your heritage by exploring your family tree.
+            <p className="text-lg md:text-xl max-w-3xl mx-auto text-gray-600">
+              Connect with your roots and preserve your Ugandan heritage by exploring your family tree through clan and tribal connections.
             </p>
           </section>
 
@@ -119,7 +119,7 @@ const Index = () => {
                     </div>
                     <h2 className="text-2xl font-bold mb-2 text-uganda-black">Your Family Tree</h2>
                     <p className="text-gray-600">
-                      Fill out the form with your elder's details to generate your family tree.
+                      Fill out the form with your family's details to generate your clan-based family tree.
                     </p>
                   </div>
                   {!user && (
@@ -146,33 +146,33 @@ const Index = () => {
           </div>
 
           <section className="mt-16 text-center">
-            <h2 className="text-2xl font-bold mb-6 text-uganda-black">How It Works</h2>
+            <h2 className="text-2xl font-bold mb-6 text-uganda-black">How FamiRoots Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-md uganda-border">
+              <div className="bg-white p-6 rounded-lg shadow-md border-2 border-uganda-black">
                 <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="font-bold text-lg">1</span>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Enter Information</h3>
+                <h3 className="text-xl font-semibold mb-2">Enter Family Information</h3>
                 <p className="text-gray-600">
-                  Provide your elder's surname, tribe, and clan information
+                  Provide your surname, tribe, and clan information to establish your heritage foundation
                 </p>
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-md uganda-border">
+              <div className="bg-white p-6 rounded-lg shadow-md border-2 border-uganda-black">
                 <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="font-bold text-lg">2</span>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">AI Generation</h3>
+                <h3 className="text-xl font-semibold mb-2">AI-Powered Generation</h3>
                 <p className="text-gray-600">
-                  Our AI analyzes and builds a family tree based on your input
+                  Our AI analyzes Ugandan tribal and clan structures to build a culturally accurate family tree
                 </p>
               </div>
-              <div className="bg-white p-6 rounded-lg shadow-md uganda-border">
+              <div className="bg-white p-6 rounded-lg shadow-md border-2 border-uganda-black">
                 <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="font-bold text-lg">3</span>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Explore Your Roots</h3>
+                <h3 className="text-xl font-semibold mb-2">Preserve Your Heritage</h3>
                 <p className="text-gray-600">
-                  View, save, and share your family heritage with loved ones
+                  Save, share, and explore your family connections through generations of Ugandan history
                 </p>
               </div>
             </div>
@@ -188,7 +188,7 @@ const Index = () => {
             <div className="w-4 h-4 bg-uganda-red"></div>
           </div>
           <p className="text-sm">
-            &copy; {new Date().getFullYear()} FamiRoots - Connecting Generations
+            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
           </p>
         </div>
       </footer>

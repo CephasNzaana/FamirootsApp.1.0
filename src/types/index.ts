@@ -17,6 +17,7 @@ export type FamilyMember = {
   birthYear?: string;
   generation: number;
   parentId?: string | null;
+  isElder?: boolean;
 };
 
 export type FamilyTree = {
@@ -28,3 +29,28 @@ export type FamilyTree = {
   createdAt: string;
   members: FamilyMember[];
 };
+
+export interface Cultural {
+  tribe: string;
+  clan: string;
+  practices: string[];
+  ceremonies: string[];
+  elders: string[];
+}
+
+export interface ElderReference {
+  id: string;
+  name: string;
+  approximateEra: string;
+  verificationScore: number;
+  familyConnections: string[];
+}
+
+export interface RelationshipResult {
+  isRelated: boolean;
+  relationshipType?: string;
+  commonElder?: ElderReference;
+  generationalDistance?: number;
+  clanContext: string;
+  confidenceScore: number;
+}
