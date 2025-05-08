@@ -21,9 +21,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    console.log("Setting up auth state listener");
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state change:", event, currentSession?.user?.email);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Got existing session:", currentSession?.user?.email);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
@@ -42,10 +45,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("Signing in with:", email);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success("Signed in successfully");
     } catch (error: any) {
+      console.error("Sign in error:", error);
       toast.error(error.message || "Error signing in");
       throw error;
     }
@@ -53,10 +58,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string) => {
     try {
+      console.log("Signing up with:", email);
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       toast.success("Sign up successful! Check your email for confirmation.");
     } catch (error: any) {
+      console.error("Sign up error:", error);
       toast.error(error.message || "Error signing up");
       throw error;
     }
@@ -68,6 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) throw error;
       toast.success("Signed out successfully");
     } catch (error: any) {
+      console.error("Sign out error:", error);
       toast.error(error.message || "Error signing out");
     }
   };

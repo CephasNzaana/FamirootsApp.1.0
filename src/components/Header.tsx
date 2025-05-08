@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Navigation } from "@/components/Navigation"; 
-import { Menu, Home, Users, Book, User, Map as MapIcon } from "lucide-react";
+import { Menu, Home, Users, Book, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { 
   Sheet, 
@@ -107,7 +107,7 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                     Elder Database
                   </Link>
                   <Link to="/relationship-analyzer" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                    <MapIcon className="mr-2 h-4 w-4" />
+                    <Users className="mr-2 h-4 w-4" />
                     Relationship Analyzer
                   </Link>
                 </>

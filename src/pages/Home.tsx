@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
@@ -109,7 +108,7 @@ const Home = () => {
                 <>
                   <Button 
                     size="lg" 
-                    className="bg-uganda-red hover:bg-uganda-red/90"
+                    className="bg-uganda-red text-white hover:bg-uganda-red/90"
                     onClick={handleSignup}
                   >
                     Sign Up Now
@@ -117,7 +116,7 @@ const Home = () => {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-white text-white hover:bg-white hover:text-uganda-black"
+                    className="bg-white text-uganda-black border-white hover:bg-white/90 hover:text-uganda-black"
                     onClick={handleLogin}
                   >
                     Login
@@ -127,7 +126,7 @@ const Home = () => {
                 <>
                   <Button 
                     size="lg" 
-                    className="bg-uganda-red hover:bg-uganda-red/90"
+                    className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                     asChild
                   >
                     <Link to="/family-trees">View My Family Trees</Link>
@@ -135,7 +134,7 @@ const Home = () => {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-white text-white hover:bg-white hover:text-uganda-black"
+                    className="bg-white text-uganda-black border-white hover:bg-white/90"
                     asChild
                   >
                     <Link to="/relationship-analyzer">Try Relationship Analyzer</Link>

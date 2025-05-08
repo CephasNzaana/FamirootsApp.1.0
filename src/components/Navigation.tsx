@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { User, Home, Book, FileText, Users, Map as MapIcon } from "lucide-react";
+import { User, Home, Book, FileText, Users } from "lucide-react";
 
 export const Navigation = () => {
   const { user } = useAuth();
@@ -22,7 +22,7 @@ export const Navigation = () => {
       <NavigationMenuList>
         <NavigationMenuItem>
           <Link to="/">
-            <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
+            <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
               <Home className="mr-2 h-4 w-4" />
               Home
             </NavigationMenuLink>
@@ -33,7 +33,7 @@ export const Navigation = () => {
           <>
             <NavigationMenuItem>
               <Link to="/family-trees">
-                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
+                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
                   <Users className="mr-2 h-4 w-4" />
                   Family Trees
                 </NavigationMenuLink>
@@ -41,7 +41,7 @@ export const Navigation = () => {
             </NavigationMenuItem>
             
             <NavigationMenuItem>
-              <NavigationMenuTrigger className="bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black">
+              <NavigationMenuTrigger className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black">
                 <Book className="mr-2 h-4 w-4" />
                 Cultural Resources
               </NavigationMenuTrigger>
@@ -68,7 +68,7 @@ export const Navigation = () => {
                   <ListItem href="/elders" title="Elder Database" icon={<User className="h-4 w-4" />}>
                     Access verified clan elders information
                   </ListItem>
-                  <ListItem href="/relationship-analyzer" title="Relationship Analyzer" icon={<MapIcon className="h-4 w-4" />}>
+                  <ListItem href="/relationship-analyzer" title="Relationship Analyzer" icon={<Users className="h-4 w-4" />}>
                     Discover how family members are related
                   </ListItem>
                 </ul>

@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   email: string;
@@ -86,21 +87,21 @@ export interface Tribe {
 export const DEFAULT_USERS = {
   seeker: {
     username: "DefaultSeeker",
-    email: "defaultseeker@famiroots.com",
+    email: "seeker@famiroots.test",
     password: "Test@2025",
     role: "user",
     permissions: ["view", "create", "connect"]
   },
   expert: {
     username: "DefaultExpert",
-    email: "defaultexpert@famiroots.com",
+    email: "expert@famiroots.test",
     password: "Test@2025",
     role: "expert",
     permissions: ["view", "create", "connect", "verify"]
   },
   admin: {
     username: "DefaultAdmin",
-    email: "defaultadmin@famiroots.com",
+    email: "admin@famiroots.test",
     password: "Test@2025",
     role: "admin",
     permissions: ["all"]

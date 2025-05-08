@@ -24,31 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-
-// Define default user types
-const DEFAULT_USERS = {
-  seeker: {
-    username: "DefaultSeeker",
-    email: "defaultseeker@famiroots.com",
-    password: "Test@2025",
-    role: "user",
-    permissions: ["view", "create", "connect"]
-  },
-  expert: {
-    username: "DefaultExpert",
-    email: "defaultexpert@famiroots.com",
-    password: "Test@2025",
-    role: "expert",
-    permissions: ["view", "create", "connect", "verify"]
-  },
-  admin: {
-    username: "DefaultAdmin",
-    email: "defaultadmin@famiroots.com",
-    password: "Test@2025",
-    role: "admin",
-    permissions: ["all"]
-  }
-};
+import { DEFAULT_USERS } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
