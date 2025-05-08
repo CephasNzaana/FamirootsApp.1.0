@@ -2,6 +2,7 @@
 export type User = {
   id: string;
   email: string;
+  role?: 'user' | 'expert' | 'admin';
 };
 
 export type TreeFormData = {
@@ -54,3 +55,24 @@ export interface RelationshipResult {
   clanContext: string;
   confidenceScore: number;
 }
+
+export const DEFAULT_USERS = {
+  seeker: {
+    username: "DefaultSeeker",
+    password: "Test@2025",
+    role: "user",
+    permissions: ["view", "create", "connect"]
+  },
+  expert: {
+    username: "DefaultExpert",
+    password: "Test@2025",
+    role: "expert",
+    permissions: ["view", "create", "connect", "verify"]
+  },
+  admin: {
+    username: "DefaultAdmin",
+    password: "Test@2025",
+    role: "admin",
+    permissions: ["all"]
+  }
+};

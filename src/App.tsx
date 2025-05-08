@@ -5,7 +5,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
-import Index from "./pages/Index";
+import Home from "./pages/Home";
+import FamilyTrees from "./pages/FamilyTrees";
+import RelationshipAnalyzer from "./pages/RelationshipAnalyzer";
+import Tribes from "./pages/Tribes";
+import Elders from "./pages/Elders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,8 +22,11 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/" element={<Home />} />
+            <Route path="/family-trees" element={<FamilyTrees />} />
+            <Route path="/relationship-analyzer" element={<RelationshipAnalyzer />} />
+            <Route path="/tribes" element={<Tribes />} />
+            <Route path="/elders" element={<Elders />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

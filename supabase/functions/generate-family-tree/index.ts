@@ -1,328 +1,397 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
+import { Configuration, OpenAIApi } from "https://esm.sh/openai@4.11.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Handle CORS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY")!;
 
-    // Create Supabase client with the user's JWT
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
+    // Create Supabase client
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get the user's ID from the JWT
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
+    // Parse request body
+    const { surname, tribe, clan } = await req.json();
 
+    // Authentication
+    const authHeader = req.headers.get('Authorization')!;
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Get user ID from token
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: "Authentication failed", details: userError?.message }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Unauthorized', message: userError?.message || 'Failed to authenticate user' }),
+        { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
       );
     }
 
-    const { surname, tribe, clan } = await req.json();
-    
-    if (!surname || !tribe || !clan) {
-      return new Response(
-        JSON.stringify({ error: "Missing required parameters" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`Generating family tree for surname: ${surname}, tribe: ${tribe}, clan: ${clan}`);
-    
-    const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are an AI specialized in Ugandan family history, tribal structures, and clan systems. 
-            You have deep knowledge about how Ugandan family trees are organized, including:
-            - The importance of clan elders and their role as ancestral anchors
-            - The proper naming conventions for different tribes
-            - How family relationships are structured within clans
-            - Traditional roles and relationships in Ugandan family systems
-            
-            Focus on creating historically plausible and culturally accurate family trees.`
-          },
-          {
-            role: "user",
-            content: `Generate a detailed Ugandan family tree for the ${surname} family of the ${tribe} tribe and ${clan} clan.
-            
-            Create 10-15 family members across 3-4 generations, including:
-            - Proper relationship designations according to ${tribe} cultural norms
-            - Historically appropriate birth years (1920-2010)
-            - Generation numbers (starting with 1 for oldest)
-            - Clear parent-child relationships with parentId references
-            - At least 1-2 clan elders of significance
-            - Typical naming patterns for the ${tribe} tribe
-            
-            Format the response as a JSON array of objects, each with:
-            - id (UUID)  
-            - name (following ${tribe} naming conventions)
-            - relationship (in English, but culturally appropriate)
-            - birthYear (string)  
-            - generation (number)
-            - parentId (null for first generation, or reference to another member's id)
-            - isElder (boolean, true for significant clan elders)
-            
-            Return ONLY the JSON array with no explanations or additional text.`
-          }
-        ]
-      })
-    });
-
-    const openAIData = await openAIResponse.json();
-    let familyMembers;
+    const userId = user.id;
 
     try {
-      const contentString = openAIData.choices[0].message.content;
-      // Parse the JSON from the response content
-      familyMembers = JSON.parse(contentString);
-      
-      // Ensure it's an array
-      if (!Array.isArray(familyMembers)) {
-        throw new Error("Response is not an array");
-      }
-      
-      // Validate the structure of family members
-      familyMembers = familyMembers.map(member => {
-        // Ensure all required fields are present
-        return {
-          id: member.id || crypto.randomUUID(),
-          name: member.name || `${surname} Unknown`,
-          relationship: member.relationship || "Unknown",
-          birthYear: member.birthYear || "Unknown",
-          generation: member.generation || 1,
-          parentId: member.parentId || null,
-          isElder: member.isElder || false
-        };
+      // Initialize OpenAI
+      const configuration = new Configuration({
+        apiKey: openaiApiKey,
       });
       
+      const openai = new OpenAIApi(configuration);
+
+      const prompt = `Generate a realistic Ugandan family tree based on the following information:
+      
+      Surname: ${surname}
+      Tribe: ${tribe}
+      Clan: ${clan}
+
+      Create a family tree with multiple generations including:
+      
+      1. At least 2-3 elders who are the ancestral figures of the clan
+      2. Several branches of the family with different relationships (parents, children, siblings, cousins)
+      3. Include traditional Ugandan naming conventions appropriate for the specific tribe
+      4. Include some birth years for context (between 1900-2010)
+      5. Structure the family across 3-4 generations with clear parent-child relationships
+      6. Make sure each person has a "relationship" description (e.g., "Father", "Maternal Grandmother", "Eldest Son")
+
+      Please return the family tree as a JSON array with this exact format for each family member:
+      [
+        {
+          "id": "unique-string", // A unique string ID for each person
+          "name": "Full Name",
+          "relationship": "Father/Mother/etc",
+          "birthYear": "YYYY", // Optional, can be null
+          "generation": 1, // Number indicating generation (1 for oldest, 2 for their children, etc)
+          "parentId": "parent-unique-string", // ID of parent, null for first generation
+          "isElder": true/false // Whether this person is considered a clan elder
+        },
+        ...more family members
+      ]
+
+      Only return valid JSON with no additional text or explanations. The array should be culturally appropriate and accurate to Ugandan ${tribe} tribal traditions and ${clan} clan customs.`;
+      
+      const completion = await openai.createChatCompletion({
+        model: "gpt-4",
+        messages: [
+          {"role": "system", "content": "You are an expert in Ugandan family structures, tribal customs, and clan traditions. You create accurate family trees based on tribal and clan customs."},
+          {"role": "user", "content": prompt}
+        ],
+      });
+
+      let familyTreeData;
+      
+      try {
+        // Try to parse the OpenAI response
+        const responseText = completion.data.choices[0].message?.content || '';
+        familyTreeData = JSON.parse(responseText);
+        
+        // Basic validation to ensure it's an array of family members
+        if (!Array.isArray(familyTreeData)) {
+          throw new Error('Response is not an array');
+        }
+      } catch (parseError) {
+        console.error('Error parsing OpenAI response:', parseError);
+        
+        // Use fallback data
+        familyTreeData = generateFallbackFamilyTree(surname, tribe, clan);
+        
+        // Insert family tree into database with fallback flag
+        const { data: treeData, error: treeError } = await supabaseAdmin
+          .from('family_trees')
+          .insert({
+            user_id: userId,
+            surname,
+            tribe,
+            clan,
+            members: familyTreeData,
+            fallback: true
+          })
+          .select()
+          .single();
+          
+        if (treeError) {
+          throw treeError;
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            members: familyTreeData, 
+            treeId: treeData.id,
+            fallback: true 
+          }),
+          { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+      }
+
+      // Insert family tree into database
+      const { data: treeData, error: treeError } = await supabaseAdmin
+        .from('family_trees')
+        .insert({
+          user_id: userId,
+          surname,
+          tribe,
+          clan,
+          members: familyTreeData
+        })
+        .select()
+        .single();
+        
+      if (treeError) {
+        throw treeError;
+      }
+
+      // Return the generated family tree
+      return new Response(
+        JSON.stringify({ 
+          members: familyTreeData, 
+          treeId: treeData.id 
+        }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+      
     } catch (error) {
-      console.error("Failed to parse OpenAI response:", error);
-      console.log("Raw response:", openAIData.choices[0].message.content);
+      console.error('Error generating family tree:', error);
       
-      // Return fallback data
-      familyMembers = generateFallbackMembers(surname, tribe, clan);
+      // Use fallback data
+      const fallbackData = generateFallbackFamilyTree(surname, tribe, clan);
       
+      // Insert fallback family tree into database
+      const { data: treeData, error: treeError } = await supabaseAdmin
+        .from('family_trees')
+        .insert({
+          user_id: userId,
+          surname,
+          tribe,
+          clan,
+          members: fallbackData,
+          fallback: true
+        })
+        .select()
+        .single();
+        
+      if (treeError) {
+        throw treeError;
+      }
+
       return new Response(
         JSON.stringify({ 
-          error: "Failed to parse AI response",
-          fallback: true,
-          members: familyMembers
+          members: fallbackData, 
+          treeId: treeData.id,
+          fallback: true 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
-
-    // Create a new family tree in the database
-    const { data: familyTree, error: familyTreeError } = await supabaseClient
-      .from('family_trees')
-      .insert({
-        user_id: user.id,
-        surname,
-        tribe,
-        clan
-      })
-      .select()
-      .single();
-
-    if (familyTreeError) {
-      console.error("Error creating family tree:", familyTreeError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to save family tree to database",
-          message: familyTreeError.message,
-          members: familyMembers
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Save all family members to the database
-    const familyMembersToInsert = familyMembers.map(member => ({
-      family_tree_id: familyTree.id,
-      name: member.name,
-      relationship: member.relationship,
-      birth_year: member.birthYear,
-      generation: member.generation,
-      parent_id: member.parentId,
-      is_elder: member.isElder || false
-    }));
-
-    const { error: familyMembersError } = await supabaseClient
-      .from('family_members')
-      .insert(familyMembersToInsert);
-
-    if (familyMembersError) {
-      console.error("Error creating family members:", familyMembersError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to save family members to database",
-          message: familyMembersError.message,
-          members: familyMembers
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        members: familyMembers,
-        treeId: familyTree.id
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
   } catch (error) {
-    console.error("Error generating family tree:", error);
-    
+    console.error('Server error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: "Failed to generate family tree",
-        message: error.message
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
 });
 
-function generateFallbackMembers(surname: string, tribe: string, clan: string) {
-  // Create more culturally appropriate fallback data
-  const currentYear = new Date().getFullYear();
-  const elderGeneration = currentYear - 90; // Elders born around 90 years ago
-  const parentGeneration = currentYear - 60; // Parents born around 60 years ago
-  const adultGeneration = currentYear - 35; // Adults born around 35 years ago
-  const youngGeneration = currentYear - 15; // Young people born around 15 years ago
+// Fallback function to generate a basic family tree when OpenAI fails
+function generateFallbackFamilyTree(surname: string, tribe: string, clan: string) {
+  // Create some culturally appropriate first names based on tribe
+  const maleNames = {
+    "Baganda": ["Mukasa", "Ssentamu", "Muwonge", "Kiwanuka", "Ssekitoleko"],
+    "Banyankole": ["Tumusiime", "Asiimwe", "Twinamatsiko", "Mugisha", "Turyatemba"],
+    "Basoga": ["Waiswa", "Isabirye", "Kirunda", "Balikowa", "Ngobi"],
+    "default": ["John", "Robert", "David", "Michael", "James"]
+  };
   
-  const elder1Id = crypto.randomUUID();
-  const elder2Id = crypto.randomUUID();
-  const parent1Id = crypto.randomUUID();
-  const parent2Id = crypto.randomUUID();
-  const adult1Id = crypto.randomUUID();
+  const femaleNames = {
+    "Baganda": ["Nakato", "Namugwanya", "Nansubuga", "Nalweyiso", "Namuddu"],
+    "Banyankole": ["Kyomuhendo", "Atuhaire", "Ninsiima", "Kemigisha", "Komugisha"],
+    "Basoga": ["Namukose", "Nabirye", "Nawudo", "Naigaga", "Nabiryo"],
+    "default": ["Mary", "Sarah", "Ruth", "Rebecca", "Elizabeth"]
+  };
   
+  // Get tribe-specific names or default if tribe not found
+  const maleNamesForTribe = maleNames[tribe] || maleNames.default;
+  const femaleNamesForTribe = femaleNames[tribe] || femaleNames.default;
+  
+  // Random name selection functions
+  const getRandomMaleName = () => maleNamesForTribe[Math.floor(Math.random() * maleNamesForTribe.length)];
+  const getRandomFemaleName = () => femaleNamesForTribe[Math.floor(Math.random() * femaleNamesForTribe.length)];
+  
+  // Generate a random year between min and max
+  const randomYear = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+  
+  // Create the family tree structure
   return [
+    // First generation (grandparents)
     {
-      id: elder1Id,
-      name: `${surname} Mukasa`,
-      relationship: "Clan Elder",
-      birthYear: elderGeneration.toString(),
+      id: "elder-1",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Clan Elder (Paternal Grandfather)",
+      birthYear: randomYear(1900, 1930).toString(),
       generation: 1,
       parentId: null,
       isElder: true
     },
     {
-      id: elder2Id,
-      name: `${surname} Nakami`,
-      relationship: "Elder's Spouse",
-      birthYear: (elderGeneration + 2).toString(),
+      id: "elder-wife",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Paternal Grandmother",
+      birthYear: randomYear(1905, 1935).toString(),
       generation: 1,
       parentId: null,
       isElder: false
     },
     {
-      id: parent1Id,
-      name: `${surname} Kato`,
-      relationship: "Family Head",
-      birthYear: parentGeneration.toString(),
-      generation: 2,
-      parentId: elder1Id,
-      isElder: false
+      id: "elder-2",
+      name: `${getRandomMaleName()} Mutabazi`,
+      relationship: "Clan Elder (Maternal Grandfather)",
+      birthYear: randomYear(1905, 1935).toString(),
+      generation: 1,
+      parentId: null,
+      isElder: true
     },
     {
-      id: parent2Id,
-      name: `${surname} Nantongo`,
-      relationship: "Family Head's Spouse",
-      birthYear: (parentGeneration + 3).toString(),
-      generation: 2,
+      id: "elder-2-wife",
+      name: `${getRandomFemaleName()} Mutabazi`,
+      relationship: "Maternal Grandmother",
+      birthYear: randomYear(1910, 1940).toString(),
+      generation: 1,
       parentId: null,
       isElder: false
     },
+    
+    // Second generation (parents)
     {
-      id: adult1Id,
-      name: `${surname} Wasswa`,
-      relationship: "First Born Son",
-      birthYear: adultGeneration.toString(),
-      generation: 3,
-      parentId: parent1Id,
+      id: "father",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Father",
+      birthYear: randomYear(1940, 1960).toString(),
+      generation: 2,
+      parentId: "elder-1",
       isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Nakato`,
-      relationship: "First Born Daughter",
-      birthYear: (adultGeneration + 2).toString(),
-      generation: 3,
-      parentId: parent1Id,
+      id: "mother",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Mother",
+      birthYear: randomYear(1945, 1965).toString(),
+      generation: 2,
+      parentId: "elder-2",
       isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Kizza`,
-      relationship: "Second Born Son",
-      birthYear: (adultGeneration + 4).toString(),
-      generation: 3,
-      parentId: parent1Id,
+      id: "uncle-1",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Paternal Uncle",
+      birthYear: randomYear(1942, 1962).toString(),
+      generation: 2,
+      parentId: "elder-1",
       isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Babirye`,
-      relationship: "Third Born Daughter",
-      birthYear: (adultGeneration + 6).toString(),
+      id: "aunt-1",
+      name: `${getRandomFemaleName()} Kalema`,
+      relationship: "Paternal Aunt",
+      birthYear: randomYear(1944, 1964).toString(),
+      generation: 2,
+      parentId: "elder-1",
+      isElder: false
+    },
+    
+    // Third generation (self, siblings, cousins)
+    {
+      id: "self",
+      name: `${surname}`,
+      relationship: "Self",
+      birthYear: randomYear(1970, 1990).toString(),
       generation: 3,
-      parentId: parent1Id,
+      parentId: "father",
       isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Okello`,
-      relationship: "First Grandchild",
-      birthYear: youngGeneration.toString(),
+      id: "brother",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Brother",
+      birthYear: randomYear(1972, 1992).toString(),
+      generation: 3,
+      parentId: "father",
+      isElder: false
+    },
+    {
+      id: "sister",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Sister",
+      birthYear: randomYear(1974, 1994).toString(),
+      generation: 3,
+      parentId: "father",
+      isElder: false
+    },
+    {
+      id: "cousin-1",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Cousin (Paternal)",
+      birthYear: randomYear(1971, 1991).toString(),
+      generation: 3,
+      parentId: "uncle-1",
+      isElder: false
+    },
+    {
+      id: "cousin-2",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Cousin (Paternal)",
+      birthYear: randomYear(1973, 1993).toString(),
+      generation: 3,
+      parentId: "uncle-1",
+      isElder: false
+    },
+    
+    // Fourth generation (children)
+    {
+      id: "child-1",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Son",
+      birthYear: randomYear(1995, 2010).toString(),
       generation: 4,
-      parentId: adult1Id,
+      parentId: "self",
       isElder: false
     },
     {
-      id: crypto.randomUUID(),
-      name: `${surname} Auma`,
-      relationship: "Second Grandchild",
-      birthYear: (youngGeneration + 2).toString(),
+      id: "child-2",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Daughter",
+      birthYear: randomYear(1997, 2012).toString(),
       generation: 4,
-      parentId: adult1Id,
+      parentId: "self",
+      isElder: false
+    },
+    {
+      id: "nephew",
+      name: `${getRandomMaleName()} ${surname}`,
+      relationship: "Nephew",
+      birthYear: randomYear(1996, 2011).toString(),
+      generation: 4,
+      parentId: "brother",
+      isElder: false
+    },
+    {
+      id: "niece",
+      name: `${getRandomFemaleName()} ${surname}`,
+      relationship: "Niece",
+      birthYear: randomYear(1998, 2013).toString(),
+      generation: 4,
+      parentId: "sister",
       isElder: false
     }
   ];

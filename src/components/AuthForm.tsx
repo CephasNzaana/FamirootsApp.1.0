@@ -1,139 +1,242 @@
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
+import { DEFAULT_USERS } from "@/types";
+
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface AuthFormProps {
   onClose: () => void;
+  defaultUsers?: boolean;
 }
 
-const AuthForm = ({ onClose }: AuthFormProps) => {
+const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
   const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("login");
 
-  const handleSubmit = async (action: "login" | "signup") => {
-    if (!email || !password) {
-      toast.error("Please enter both email and password");
-      return;
-    }
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
+  const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
-    
     try {
-      if (action === "login") {
-        await signIn(email, password);
+      if (activeTab === "login") {
+        await signIn(values.email, values.password);
+        toast.success("Logged in successfully!");
+        onClose();
       } else {
-        await signUp(email, password);
+        await signUp(values.email, values.password);
+        toast.success("Signed up successfully! Check your email for confirmation.");
+        setActiveTab("login");
       }
-      onClose();
-    } catch (error) {
-      console.error("Auth error:", error);
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
+  const handleDefaultUserLogin = async (userType: 'seeker' | 'expert' | 'admin') => {
+    setIsLoading(true);
+    try {
+      const user = DEFAULT_USERS[userType];
+      // For demonstration, we'll use username@famiroots.com as email format
+      const email = `${user.username.toLowerCase()}@famiroots.com`;
+      const password = user.password;
+      
+      await signIn(email, password);
+      toast.success(`Logged in as ${user.username} (${user.role})`);
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || "Authentication failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md bg-white animate-fade-in">
-        <Tabs defaultValue="login" onValueChange={handleTabChange}>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold">
-                Welcome to <span className="text-uganda-red">FamiRoots</span>
-              </CardTitle>
-              <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            <CardDescription>
-              Connect with your ancestral roots
-            </CardDescription>
-            <TabsList className="grid w-full grid-cols-2 mt-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-          </CardHeader>
-          <CardContent className="space-y-4 mt-4">
-            <TabsContent value="login">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="your@email.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Authentication</DialogTitle>
+          <DialogDescription>
+            {activeTab === "login" 
+              ? "Sign in to your FamiRoots account" 
+              : "Create a new FamiRoots account"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="login" className="py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="example@email.com"
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="******"
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
+                </Button>
+              </form>
+            </Form>
+            
+            {defaultUsers && (
+              <div className="mt-6 border-t pt-4">
+                <h4 className="text-sm font-medium mb-3">Quick Login with Default Users:</h4>
+                <div className="grid gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleDefaultUserLogin('seeker')}
+                    disabled={isLoading}
+                    className="justify-start"
+                  >
+                    Login as User (DefaultSeeker)
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleDefaultUserLogin('expert')}
+                    disabled={isLoading}
+                    className="justify-start"
+                  >
+                    Login as Expert (DefaultExpert)
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleDefaultUserLogin('admin')}
+                    disabled={isLoading}
+                    className="justify-start"
+                  >
+                    Login as Admin (DefaultAdmin)
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    placeholder="••••••••" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="signup">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input 
-                    id="signup-email" 
-                    type="email" 
-                    placeholder="your@email.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input 
-                    id="signup-password" 
-                    type="password" 
-                    placeholder="••••••••" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
-                  By signing up, you agree to our Terms of Service and Privacy Policy
+                <p className="text-xs text-muted-foreground mt-2">
+                  Default password: Test@2025
                 </p>
               </div>
-            </TabsContent>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              className="btn-primary w-full" 
-              disabled={isLoading}
-              onClick={() => handleSubmit(activeTab as "login" | "signup")}
-            >
-              {isLoading ? (activeTab === "login" ? "Logging in..." : "Signing up...") : 
-              (activeTab === "login" ? "Login" : "Create Account")}
-            </Button>
-          </CardFooter>
+            )}
+          </TabsContent>
+
+          <TabsContent value="signup" className="py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="example@email.com"
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="******"
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Signing up..." : "Sign Up"}
+                </Button>
+              </form>
+            </Form>
+          </TabsContent>
         </Tabs>
-      </Card>
-    </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={isLoading}>Cancel</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
