@@ -1,4 +1,5 @@
 
+import React from "react";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -11,7 +12,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { User, Home, Book, FileText, Users, Map } from "lucide-react";
+import { User, Home, Book, FileText, Users, Map as MapIcon } from "lucide-react";
 
 export const Navigation = () => {
   const { user } = useAuth();
@@ -67,7 +68,7 @@ export const Navigation = () => {
                   <ListItem href="/elders" title="Elder Database" icon={<User className="h-4 w-4" />}>
                     Access verified clan elders information
                   </ListItem>
-                  <ListItem href="/relationship-analyzer" title="Relationship Analyzer" icon={<Map className="h-4 w-4" />}>
+                  <ListItem href="/relationship-analyzer" title="Relationship Analyzer" icon={<MapIcon className="h-4 w-4" />}>
                     Discover how family members are related
                   </ListItem>
                 </ul>

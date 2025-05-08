@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users } from "lucide-react"; // Added missing Users icon import
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import { FamilyTree } from "@/types";
@@ -35,7 +36,21 @@ const FamilyTrees = () => {
 
         if (error) throw error;
         
-        setFamilyTrees(data || []);
+        // Transform the data to match FamilyTree type
+        if (data) {
+          const formattedTrees: FamilyTree[] = data.map(tree => ({
+            id: tree.id,
+            userId: tree.user_id,
+            surname: tree.surname,
+            tribe: tree.tribe,
+            clan: tree.clan,
+            createdAt: tree.created_at,
+            members: [] // Default to empty array since we don't have members data yet
+          }));
+          setFamilyTrees(formattedTrees);
+        } else {
+          setFamilyTrees([]);
+        }
       } catch (error) {
         console.error("Error fetching family trees:", error);
         toast.error("Failed to load family trees");

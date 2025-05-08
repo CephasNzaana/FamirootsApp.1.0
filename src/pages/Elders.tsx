@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import { Badge } from "@/components/ui/badge";
