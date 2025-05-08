@@ -1,198 +1,190 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Cultural } from "@/types";
-
-const SAMPLE_TRIBAL_DATA: Record<string, Cultural[]> = {
-  "Baganda": [
-    {
-      tribe: "Baganda",
-      clan: "Mamba",
-      practices: ["Totemic reverence of the lungfish", "Clan-specific naming customs", "Annual clan gatherings"],
-      ceremonies: ["Okwanjula (Introduction)", "Kwanjula (Marriage Ceremony)", "Naming ceremonies"],
-      elders: ["Walusimbi", "Kaboggoza", "Lutaaya"]
-    },
-    {
-      tribe: "Baganda",
-      clan: "Ngeye",
-      practices: ["Totemic respect for the colobus monkey", "Ancestral worship at clan shrines", "Specific agricultural traditions"],
-      ceremonies: ["Kwanjula with clan-specific rituals", "Burial ceremonies", "Coming-of-age rituals"],
-      elders: ["Semakula", "Kiyimba", "Nsubuga"]
-    }
-  ],
-  "Banyankole": [
-    {
-      tribe: "Banyankole",
-      clan: "Abasingo",
-      practices: ["Cattle-herding traditions", "Milk preservation techniques", "Special greeting customs"],
-      ceremonies: ["Okuhingira (Marriage ceremony)", "Cattle blessing ceremonies", "Milk ritual celebrations"],
-      elders: ["Mugisha", "Bainomugisha", "Rubahamya"]
-    }
-  ],
-  "Basoga": [
-    {
-      tribe: "Basoga",
-      clan: "Ngobi",
-      practices: ["Banana cultivation techniques", "Traditional fishing methods", "Clan governance systems"],
-      ceremonies: ["Okwanjula", "Embalu (coming of age)", "Harvest celebrations"],
-      elders: ["Waiswa", "Balikowa", "Kirunda"]
-    }
-  ]
-};
+import { ugandaTribesData } from "@/data/ugandaTribesClanData";
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const Tribes = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [activeTribe, setActiveTribe] = useState<string>("Baganda");
-  const [filteredClans, setFilteredClans] = useState<Cultural[]>([]);
-
-  useEffect(() => {
-    const clans = SAMPLE_TRIBAL_DATA[activeTribe] || [];
-    if (searchTerm.trim() === "") {
-      setFilteredClans(clans);
-    } else {
-      const term = searchTerm.toLowerCase();
-      setFilteredClans(
-        clans.filter(c => 
-          c.clan.toLowerCase().includes(term) || 
-          c.practices.some(p => p.toLowerCase().includes(term)) ||
-          c.ceremonies.some(c => c.toLowerCase().includes(term))
-        )
-      );
-    }
-  }, [searchTerm, activeTribe]);
-
-  const handleLogin = () => {
-    setShowAuth(true);
-  };
-
-  const handleSignup = () => {
-    setShowAuth(true);
-  };
+  const [showAuth, setShowAuth] = useState<boolean>(!user);
+  const [selectedTribe, setSelectedTribe] = useState<string | null>(null);
+  
+  if (!user) {
+    return (
+      <>
+        <Header 
+          onLogin={() => setShowAuth(true)} 
+          onSignup={() => setShowAuth(true)} 
+        />
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <div className="max-w-md mx-auto text-center p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+            <p className="mb-6">Please login or sign up to access the Tribes and Clans database.</p>
+            <div className="flex justify-center space-x-4">
+              <button 
+                onClick={() => setShowAuth(true)}
+                className="bg-uganda-yellow text-uganda-black px-6 py-2 rounded-lg hover:bg-uganda-yellow/90 transition-colors"
+              >
+                Login / Sign Up
+              </button>
+            </div>
+          </div>
+        </div>
+        {showAuth && <AuthForm onClose={() => setShowAuth(false)} defaultUsers={true} />}
+      </>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
-      <Header
-        onLogin={handleLogin}
-        onSignup={handleSignup}
+    <div className="min-h-screen bg-[#FAF6F1]">
+      <Header 
+        onLogin={() => setShowAuth(true)} 
+        onSignup={() => setShowAuth(true)} 
       />
-
-      <main className="flex-grow py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <section className="mb-8 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-uganda-black">
-              Ugandan <span className="text-uganda-red">Tribes & Clans</span>
-            </h1>
-            <p className="text-lg md:text-xl max-w-3xl mx-auto text-gray-600 mb-8">
-              Explore the rich cultural heritage of Ugandan tribal and clan systems that form the foundation of family identities.
-            </p>
-            <div className="max-w-md mx-auto">
-              <Input
-                type="search"
-                placeholder="Search for clans, practices, or ceremonies..."
-                className="bg-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </section>
-
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <Tabs defaultValue="Baganda" onValueChange={setActiveTribe}>
-              <TabsList className="mb-6 overflow-x-auto flex w-full">
-                {Object.keys(SAMPLE_TRIBAL_DATA).map((tribe) => (
-                  <TabsTrigger key={tribe} value={tribe} className="flex-1">
-                    {tribe}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {Object.keys(SAMPLE_TRIBAL_DATA).map((tribe) => (
-                <TabsContent key={tribe} value={tribe}>
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold mb-2">{tribe}</h2>
-                    <p className="text-gray-600">
-                      {tribe === "Baganda" && "The Baganda are the largest ethnic group in Uganda, primarily residing in the Buganda region. Their social structure is organized around clans, each with its own totem and taboos."}
-                      {tribe === "Banyankole" && "The Banyankole people primarily inhabit the southwestern part of Uganda. They are traditionally divided into two groups: the pastoral Bahima and the agricultural Bairu."}
-                      {tribe === "Basoga" && "The Basoga are the second-largest ethnic group in Uganda, primarily residing in the eastern region. Their society is organized around clans, with each clan having its own distinct customs."}
-                    </p>
+      
+      <main className="container mx-auto py-8 px-4">
+        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-uganda-black">Ugandan Tribes & Clans</h1>
+        <p className="text-lg mb-8 max-w-3xl">
+          Explore the rich cultural heritage of Uganda's tribal and clan systems. Discover information about major tribes, 
+          their clan structures, and significant elders who have shaped Uganda's history.
+        </p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tribes of Uganda</CardTitle>
+                <CardDescription>Select a tribe to explore its clans</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {ugandaTribesData.map(tribe => (
+                    <button
+                      key={tribe.id}
+                      onClick={() => setSelectedTribe(tribe.id)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        selectedTribe === tribe.id 
+                          ? "bg-uganda-yellow/30 border-l-4 border-uganda-yellow" 
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="font-medium">{tribe.name}</div>
+                      <div className="text-sm text-gray-500">{tribe.region}</div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="lg:col-span-2">
+            {selectedTribe ? (
+              (() => {
+                const tribe = ugandaTribesData.find(t => t.id === selectedTribe);
+                if (!tribe) return <p>Tribe not found</p>;
+                
+                return (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-2xl">{tribe.name}</CardTitle>
+                          <Badge className="bg-uganda-yellow text-uganda-black">{tribe.region}</Badge>
+                        </div>
+                        {tribe.language && (
+                          <CardDescription>
+                            Language: {tribe.language} {tribe.population && `• Population: ~${tribe.population}`}
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <p className="mb-4">{tribe.description}</p>
+                        
+                        <div className="mt-6">
+                          <h3 className="text-xl font-semibold mb-4">Clans of the {tribe.name}</h3>
+                          
+                          <Accordion type="single" collapsible className="w-full">
+                            {tribe.clans.map(clan => (
+                              <AccordionItem key={clan.id} value={clan.id}>
+                                <AccordionTrigger className="hover:bg-gray-100 px-4 rounded-lg">
+                                  <div className="flex items-center justify-between w-full pr-4">
+                                    <span>{clan.name}</span>
+                                    {clan.totem && <span className="text-sm text-gray-500">Totem: {clan.totem}</span>}
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-4 pb-4">
+                                  {clan.origin && <p className="mb-2 text-gray-700">{clan.origin}</p>}
+                                  
+                                  <h4 className="font-medium mt-4 mb-2">Notable Elders:</h4>
+                                  <div className="space-y-3">
+                                    {clan.elders.map(elder => (
+                                      <div 
+                                        key={elder.id} 
+                                        className="bg-white p-3 rounded-lg border-l-4 border-uganda-yellow shadow-sm"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium">{elder.name}</span>
+                                          <Badge variant="outline" className="ml-2 bg-uganda-yellow/20">
+                                            {elder.approximateEra}
+                                          </Badge>
+                                        </div>
+                                        {elder.notes && <p className="text-sm mt-1 text-gray-600">{elder.notes}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {clan.culturalPractices && clan.culturalPractices.length > 0 && (
+                                    <>
+                                      <h4 className="font-medium mt-4 mb-2">Cultural Practices:</h4>
+                                      <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                                        {clan.culturalPractices.map((practice, i) => (
+                                          <li key={i}>{practice}</li>
+                                        ))}
+                                      </ul>
+                                    </>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {filteredClans.length > 0 ? (
-                      filteredClans.map((clan, index) => (
-                        <Card key={index} className="bg-white">
-                          <CardHeader className="bg-uganda-yellow bg-opacity-10">
-                            <CardTitle>{clan.clan} Clan</CardTitle>
-                            <CardDescription>of the {clan.tribe}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="pt-4">
-                            <div className="space-y-4">
-                              <div>
-                                <h4 className="font-semibold mb-1">Cultural Practices</h4>
-                                <ul className="list-disc list-inside text-sm text-gray-700">
-                                  {clan.practices.map((practice, i) => (
-                                    <li key={i}>{practice}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold mb-1">Ceremonies</h4>
-                                <ul className="list-disc list-inside text-sm text-gray-700">
-                                  {clan.ceremonies.map((ceremony, i) => (
-                                    <li key={i}>{ceremony}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold mb-1">Notable Elders</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {clan.elders.map((elder, i) => (
-                                    <span key={i} className="inline-block bg-uganda-red bg-opacity-10 text-uganda-red text-xs px-2 py-1 rounded-full">
-                                      {elder}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
-                    ) : (
-                      <div className="col-span-2 py-12 text-center">
-                        <p className="text-gray-500">No clans found matching your search criteria.</p>
-                      </div>
-                    )}
+                );
+              })()
+            ) : (
+              <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8">
+                <div className="text-center">
+                  <div className="mx-auto w-16 h-16 bg-uganda-yellow/30 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                </TabsContent>
-              ))}
-            </Tabs>
+                  <h3 className="text-lg font-medium mb-1">Select a Tribe</h3>
+                  <p className="text-gray-500">Choose a tribe from the list to view detailed information about its clans and elders</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
-
-      <footer className="bg-uganda-black text-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center space-x-2 mb-4">
-            <div className="w-4 h-4 bg-uganda-black"></div>
-            <div className="w-4 h-4 bg-uganda-yellow"></div>
-            <div className="w-4 h-4 bg-uganda-red"></div>
-          </div>
-          <p className="text-sm">
-            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
-          </p>
-        </div>
-      </footer>
-      
-      {showAuth && (
-        <AuthForm onClose={() => setShowAuth(false)} />
-      )}
     </div>
   );
 };

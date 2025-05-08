@@ -1,4 +1,3 @@
-
 export type User = {
   id: string;
   email: string;
@@ -56,21 +55,52 @@ export interface RelationshipResult {
   confidenceScore: number;
 }
 
+export interface ClanElder {
+  id: string;
+  name: string;
+  approximateEra: string;
+  verificationScore: number;
+  notes?: string;
+}
+
+export interface Clan {
+  id: string;
+  name: string;
+  totem?: string;
+  origin?: string;
+  elders: ClanElder[];
+  culturalPractices?: string[];
+  historicalNotes?: string[];
+}
+
+export interface Tribe {
+  id: string;
+  name: string;
+  region: string;
+  population?: string;
+  language?: string;
+  description: string;
+  clans: Clan[];
+}
+
 export const DEFAULT_USERS = {
   seeker: {
     username: "DefaultSeeker",
+    email: "defaultseeker@famiroots.com",
     password: "Test@2025",
     role: "user",
     permissions: ["view", "create", "connect"]
   },
   expert: {
     username: "DefaultExpert",
+    email: "defaultexpert@famiroots.com",
     password: "Test@2025",
     role: "expert",
     permissions: ["view", "create", "connect", "verify"]
   },
   admin: {
     username: "DefaultAdmin",
+    email: "defaultadmin@famiroots.com",
     password: "Test@2025",
     role: "admin",
     permissions: ["all"]

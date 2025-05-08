@@ -24,7 +24,31 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { DEFAULT_USERS } from "@/types";
+
+// Define default user types
+const DEFAULT_USERS = {
+  seeker: {
+    username: "DefaultSeeker",
+    email: "defaultseeker@famiroots.com",
+    password: "Test@2025",
+    role: "user",
+    permissions: ["view", "create", "connect"]
+  },
+  expert: {
+    username: "DefaultExpert",
+    email: "defaultexpert@famiroots.com",
+    password: "Test@2025",
+    role: "expert",
+    permissions: ["view", "create", "connect", "verify"]
+  },
+  admin: {
+    username: "DefaultAdmin",
+    email: "defaultadmin@famiroots.com",
+    password: "Test@2025",
+    role: "admin",
+    permissions: ["all"]
+  }
+};
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -38,7 +62,7 @@ interface AuthFormProps {
   defaultUsers?: boolean;
 }
 
-const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
+const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
   const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("login");
@@ -74,15 +98,12 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
     setIsLoading(true);
     try {
       const user = DEFAULT_USERS[userType];
-      // For demonstration, we'll use username@famiroots.com as email format
-      const email = `${user.username.toLowerCase()}@famiroots.com`;
-      const password = user.password;
-      
-      await signIn(email, password);
+      await signIn(user.email, user.password);
       toast.success(`Logged in as ${user.username} (${user.role})`);
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Authentication failed");
+      console.error("Login error:", error);
+      toast.error(`Authentication failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +165,11 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90" 
+                  disabled={isLoading}
+                >
                   {isLoading ? "Logging in..." : "Login"}
                 </Button>
               </form>
@@ -158,7 +183,7 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
                     variant="outline"
                     onClick={() => handleDefaultUserLogin('seeker')}
                     disabled={isLoading}
-                    className="justify-start"
+                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
                     Login as User (DefaultSeeker)
                   </Button>
@@ -166,7 +191,7 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
                     variant="outline"
                     onClick={() => handleDefaultUserLogin('expert')}
                     disabled={isLoading}
-                    className="justify-start"
+                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
                     Login as Expert (DefaultExpert)
                   </Button>
@@ -174,7 +199,7 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
                     variant="outline"
                     onClick={() => handleDefaultUserLogin('admin')}
                     disabled={isLoading}
-                    className="justify-start"
+                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
                     Login as Admin (DefaultAdmin)
                   </Button>
@@ -224,7 +249,11 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90" 
+                  disabled={isLoading}
+                >
                   {isLoading ? "Signing up..." : "Sign Up"}
                 </Button>
               </form>
@@ -233,7 +262,14 @@ const AuthForm = ({ onClose, defaultUsers = false }: AuthFormProps) => {
         </Tabs>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={isLoading}>Cancel</Button>
+          <Button 
+            variant="ghost" 
+            onClick={onClose} 
+            disabled={isLoading} 
+            className="text-uganda-black"
+          >
+            Cancel
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

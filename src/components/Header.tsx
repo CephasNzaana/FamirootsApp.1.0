@@ -50,7 +50,7 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
               <Button 
                 variant="outline" 
                 onClick={() => signOut()}
-                className="btn-outline"
+                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
               >
                 Logout
               </Button>
@@ -60,13 +60,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
               <Button 
                 variant="outline" 
                 onClick={onLogin}
-                className="btn-outline"
+                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
               >
                 Login
               </Button>
               <Button 
                 onClick={onSignup}
-                className="btn-primary"
+                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
               >
                 Sign Up
               </Button>
@@ -122,7 +122,7 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                     <Button 
                       variant="outline" 
                       onClick={() => signOut()}
-                      className="w-full"
+                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                     >
                       Logout
                     </Button>
@@ -132,13 +132,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                     <Button 
                       variant="outline" 
                       onClick={onLogin}
-                      className="w-full"
+                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                     >
                       Login
                     </Button>
                     <Button 
                       onClick={onSignup}
-                      className="w-full"
+                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                     >
                       Sign Up
                     </Button>

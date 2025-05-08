@@ -22,7 +22,7 @@ export const Navigation = () => {
       <NavigationMenuList>
         <NavigationMenuItem>
           <Link to="/">
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+            <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
               <Home className="mr-2 h-4 w-4" />
               Home
             </NavigationMenuLink>
@@ -33,7 +33,7 @@ export const Navigation = () => {
           <>
             <NavigationMenuItem>
               <Link to="/family-trees">
-                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
                   <Users className="mr-2 h-4 w-4" />
                   Family Trees
                 </NavigationMenuLink>
@@ -41,7 +41,7 @@ export const Navigation = () => {
             </NavigationMenuItem>
             
             <NavigationMenuItem>
-              <NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-white text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black">
                 <Book className="mr-2 h-4 w-4" />
                 Cultural Resources
               </NavigationMenuTrigger>
@@ -53,10 +53,10 @@ export const Navigation = () => {
                         className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-uganda-yellow/50 to-uganda-red/30 p-6 no-underline outline-none focus:shadow-md"
                         to="/tribes"
                       >
-                        <div className="mb-2 mt-4 text-lg font-medium">
+                        <div className="mb-2 mt-4 text-lg font-medium text-uganda-black">
                           Ugandan Tribes & Clans
                         </div>
-                        <p className="text-sm leading-tight text-muted-foreground">
+                        <p className="text-sm leading-tight text-uganda-black">
                           Explore the rich cultural heritage of Uganda's tribal and clan systems
                         </p>
                       </Link>
@@ -91,12 +91,12 @@ const ListItem = React.forwardRef<
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-uganda-yellow/30 hover:text-uganda-black focus:bg-accent focus:text-accent-foreground",
             className
           )}
           {...props}
         >
-          <div className="flex items-center gap-2 text-sm font-medium leading-none">
+          <div className="flex items-center gap-2 text-sm font-medium leading-none text-uganda-black">
             {icon}
             {title}
           </div>
