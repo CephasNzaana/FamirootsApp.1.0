@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
@@ -41,7 +42,8 @@ const Home = () => {
 
       console.log("Session found, calling edge function...");
 
-      const response = await supabase.functions.invoke("generate-family-tree", {
+      // Call our Supabase Edge Function to generate a family tree
+      const { data, error } = await supabase.functions.invoke("generate-family-tree", {
         body: {
           surname: formData.surname,
           tribe: formData.tribe,
@@ -52,16 +54,10 @@ const Home = () => {
         }
       });
 
-      console.log("Edge function response:", response);
+      console.log("Edge function response:", data, "Error:", error);
 
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to generate family tree");
-      }
-
-      const data = response.data;
-      
-      if (data.error) {
-        throw new Error(data.error);
+      if (error) {
+        throw new Error(error.message || "Failed to generate family tree");
       }
 
       let members = data.members;
@@ -71,6 +67,7 @@ const Home = () => {
         toast.info("Using fallback family tree data. The AI response could not be processed.");
       }
 
+      // Create family tree
       const newTree: FamilyTree = {
         id: treeId,
         userId: user.id,
@@ -85,7 +82,7 @@ const Home = () => {
       toast.success("Family tree generated successfully!");
     } catch (error) {
       console.error("Error generating family tree:", error);
-      toast.error(error.message || "Failed to generate family tree. Please try again.");
+      toast.error("Failed to generate family tree. Please try again.");
     } finally {
       setIsLoading(false);
     }
