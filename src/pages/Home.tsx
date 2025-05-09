@@ -7,7 +7,7 @@ import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 import { TreeFormData, FamilyTree } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
-import TreeLogo from "@/components/ui/TreeLogo";
+import TreeLogo from "@/components/ui/Logo.png";
 import { Facebook, Twitter, Instagram, Youtube, ArrowUp, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

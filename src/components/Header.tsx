@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Navigation } from "@/components/Navigation"; 
 import { Menu, Home, Users, Book, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import TreeLogo from "@/components/ui/TreeLogo";
+import TreeLogo from "@/components/ui/Logo.png";
 import { 
   Sheet, 
   SheetContent, 
