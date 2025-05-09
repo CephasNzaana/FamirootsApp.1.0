@@ -18,11 +18,11 @@ export const Navigation = () => {
   const { user } = useAuth();
   
   return (
-    <NavigationMenu className="hidden md:flex">
+    <NavigationMenu className="flex">
       <NavigationMenuList>
         <NavigationMenuItem>
           <Link to="/">
-            <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
+            <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-white/90 hover:text-uganda-black")}>
               <Home className="mr-2 h-4 w-4" />
               Home
             </NavigationMenuLink>
@@ -33,7 +33,7 @@ export const Navigation = () => {
           <>
             <NavigationMenuItem>
               <Link to="/family-trees">
-                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black")}>
+                <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-white/90 hover:text-uganda-black")}>
                   <Users className="mr-2 h-4 w-4" />
                   Family Trees
                 </NavigationMenuLink>
@@ -41,12 +41,12 @@ export const Navigation = () => {
             </NavigationMenuItem>
             
             <NavigationMenuItem>
-              <NavigationMenuTrigger className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/80 hover:text-uganda-black">
+              <NavigationMenuTrigger className="bg-white text-uganda-black hover:bg-white/90 hover:text-uganda-black">
                 <Book className="mr-2 h-4 w-4" />
                 Cultural Resources
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] bg-white">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
                       <Link

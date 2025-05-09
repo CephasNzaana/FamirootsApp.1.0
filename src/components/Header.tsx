@@ -22,7 +22,7 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
   const { user, signOut } = useAuth();
 
   return (
-    <header className="w-full bg-white bg-opacity-90 backdrop-blur-sm shadow-md py-4 px-6 md:px-10">
+    <header className="w-full bg-white bg-opacity-90 backdrop-blur-sm shadow-md py-4 px-6 md:px-10 sticky top-0 z-50">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
@@ -38,7 +38,9 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
         </div>
         
         {/* Navigation Menu (Desktop) */}
-        <Navigation />
+        <div className="hidden md:block">
+          <Navigation />
+        </div>
 
         {/* Desktop Auth Menu */}
         <div className="hidden md:flex items-center space-x-4">

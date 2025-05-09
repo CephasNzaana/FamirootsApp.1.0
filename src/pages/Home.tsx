@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
@@ -203,7 +204,7 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Features Section */}
+        {/* Features Section - UPDATED STYLING */}
         <section className="py-16 px-4 bg-uganda-black text-white">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12">
@@ -212,45 +213,49 @@ const Home = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                <div className="w-16 h-16 rounded-full bg-uganda-red/20 flex items-center justify-center mb-4 mx-auto">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* First Feature Box - updated to yellow background with black text */}
+              <div className="bg-uganda-yellow p-6 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-uganda-black/20 flex items-center justify-center mb-4 mx-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-uganda-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-center">Clan-Based Family Trees</h3>
-                <p className="text-center text-gray-300">
+                <h3 className="text-xl font-semibold mb-2 text-center text-uganda-black">Clan-Based Family Trees</h3>
+                <p className="text-center text-uganda-black">
                   Generate family trees that respect the traditional clan and tribal structures of Ugandan heritage.
                 </p>
               </div>
               
-              <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                <div className="w-16 h-16 rounded-full bg-uganda-yellow/20 flex items-center justify-center mb-4 mx-auto">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* Second Feature Box - updated to yellow background with black text */}
+              <div className="bg-uganda-yellow p-6 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-uganda-black/20 flex items-center justify-center mb-4 mx-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-uganda-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-center">Elder Verification</h3>
-                <p className="text-center text-gray-300">
+                <h3 className="text-xl font-semibold mb-2 text-center text-uganda-black">Elder Verification</h3>
+                <p className="text-center text-uganda-black">
                   Connect your family history to verified clan elders, ensuring accuracy and cultural authenticity.
                 </p>
               </div>
               
-              <div className="bg-white/10 p-6 rounded-lg backdrop-blur-sm">
-                <div className="w-16 h-16 rounded-full bg-uganda-red/20 flex items-center justify-center mb-4 mx-auto">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {/* Third Feature Box - updated to yellow background with black text */}
+              <div className="bg-uganda-yellow p-6 rounded-lg">
+                <div className="w-16 h-16 rounded-full bg-uganda-black/20 flex items-center justify-center mb-4 mx-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-uganda-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2 text-center">Relationship Analyzer</h3>
-                <p className="text-center text-gray-300">
+                <h3 className="text-xl font-semibold mb-2 text-center text-uganda-black">Relationship Analyzer</h3>
+                <p className="text-center text-uganda-black">
                   Discover how individuals are connected through clan lineages and common elders in Ugandan tradition.
                 </p>
               </div>
             </div>
 
             <div className="mt-12 text-center">
-              <Button asChild size="lg" className="bg-uganda-red hover:bg-uganda-red/90">
+              {/* Updated Get Started Now button to yellow background with black text */}
+              <Button asChild size="lg" className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
                 <Link to={user ? "/family-trees" : "#"} onClick={!user ? handleSignup : undefined}>
                   Get Started Now
                 </Link>
