@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +17,27 @@ interface HeaderProps {
   onSignup: () => void;
 }
 
+const TreeLogo = () => {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" className="mr-1">
+      {/* Tree Trunk (Black) */}
+      <rect x="15" y="15" width="6" height="15" fill="#000000" />
+      
+      {/* Tree Branches */}
+      <polygon 
+        points="18,5 8,18 28,18" 
+        fill="#FFD700" /* Yellow */
+      />
+      
+      {/* Tree Top */}
+      <polygon 
+        points="18,2 11,12 25,12" 
+        fill="#DC143C" /* Red */
+      />
+    </svg>
+  );
+};
+
 const Header = ({ onLogin, onSignup }: HeaderProps) => {
   const { user, signOut } = useAuth();
 
@@ -26,11 +46,7 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="flex space-x-0.5">
-              <div className="w-4 h-8 bg-uganda-black"></div>
-              <div className="w-4 h-8 bg-uganda-yellow"></div>
-              <div className="w-4 h-8 bg-uganda-red"></div>
-            </div>
+            <TreeLogo />
             <h1 className="text-2xl font-bold text-uganda-black">
               Fami<span className="text-uganda-red">Roots</span>
             </h1>
@@ -86,7 +102,12 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
             <SheetHeader>
-              <SheetTitle>FamiRoots</SheetTitle>
+              <SheetTitle>
+                <div className="flex items-center">
+                  <TreeLogo />
+                  <span>FamiRoots</span>
+                </div>
+              </SheetTitle>
             </SheetHeader>
             <div className="py-6 flex flex-col space-y-4">
               <Link to="/" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
