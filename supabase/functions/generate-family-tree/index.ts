@@ -1,7 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
-import OpenAI from "https://esm.sh/openai@4.11.0";
+import { createClient } from "npm:@supabase/supabase-js@2.33.1";
+import OpenAI from "npm:openai@4.11.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +45,7 @@ serve(async (req) => {
     console.log("Authenticated user:", userId);
 
     try {
-      // Initialize OpenAI client with the new SDK format
+      // Initialize OpenAI client
       const openai = new OpenAI({
         apiKey: openaiApiKey
       });
@@ -69,24 +68,20 @@ serve(async (req) => {
       Please return the family tree as a JSON array with this exact format for each family member:
       [
         {
-          "id": "unique-string", // A unique string ID for each person
+          "id": "unique-string",
           "name": "Full Name",
           "relationship": "Father/Mother/etc",
-          "birthYear": "YYYY", // Optional, can be null
-          "generation": 1, // Number indicating generation (1 for oldest, 2 for their children, etc)
-          "parentId": "parent-unique-string", // ID of parent, null for first generation
-          "isElder": true/false // Whether this person is considered a clan elder
-        },
-        ...more family members
-      ]
-
-      Only return valid JSON with no additional text or explanations. The array should be culturally appropriate and accurate to Ugandan ${tribe} tribal traditions and ${clan} clan customs.`;
+          "birthYear": "YYYY",
+          "generation": 1,
+          "parentId": "parent-unique-string",
+          "isElder": true/false
+        }
+      ]`;
 
       console.log("Calling OpenAI with prompt for family tree generation");
       
-      // Use the updated OpenAI API format
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4",
         messages: [
           {"role": "system", "content": "You are an expert in Ugandan family structures, tribal customs, and clan traditions. You create accurate family trees based on tribal and clan customs."},
           {"role": "user", "content": prompt}
@@ -95,54 +90,23 @@ serve(async (req) => {
 
       console.log("OpenAI API response received");
       let familyTreeData;
+      let usedFallback = false;
       
       try {
-        // Try to parse the OpenAI response
         const responseText = completion.choices[0].message.content || '';
         console.log("Response content:", responseText.substring(0, 100) + "...");
         familyTreeData = JSON.parse(responseText);
         
-        // Basic validation to ensure it's an array of family members
         if (!Array.isArray(familyTreeData)) {
           throw new Error('Response is not an array');
         }
       } catch (parseError) {
         console.error('Error parsing OpenAI response:', parseError);
-        
-        // Use fallback data
         familyTreeData = generateFallbackFamilyTree(surname, tribe, clan);
-        console.log("Using fallback data due to parse error");
-        
-        // Insert family tree into database with fallback flag
-        const { data: treeData, error: treeError } = await supabaseAdmin
-          .from('family_trees')
-          .insert({
-            user_id: userId,
-            surname,
-            tribe,
-            clan,
-            members: familyTreeData,
-            fallback: true
-          })
-          .select()
-          .single();
-          
-        if (treeError) {
-          throw treeError;
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            members: familyTreeData, 
-            treeId: treeData.id,
-            fallback: true 
-          }),
-          { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
+        usedFallback = true;
       }
 
       console.log("Inserting tree into database");
-      // Insert family tree into database
       const { data: treeData, error: treeError } = await supabaseAdmin
         .from('family_trees')
         .insert({
@@ -150,7 +114,8 @@ serve(async (req) => {
           surname,
           tribe,
           clan,
-          members: familyTreeData
+          members: familyTreeData,
+          ...(usedFallback && { fallback: true })
         })
         .select()
         .single();
@@ -159,11 +124,11 @@ serve(async (req) => {
         throw treeError;
       }
 
-      // Return the generated family tree
       return new Response(
         JSON.stringify({ 
           members: familyTreeData, 
-          treeId: treeData.id 
+          treeId: treeData.id,
+          ...(usedFallback && { fallback: true })
         }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
@@ -171,10 +136,8 @@ serve(async (req) => {
     } catch (error) {
       console.error('Error generating family tree:', error);
       
-      // Use fallback data
       const fallbackData = generateFallbackFamilyTree(surname, tribe, clan);
       
-      // Insert fallback family tree into database
       const { data: treeData, error: treeError } = await supabaseAdmin
         .from('family_trees')
         .insert({
@@ -204,15 +167,19 @@ serve(async (req) => {
   } catch (error) {
     console.error('Server error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      JSON.stringify({ 
+        error: 'Failed to generate family tree',
+        details: error.message 
+      }),
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+      }
     );
   }
 });
 
-// Fallback function to generate a basic family tree when OpenAI fails
 function generateFallbackFamilyTree(surname: string, tribe: string, clan: string) {
-  // Create some culturally appropriate first names based on tribe
   const maleNames = {
     "Baganda": ["Mukasa", "Ssentamu", "Muwonge", "Kiwanuka", "Ssekitoleko"],
     "Banyankole": ["Tumusiime", "Asiimwe", "Twinamatsiko", "Mugisha", "Turyatemba"],
@@ -229,20 +196,15 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
     "default": ["Mary", "Sarah", "Ruth", "Rebecca", "Elizabeth"]
   };
   
-  // Get tribe-specific names or default if tribe not found
   const maleNamesForTribe = maleNames[tribe] || maleNames.default;
   const femaleNamesForTribe = femaleNames[tribe] || femaleNames.default;
   
-  // Random name selection functions
   const getRandomMaleName = () => maleNamesForTribe[Math.floor(Math.random() * maleNamesForTribe.length)];
   const getRandomFemaleName = () => femaleNamesForTribe[Math.floor(Math.random() * femaleNamesForTribe.length)];
   
-  // Generate a random year between min and max
   const randomYear = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
   
-  // Create the family tree structure
   return [
-    // First generation (grandparents)
     {
       id: "elder-1",
       name: `${getRandomMaleName()} ${surname}`,
@@ -279,8 +241,6 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
       parentId: null,
       isElder: false
     },
-    
-    // Second generation (parents)
     {
       id: "father",
       name: `${getRandomMaleName()} ${surname}`,
@@ -317,8 +277,6 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
       parentId: "elder-1",
       isElder: false
     },
-    
-    // Third generation (self, siblings, cousins)
     {
       id: "self",
       name: `${surname}`,
@@ -364,8 +322,6 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
       parentId: "uncle-1",
       isElder: false
     },
-    
-    // Fourth generation (children)
     {
       id: "child-1",
       name: `${getRandomMaleName()} ${surname}`,
