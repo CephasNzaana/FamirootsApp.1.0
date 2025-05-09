@@ -78,7 +78,7 @@ const ProfileForm = ({ open, onClose }: ProfileFormProps) => {
     defaultValues: {
       full_name: userMetadata?.full_name || "",
       tribe: userMetadata?.tribe || TRIBES[0],
-      clan: userMetadata?.clan || "",
+      clan: userMetadata?.clan || CLANS[userMetadata?.tribe || TRIBES[0]][0] || "Other",
     },
   });
 
@@ -100,7 +100,9 @@ const ProfileForm = ({ open, onClose }: ProfileFormProps) => {
   const handleTribeChange = (value: string) => {
     setSelectedTribe(value);
     form.setValue("tribe", value);
-    form.setValue("clan", ""); // Reset clan when tribe changes
+    // Initialize clan with first clan from the selected tribe, or "Other" if none available
+    const defaultClan = CLANS[value]?.[0] || "Other";
+    form.setValue("clan", defaultClan);
   };
 
   const availableClans = CLANS[selectedTribe] || CLANS["Other"];
@@ -139,7 +141,7 @@ const ProfileForm = ({ open, onClose }: ProfileFormProps) => {
                   <FormLabel>Tribe</FormLabel>
                   <Select 
                     onValueChange={(value) => handleTribeChange(value)} 
-                    defaultValue={field.value}
+                    defaultValue={field.value || TRIBES[0]}
                     disabled={isLoading}
                   >
                     <FormControl>
@@ -166,7 +168,7 @@ const ProfileForm = ({ open, onClose }: ProfileFormProps) => {
                   <FormLabel>Clan</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value}
+                    defaultValue={field.value || availableClans[0] || "Other"}
                     disabled={isLoading}
                   >
                     <FormControl>

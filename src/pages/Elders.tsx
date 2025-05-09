@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
@@ -121,7 +122,7 @@ const Elders = () => {
                     <SelectValue placeholder="All Tribes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Tribes</SelectItem>
+                    <SelectItem value="all-tribes">All Tribes</SelectItem>
                     {ugandaTribesData.map(tribe => (
                       <SelectItem key={tribe.id} value={tribe.id}>
                         {tribe.name}
@@ -142,7 +143,7 @@ const Elders = () => {
                     <SelectValue placeholder="All Clans" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Clans</SelectItem>
+                    <SelectItem value="all-clans">All Clans</SelectItem>
                     {availableClans.map(clan => (
                       <SelectItem key={clan.id} value={clan.id}>
                         {clan.name}

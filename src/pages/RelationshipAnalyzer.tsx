@@ -12,6 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { RelationshipResult } from "@/types";
 
+// Define tribes for selection - ensure no empty values
+const AVAILABLE_TRIBES = [
+  "Baganda",
+  "Banyankole",
+  "Basoga",
+  "Bakiga",
+  "Batoro",
+  "Other"
+];
+
 const RelationshipAnalyzer = () => {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(false);
@@ -21,14 +31,14 @@ const RelationshipAnalyzer = () => {
   // Sample form data
   const [person1, setPerson1] = useState({
     name: "",
-    tribe: "",
+    tribe: AVAILABLE_TRIBES[0],
     clan: "",
     elderConnection: ""
   });
   
   const [person2, setPerson2] = useState({
     name: "",
-    tribe: "",
+    tribe: AVAILABLE_TRIBES[0],
     clan: "",
     elderConnection: ""
   });
@@ -142,11 +152,9 @@ const RelationshipAnalyzer = () => {
                             <SelectValue placeholder="Select tribe" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Baganda">Baganda</SelectItem>
-                            <SelectItem value="Banyankole">Banyankole</SelectItem>
-                            <SelectItem value="Basoga">Basoga</SelectItem>
-                            <SelectItem value="Bakiga">Bakiga</SelectItem>
-                            <SelectItem value="Batoro">Batoro</SelectItem>
+                            {AVAILABLE_TRIBES.map((tribe) => (
+                              <SelectItem key={tribe} value={tribe}>{tribe}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -194,11 +202,9 @@ const RelationshipAnalyzer = () => {
                             <SelectValue placeholder="Select tribe" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Baganda">Baganda</SelectItem>
-                            <SelectItem value="Banyankole">Banyankole</SelectItem>
-                            <SelectItem value="Basoga">Basoga</SelectItem>
-                            <SelectItem value="Bakiga">Bakiga</SelectItem>
-                            <SelectItem value="Batoro">Batoro</SelectItem>
+                            {AVAILABLE_TRIBES.map((tribe) => (
+                              <SelectItem key={tribe} value={tribe}>{tribe}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
