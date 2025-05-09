@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, WeakPassword } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
@@ -8,8 +8,16 @@ type AuthContextProps = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  // Update the return types for these functions to match their implementations
+  signIn: (email: string, password: string) => Promise<{
+    user: User | null;
+    session: Session | null;
+    weakPassword?: WeakPassword | null;
+  } | undefined>;
+  signUp: (email: string, password: string) => Promise<{
+    user: User | null;
+    session: Session | null;
+  } | undefined>;
   signOut: () => Promise<void>;
 };
 
