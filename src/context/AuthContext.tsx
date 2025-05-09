@@ -46,9 +46,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("Signing in with:", email);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Sign in response:", data, error);
+      
       if (error) throw error;
       toast.success("Signed in successfully");
+      return data;
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast.error(error.message || "Error signing in");
@@ -59,9 +62,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string) => {
     try {
       console.log("Signing up with:", email);
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      console.log("Sign up response:", data, error);
+      
       if (error) throw error;
       toast.success("Sign up successful! Check your email for confirmation.");
+      return data;
     } catch (error: any) {
       console.error("Sign up error:", error);
       toast.error(error.message || "Error signing up");

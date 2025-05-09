@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { DEFAULT_USERS } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -32,6 +31,28 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+// Default user credentials that match what's in the database
+const DEFAULT_USERS = {
+  seeker: {
+    email: "user@test.com",
+    password: "Test@2025",
+    username: "DefaultSeeker",
+    role: "user"
+  },
+  expert: {
+    email: "expert@test.com",
+    password: "Test@2025",
+    username: "DefaultExpert",
+    role: "expert"
+  },
+  admin: {
+    email: "admin@test.com",
+    password: "Test@2025",
+    username: "DefaultAdmin",
+    role: "admin"
+  }
+};
 
 interface AuthFormProps {
   onClose: () => void;
@@ -74,6 +95,7 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
     setIsLoading(true);
     try {
       const user = DEFAULT_USERS[userType];
+      console.log(`Attempting login with ${userType}:`, user.email, user.password);
       await signIn(user.email, user.password);
       toast.success(`Logged in as ${user.username} (${user.role})`);
       onClose();
@@ -161,7 +183,7 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
                     disabled={isLoading}
                     className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
-                    Login as User (DefaultSeeker)
+                    Login as User (user@test.com)
                   </Button>
                   <Button 
                     variant="outline"
@@ -169,7 +191,7 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
                     disabled={isLoading}
                     className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
-                    Login as Expert (DefaultExpert)
+                    Login as Expert (expert@test.com)
                   </Button>
                   <Button 
                     variant="outline"
@@ -177,7 +199,7 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
                     disabled={isLoading}
                     className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
                   >
-                    Login as Admin (DefaultAdmin)
+                    Login as Admin (admin@test.com)
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
