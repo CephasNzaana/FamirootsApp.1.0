@@ -42,9 +42,9 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
         <div className="hidden md:flex items-center space-x-4">
           <Button 
             variant="outline" 
-            className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+            className="bg-uganda-red text-white hover:bg-uganda-red/90"
           >
-            Become an Expert
+            Work as an Expert
           </Button>
 
           {user ? (
@@ -104,9 +104,9 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
 
               <Button 
                 variant="outline" 
-                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90 mx-4"
+                className="bg-uganda-red text-white hover:bg-uganda-red/90 mx-4"
               >
-                Become an Expert
+                Work as an Expert
               </Button>
 
               {user && (

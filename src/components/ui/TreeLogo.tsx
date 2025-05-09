@@ -1,28 +1,28 @@
 const TreeLogo = () => {
   return (
     <svg width="64" height="64" viewBox="0 0 64 64" className="mr-1">
-      {/* Tree Trunk (Black) */}
+      {/* Tree Trunk */}
       <rect x="26" y="40" width="12" height="24" fill="#000000" />
       
-      {/* Main Branches */}
-      <path d="M32,8 L18,30 L46,30" fill="#FFD700" />
+      {/* Tree Roots */}
+      <path d="M30,64 C18,64 14,58 8,58" stroke="#000000" strokeWidth="2" fill="none" />
+      <path d="M34,64 C46,64 50,58 56,58" stroke="#000000" strokeWidth="2" fill="none" />
       
-      {/* Left branch */}
-      <path d="M26,24 L16,36 L30,36" fill="#DC143C" />
+      {/* Main Tree Shape */}
+      <path d="M32,6 L12,40 L52,40" fill="#2E7D32" />
       
-      {/* Right branch */}
-      <path d="M38,24 L48,36 L34,36" fill="#FFD700" />
+      {/* Yellow Overlay Patterns */}
+      <path d="M32,16 L22,32 L42,32" fill="#FFD700" />
       
-      {/* Small branches */}
-      <path d="M22,20 L15,26 L25,26" fill="#000000" />
-      <path d="M42,20 L49,26 L39,26" fill="#000000" />
+      {/* Red Overlay Patterns */}
+      <path d="M32,26 L24,36 L40,36" fill="#DC143C" />
       
-      {/* Top branch */}
-      <path d="M32,4 L24,14 L40,14" fill="#DC143C" />
-      
-      {/* Additional branches */}
-      <path d="M28,16 L22,22 L30,22" fill="#FFD700" />
-      <path d="M36,16 L42,22 L34,22" fill="#FFD700" />
+      {/* Small details */}
+      <circle cx="32" cy="12" r="2" fill="#000000" />
+      <circle cx="26" cy="20" r="1.5" fill="#000000" />
+      <circle cx="38" cy="20" r="1.5" fill="#000000" />
+      <circle cx="22" cy="30" r="1.5" fill="#000000" />
+      <circle cx="42" cy="30" r="1.5" fill="#000000" />
     </svg>
   );
 };
