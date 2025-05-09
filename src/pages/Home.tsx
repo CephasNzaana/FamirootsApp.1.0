@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
@@ -8,12 +7,43 @@ import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 import { TreeFormData, FamilyTree } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import TreeLogo from "@/components/ui/TreeLogo";
+import { Facebook, Twitter, Instagram, Youtube, ArrowUp, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Home = () => {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [familyTree, setFamilyTree] = useState<FamilyTree | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      toast.success("Thank you for subscribing to our newsletter!");
+      setEmail("");
+    } else {
+      toast.error("Please enter a valid email address");
+    }
+  };
 
   const handleLogin = () => {
     setShowAuth(true);
@@ -182,39 +212,120 @@ const Home = () => {
               </div>
             </div>
           </section>
+
+          {/* Newsletter Signup Section */}
+          <section className="mt-16 bg-uganda-black text-white p-8 rounded-lg">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="text-2xl font-bold mb-4">Sign up for the FamiRoots Newsletter</h2>
+              <p className="mb-6">Get updates on new features, cultural events, and tips for preserving your family heritage.</p>
+              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-4 justify-center">
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  className="px-4 py-2 rounded-lg flex-grow max-w-md text-black"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <Button type="submit" className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
+                  Subscribe
+                </Button>
+              </form>
+            </div>
+          </section>
+
+          {/* Mobile App Download Section */}
+          <section className="mt-16 text-center p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold mb-6 text-uganda-black">Download the FamiRoots App</h2>
+            <p className="mb-6 text-gray-600">Explore your family heritage on the go with our mobile app</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <a href="#" className="inline-block">
+                <img 
+                  src="/api/placeholder/200/60" 
+                  alt="Download on the App Store" 
+                  className="h-12"
+                />
+              </a>
+              <a href="#" className="inline-block">
+                <img 
+                  src="/api/placeholder/200/60" 
+                  alt="Get it on Google Play" 
+                  className="h-12"
+                />
+              </a>
+            </div>
+          </section>
         </div>
       </main>
 
-      /* 
-This is the updated footer section from the Home.tsx file.
-Replace the existing footer section with this code.
-*/
-
-<footer className="bg-uganda-black text-white py-6 mt-12">
-  <div className="max-w-7xl mx-auto px-4 text-center">
-    <div className="flex justify-center mb-4">
-      <svg width="48" height="40" viewBox="0 0 48 40">
-        {/* Tree Trunk (Black) */}
-        <rect x="19" y="16" width="10" height="18" fill="#000000" />
+      <footer className="bg-uganda-black text-white py-8 mt-12 relative">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div className="text-center md:text-left">
+              <div className="flex justify-center md:justify-start mb-4">
+                <TreeLogo />
+              </div>
+              <h3 className="text-xl font-bold mb-2">FamiRoots</h3>
+              <p className="text-sm">Preserving Ugandan Family Heritage</p>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2">
+                <li><a href="#" className="hover:text-uganda-yellow">About Us</a></li>
+                <li><a href="#" className="hover:text-uganda-yellow">Family Trees</a></li>
+                <li><a href="#" className="hover:text-uganda-yellow">Tribes & Clans</a></li>
+                <li><a href="#" className="hover:text-uganda-yellow">Elder Database</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Connect With Us</h3>
+              <div className="flex space-x-4 justify-center md:justify-start">
+                <a href="#" aria-label="Facebook">
+                  <Facebook className="h-6 w-6 hover:text-uganda-yellow" />
+                </a>
+                <a href="#" aria-label="Twitter/X">
+                  <Twitter className="h-6 w-6 hover:text-uganda-yellow" />
+                </a>
+                <a href="#" aria-label="Instagram">
+                  <Instagram className="h-6 w-6 hover:text-uganda-yellow" />
+                </a>
+                <a href="#" aria-label="Youtube">
+                  <Youtube className="h-6 w-6 hover:text-uganda-yellow" />
+                </a>
+              </div>
+              <div className="mt-4 flex items-center justify-center md:justify-start">
+                <Mail className="h-5 w-5 mr-2" />
+                <a href="mailto:info@famiroots.com" className="hover:text-uganda-yellow">info@famiroots.com</a>
+              </div>
+            </div>
+            
+            <div className="text-center md:text-left">
+              <h3 className="text-lg font-semibold mb-4">Get In Touch</h3>
+              <Button className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
+                Contact Us
+              </Button>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-700 pt-6 text-center">
+            <p className="text-sm">
+              &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
+            </p>
+          </div>
+        </div>
         
-        {/* Tree Branches */}
-        <polygon 
-          points="24,6 10,20 38,20" 
-          fill="#FFD700" /* Yellow */
-        />
-        
-        {/* Tree Top */}
-        <polygon 
-          points="24,2 14,13 34,13" 
-          fill="#DC143C" /* Red */
-        />
-      </svg>
-    </div>
-    <p className="text-sm">
-      &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
-    </p>
-  </div>
-</footer>
+        {/* Scroll to top button */}
+        {showScrollTop && (
+          <button 
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 bg-uganda-yellow p-3 rounded-full shadow-lg hover:bg-uganda-yellow/90 transition-all duration-300"
+            aria-label="Scroll to top"
+          >
+            <ArrowUp className="h-6 w-6 text-uganda-black" />
+          </button>
+        )}
+      </footer>
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />

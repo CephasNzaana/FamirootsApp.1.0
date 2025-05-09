@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Navigation } from "@/components/Navigation"; 
 import { Menu, Home, Users, Book, User } from "lucide-react";
 import { Link } from "react-router-dom";
+import TreeLogo from "@/components/ui/TreeLogo";
 import { 
   Sheet, 
   SheetContent, 
@@ -16,27 +17,6 @@ interface HeaderProps {
   onLogin: () => void;
   onSignup: () => void;
 }
-
-const TreeLogo = () => {
-  return (
-    <svg width="48" height="40" viewBox="0 0 48 40" className="mr-1">
-      {/* Tree Trunk (Black) */}
-      <rect x="19" y="16" width="10" height="18" fill="#000000" />
-      
-      {/* Tree Branches */}
-      <polygon 
-        points="24,6 10,20 38,20" 
-        fill="#FFD700" /* Yellow */
-      />
-      
-      {/* Tree Top */}
-      <polygon 
-        points="24,2 14,13 34,13" 
-        fill="#DC143C" /* Red */
-      />
-    </svg>
-  );
-};
 
 const Header = ({ onLogin, onSignup }: HeaderProps) => {
   const { user, signOut } = useAuth();
@@ -60,6 +40,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
 
         {/* Desktop Auth Menu */}
         <div className="hidden md:flex items-center space-x-4">
+          <Button 
+            variant="outline" 
+            className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+          >
+            Become an Expert
+          </Button>
+
           {user ? (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
@@ -114,6 +101,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                 <Home className="mr-2 h-4 w-4" />
                 Home
               </Link>
+
+              <Button 
+                variant="outline" 
+                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90 mx-4"
+              >
+                Become an Expert
+              </Button>
 
               {user && (
                 <>
