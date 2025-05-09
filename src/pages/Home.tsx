@@ -185,18 +185,36 @@ const Home = () => {
         </div>
       </main>
 
-      <footer className="bg-uganda-black text-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center space-x-2 mb-4">
-            <div className="w-4 h-4 bg-uganda-black"></div>
-            <div className="w-4 h-4 bg-uganda-yellow"></div>
-            <div className="w-4 h-4 bg-uganda-red"></div>
-          </div>
-          <p className="text-sm">
-            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
-          </p>
-        </div>
-      </footer>
+      /* 
+This is the updated footer section from the Home.tsx file.
+Replace the existing footer section with this code.
+*/
+
+<footer className="bg-uganda-black text-white py-6 mt-12">
+  <div className="max-w-7xl mx-auto px-4 text-center">
+    <div className="flex justify-center mb-4">
+      <svg width="48" height="40" viewBox="0 0 48 40">
+        {/* Tree Trunk (Black) */}
+        <rect x="19" y="16" width="10" height="18" fill="#000000" />
+        
+        {/* Tree Branches */}
+        <polygon 
+          points="24,6 10,20 38,20" 
+          fill="#FFD700" /* Yellow */
+        />
+        
+        {/* Tree Top */}
+        <polygon 
+          points="24,2 14,13 34,13" 
+          fill="#DC143C" /* Red */
+        />
+      </svg>
+    </div>
+    <p className="text-sm">
+      &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
+    </p>
+  </div>
+</footer>
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />
