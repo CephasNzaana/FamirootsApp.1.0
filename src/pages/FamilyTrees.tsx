@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import { FamilyTree } from "@/types";
@@ -16,6 +17,7 @@ const FamilyTrees = () => {
   const [showAuth, setShowAuth] = useState<boolean>(!user);
   const [familyTrees, setFamilyTrees] = useState<FamilyTree[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -56,6 +58,17 @@ const FamilyTrees = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCreateClick = () => {
+    navigate("/");
+  };
+
+  const handleViewTree = (treeId: string) => {
+    // For now, just show a toast indicating this would navigate to the tree view
+    toast.info("Viewing tree will be implemented soon");
+    // Implement navigation to tree view when ready
+    // navigate(`/family-trees/${treeId}`);
   };
 
   if (!user) {
@@ -101,7 +114,7 @@ const FamilyTrees = () => {
           </div>
           <Button 
             className="mt-4 md:mt-0 bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-            onClick={() => window.location.href = "/"}
+            onClick={handleCreateClick}
           >
             Create New Family Tree
           </Button>
@@ -144,7 +157,11 @@ const FamilyTrees = () => {
                   <div className="text-sm text-gray-500">
                     Created: {new Date(tree.createdAt).toLocaleDateString()}
                   </div>
-                  <Button size="sm" className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
+                  <Button 
+                    size="sm" 
+                    className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+                    onClick={() => handleViewTree(tree.id)}
+                  >
                     View
                   </Button>
                 </CardFooter>
@@ -164,7 +181,7 @@ const FamilyTrees = () => {
               </p>
               <Button 
                 className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                onClick={() => window.location.href = "/"}
+                onClick={handleCreateClick}
               >
                 Create Family Tree
               </Button>

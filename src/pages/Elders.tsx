@@ -114,7 +114,7 @@ const Elders = () => {
                 <Select
                   value={selectedTribe}
                   onValueChange={(value) => {
-                    setSelectedTribe(value);
+                    setSelectedTribe(value || "");
                     setSelectedClan("");
                   }}
                 >
@@ -136,7 +136,7 @@ const Elders = () => {
                 <label className="block text-sm font-medium mb-1">Filter by Clan</label>
                 <Select
                   value={selectedClan}
-                  onValueChange={setSelectedClan}
+                  onValueChange={(value) => setSelectedClan(value || "")}
                   disabled={!selectedTribe}
                 >
                   <SelectTrigger>

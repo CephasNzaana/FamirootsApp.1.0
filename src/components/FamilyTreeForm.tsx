@@ -6,6 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { TreeFormData } from "@/types";
 import { toast } from "@/components/ui/sonner";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface FamilyTreeFormProps {
   onSubmit: (data: TreeFormData) => void;
@@ -24,6 +31,10 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -33,6 +44,10 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
       return;
     }
     
+    // Log form submission for debugging
+    console.log("Submitting form data:", formData);
+    
+    // Call the parent's onSubmit function
     onSubmit(formData);
   };
 
@@ -65,20 +80,19 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="tribe">Tribe</Label>
-            <Input
-              id="tribe"
-              name="tribe"
-              list="tribes"
-              placeholder="e.g. Baganda"
+            <Select
               value={formData.tribe}
-              onChange={handleChange}
-              className="focus:border-uganda-yellow focus:ring-uganda-yellow"
-            />
-            <datalist id="tribes">
-              {commonTribes.map((tribe) => (
-                <option key={tribe} value={tribe} />
-              ))}
-            </datalist>
+              onValueChange={(value) => handleSelectChange("tribe", value)}
+            >
+              <SelectTrigger id="tribe" className="focus:border-uganda-yellow focus:ring-uganda-yellow">
+                <SelectValue placeholder="Select a tribe" />
+              </SelectTrigger>
+              <SelectContent>
+                {commonTribes.map((tribe) => (
+                  <SelectItem key={tribe} value={tribe}>{tribe}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-gray-500">Common examples: Baganda, Banyankole, Basoga, Bakiga</p>
           </div>
           <div className="space-y-2">
