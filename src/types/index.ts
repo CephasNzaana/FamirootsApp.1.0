@@ -5,21 +5,33 @@ export type User = {
   role?: 'user' | 'expert' | 'admin';
 };
 
-export type TreeFormData = {
+// Form Data Types
+export interface TreeFormData {
   surname: string;
   tribe: string;
   clan: string;
-};
+  familyName: string; // New field for user's full name
+  gender: string; // New field for user's gender
+  side: 'maternal' | 'paternal'; // Which side of family to focus on
+  siblings: SiblingInfo[]; // Array of siblings
+  spouse: SpouseInfo; // Spouse information
+  selectedElders: string[]; // IDs of selected clan elders
+}
 
-export type FamilyMember = {
+// Family Tree Types
+export interface FamilyMember {
   id: string;
   name: string;
   relationship: string;
   birthYear?: string;
   generation: number;
-  parentId?: string | null;
-  isElder?: boolean;
-};
+  parentId?: string;
+  isElder: boolean;
+  gender?: string; // Added gender field
+  marriedTo?: string; // ID of spouse
+  clanConnectionId?: string; // Reference to a specific clan elder
+  side?: 'maternal' | 'paternal'; // Which side of family
+}
 
 export type FamilyTree = {
   id: string;
@@ -30,6 +42,17 @@ export type FamilyTree = {
   createdAt: string;
   members: FamilyMember[];
 };
+
+export interface SiblingInfo {
+  name: string;
+  gender: string;
+  birthYear: string;
+}
+
+export interface SpouseInfo {
+  name: string;
+  birthYear: string;
+}
 
 export interface Cultural {
   tribe: string;
