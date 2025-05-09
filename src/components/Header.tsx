@@ -1,10 +1,10 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Navigation } from "@/components/Navigation"; 
 import { Menu, Home, Users, Book, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import TreeLogo from "@/components/ui/Logo.png";
 import { 
   Sheet, 
   SheetContent, 
@@ -26,7 +26,11 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
-            <TreeLogo />
+            <div className="flex space-x-0.5">
+              <div className="w-4 h-8 bg-uganda-black"></div>
+              <div className="w-4 h-8 bg-uganda-yellow"></div>
+              <div className="w-4 h-8 bg-uganda-red"></div>
+            </div>
             <h1 className="text-2xl font-bold text-uganda-black">
               Fami<span className="text-uganda-red">Roots</span>
             </h1>
@@ -40,13 +44,6 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
 
         {/* Desktop Auth Menu */}
         <div className="hidden md:flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            className="bg-uganda-red text-white hover:bg-uganda-red/90"
-          >
-            Work as an Expert
-          </Button>
-
           {user ? (
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">
@@ -89,25 +86,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
             <SheetHeader>
-              <SheetTitle>
-                <div className="flex items-center">
-                  <TreeLogo />
-                  <span>FamiRoots</span>
-                </div>
-              </SheetTitle>
+              <SheetTitle>FamiRoots</SheetTitle>
             </SheetHeader>
             <div className="py-6 flex flex-col space-y-4">
               <Link to="/" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
                 <Home className="mr-2 h-4 w-4" />
                 Home
               </Link>
-
-              <Button 
-                variant="outline" 
-                className="bg-uganda-red text-white hover:bg-uganda-red/90 mx-4"
-              >
-                Work as an Expert
-              </Button>
 
               {user && (
                 <>
