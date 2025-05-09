@@ -382,6 +382,837 @@ export const ugandaTribesData: Tribe[] = [
       }
     ]
   },
+
+  {
+    id: "bakiga",
+    name: "Bakiga",
+    region: "Southwestern Uganda",
+    population: "1.9 million",
+    language: "Rukiga",
+    description: "The Bakiga, known as 'people of the mountains', inhabit the highlands of southwestern Uganda. They are renowned for their terraced farming techniques on steep hillsides and strong cultural traditions.",
+    clans: [
+      {
+        id: "basigi",
+        name: "Basigi",
+        totem: "Elephant",
+        origin: "Originally from the mountainous regions of Kigezi",
+        elders: [
+          {
+            id: "rwamatungi",
+            name: "Rwamatungi",
+            approximateEra: "Mid-19th century",
+            verificationScore: 89,
+            notes: "Known for establishing key settlement patterns"
+          },
+          {
+            id: "kakuru",
+            name: "Kakuru",
+            approximateEra: "Late 19th century",
+            verificationScore: 87
+          },
+          {
+            id: "kansiime",
+            name: "Kansiime",
+            approximateEra: "Early 20th century",
+            verificationScore: 85
+          },
+          {
+            id: "beyendeza",
+            name: "Beyendeza",
+            approximateEra: "Mid-20th century",
+            verificationScore: 84
+          },
+          {
+            id: "rwabuhinga",
+            name: "Rwabuhinga",
+            approximateEra: "Early 19th century",
+            verificationScore: 83
+          },
+          {
+            id: "kyomukama",
+            name: "Kyomukama",
+            approximateEra: "Mid-19th century",
+            verificationScore: 86
+          },
+          {
+            id: "kembabazi",
+            name: "Kembabazi",
+            approximateEra: "Late 19th century",
+            verificationScore: 82,
+            notes: "Female elder respected for agricultural knowledge"
+          },
+          {
+            id: "mutabazi",
+            name: "Mutabazi",
+            approximateEra: "Early 20th century",
+            verificationScore: 81
+          },
+          {
+            id: "rukundo",
+            name: "Rukundo",
+            approximateEra: "Mid-20th century",
+            verificationScore: 80
+          },
+          {
+            id: "turyamureeba",
+            name: "Turyamureeba",
+            approximateEra: "Late 20th century",
+            verificationScore: 79
+          }
+        ],
+        culturalPractices: [
+          "Terraced farming on hillsides",
+          "Elaborate marriage ceremonies",
+          "Traditional brewing of sorghum beer (Omuramba)"
+        ]
+      },
+      {
+        id: "bazigaba",
+        name: "Bazigaba",
+        totem: "Buffalo",
+        origin: "Migrated from the northern regions of Rwanda",
+        elders: [
+          {
+            id: "baryomunsi",
+            name: "Baryomunsi",
+            approximateEra: "Late 19th century",
+            verificationScore: 88
+          },
+          {
+            id: "tugumisirize",
+            name: "Tugumisirize",
+            approximateEra: "Early 20th century",
+            verificationScore: 86
+          },
+          {
+            id: "kwatampora",
+            name: "Kwatampora",
+            approximateEra: "Mid-20th century",
+            verificationScore: 85
+          },
+          {
+            id: "kamugisha",
+            name: "Kamugisha",
+            approximateEra: "Early 19th century",
+            verificationScore: 84
+          },
+          {
+            id: "tumwebaze",
+            name: "Tumwebaze",
+            approximateEra: "Mid-19th century",
+            verificationScore: 83
+          },
+          {
+            id: "nyinabarongo",
+            name: "Nyinabarongo",
+            approximateEra: "Late 19th century",
+            verificationScore: 82,
+            notes: "Female elder known for medicinal knowledge"
+          },
+          {
+            id: "kyarimpa",
+            name: "Kyarimpa",
+            approximateEra: "Early 20th century",
+            verificationScore: 81
+          },
+          {
+            id: "rubahamya",
+            name: "Rubahamya",
+            approximateEra: "Mid-20th century",
+            verificationScore: 80
+          },
+          {
+            id: "kanyesigye",
+            name: "Kanyesigye",
+            approximateEra: "Late 19th century",
+            verificationScore: 79
+          },
+          {
+            id: "muhumuza",
+            name: "Muhumuza",
+            approximateEra: "Early 20th century",
+            verificationScore: 78
+          }
+        ],
+        culturalPractices: [
+          "Traditional beekeeping",
+          "Elaborate funeral ceremonies"
+        ]
+      },
+      {
+        id: "baheesi",
+        name: "Baheesi",
+        totem: "Leopard",
+        elders: [
+          {
+            id: "rwamafunzi",
+            name: "Rwamafunzi",
+            approximateEra: "19th century",
+            verificationScore: 85
+          },
+          {
+            id: "bitarabeho",
+            name: "Bitarabeho",
+            approximateEra: "Late 19th century",
+            verificationScore: 83
+          },
+          {
+            id: "turyatemba",
+            name: "Turyatemba",
+            approximateEra: "Early 20th century",
+            verificationScore: 86
+          },
+          {
+            id: "ruhimbana",
+            name: "Ruhimbana",
+            approximateEra: "Mid-20th century",
+            verificationScore: 84
+          },
+          {
+            id: "nkurunziza",
+            name: "Nkurunziza",
+            approximateEra: "Early 19th century",
+            verificationScore: 82
+          },
+          {
+            id: "bishangabyinshi",
+            name: "Bishangabyinshi",
+            approximateEra: "Mid-19th century",
+            verificationScore: 81
+          },
+          {
+            id: "kyomunuufu",
+            name: "Kyomunuufu",
+            approximateEra: "Late 19th century",
+            verificationScore: 80
+          },
+          {
+            id: "arinaitwe",
+            name: "Arinaitwe",
+            approximateEra: "Early 20th century",
+            verificationScore: 79
+          },
+          {
+            id: "mwesigwa",
+            name: "Mwesigwa",
+            approximateEra: "Mid-20th century",
+            verificationScore: 78
+          },
+          {
+            id: "twesigomwe",
+            name: "Twesigomwe",
+            approximateEra: "Late 20th century",
+            verificationScore: 77
+          }
+        ],
+        culturalPractices: [
+          "Specialized hunting techniques",
+          "Traditional forest conservation practices"
+        ]
+      },
+      {
+        id: "banyangabo",
+        name: "Banyangabo",
+        totem: "Crane",
+        elders: [
+          {
+            id: "kabagambe",
+            name: "Kabagambe",
+            approximateEra: "19th century",
+            verificationScore: 87
+          },
+          {
+            id: "rutahigwa",
+            name: "Rutahigwa",
+            approximateEra: "Late 19th century",
+            verificationScore: 85
+          },
+          {
+            id: "twinomuhangi",
+            name: "Twinomuhangi",
+            approximateEra: "Early 20th century",
+            verificationScore: 83
+          },
+          {
+            id: "beinomugisha",
+            name: "Beinomugisha",
+            approximateEra: "Mid-20th century",
+            verificationScore: 82
+          },
+          {
+            id: "asiimwe",
+            name: "Asiimwe",
+            approximateEra: "Early 19th century",
+            verificationScore: 81
+          },
+          {
+            id: "kyarisiima",
+            name: "Kyarisiima",
+            approximateEra: "Mid-19th century",
+            verificationScore: 80,
+            notes: "Female elder known for conflict resolution"
+          },
+          {
+            id: "akankwasa",
+            name: "Akankwasa",
+            approximateEra: "Late 19th century",
+            verificationScore: 79
+          },
+          {
+            id: "twinomujuni",
+            name: "Twinomujuni",
+            approximateEra: "Early 20th century",
+            verificationScore: 78
+          },
+          {
+            id: "bantebya",
+            name: "Bantebya",
+            approximateEra: "Mid-20th century",
+            verificationScore: 77
+          },
+          {
+            id: "tibandebage",
+            name: "Tibandebage",
+            approximateEra: "Late 20th century",
+            verificationScore: 76
+          }
+        ],
+        culturalPractices: [
+          "Rain-making ceremonies",
+          "Complex irrigation systems"
+        ]
+      }
+    ]
+  },
+  {
+    id: "bafumbira",
+    name: "Bafumbira",
+    region: "Southwestern Uganda (Kisoro District)",
+    population: "850,000",
+    language: "Rufumbira",
+    description: "The Bafumbira people are closely related to the Banyarwanda and inhabit the Kisoro district in southwestern Uganda, near the borders with Rwanda and DRC. They are known for their agricultural practices and vibrant cultural traditions.",
+    clans: [
+      {
+        id: "abasinga",
+        name: "Abasinga",
+        totem: "Crane",
+        elders: [
+          {
+            id: "ndangira",
+            name: "Ndangira",
+            approximateEra: "Late 19th century",
+            verificationScore: 88
+          },
+          {
+            id: "mugisha",
+            name: "Mugisha",
+            approximateEra: "Early 20th century",
+            verificationScore: 86
+          },
+          {
+            id: "karwanyi",
+            name: "Karwanyi",
+            approximateEra: "Mid-20th century",
+            verificationScore: 85
+          },
+          {
+            id: "bucyanayandi",
+            name: "Bucyanayandi",
+            approximateEra: "Late 19th century",
+            verificationScore: 84
+          },
+          {
+            id: "munyanziza",
+            name: "Munyanziza",
+            approximateEra: "Early 20th century",
+            verificationScore: 83
+          },
+          {
+            id: "habyalimana",
+            name: "Habyalimana",
+            approximateEra: "Mid-20th century",
+            verificationScore: 82
+          },
+          {
+            id: "nsabimana",
+            name: "Nsabimana",
+            approximateEra: "Early 19th century",
+            verificationScore: 81
+          },
+          {
+            id: "nyiransengimana",
+            name: "Nyiransengimana",
+            approximateEra: "Mid-19th century",
+            verificationScore: 80,
+            notes: "Female elder known for storytelling"
+          },
+          {
+            id: "sezibera",
+            name: "Sezibera",
+            approximateEra: "Late 19th century",
+            verificationScore: 79
+          },
+          {
+            id: "muhawenimana",
+            name: "Muhawenimana",
+            approximateEra: "Early 20th century",
+            verificationScore: 78
+          }
+        ],
+        culturalPractices: [
+          "Traditional storytelling (Ibitekerezo)",
+          "Dance performances (Intore)"
+        ]
+      },
+      {
+        id: "abagesera",
+        name: "Abagesera",
+        totem: "Antelope",
+        elders: [
+          {
+            id: "kayihura",
+            name: "Kayihura",
+            approximateEra: "19th century",
+            verificationScore: 87
+          },
+          {
+            id: "byabagamba",
+            name: "Byabagamba",
+            approximateEra: "Late 19th century",
+            verificationScore: 85
+          },
+          {
+            id: "rudasingwa",
+            name: "Rudasingwa",
+            approximateEra: "Early 20th century",
+            verificationScore: 84
+          },
+          {
+            id: "sebineza",
+            name: "Sebineza",
+            approximateEra: "Mid-20th century",
+            verificationScore: 86
+          },
+          {
+            id: "bisengimana",
+            name: "Bisengimana",
+            approximateEra: "Early 19th century",
+            verificationScore: 83
+          },
+          {
+            id: "rusanganwa",
+            name: "Rusanganwa",
+            approximateEra: "Mid-19th century",
+            verificationScore: 82
+          },
+          {
+            id: "mudacumura",
+            name: "Mudacumura",
+            approximateEra: "Late 19th century",
+            verificationScore: 81
+          },
+          {
+            id: "nyirahabimana",
+            name: "Nyirahabimana",
+            approximateEra: "Early 20th century",
+            verificationScore: 80,
+            notes: "Female elder renowned for traditional healing"
+          },
+          {
+            id: "nteziryayo",
+            name: "Nteziryayo",
+            approximateEra: "Mid-20th century",
+            verificationScore: 79
+          },
+          {
+            id: "bimenyimana",
+            name: "Bimenyimana",
+            approximateEra: "Late 20th century",
+            verificationScore: 78
+          }
+        ],
+        culturalPractices: [
+          "Traditional medicine using highland herbs",
+          "Beekeeping and honey production"
+        ]
+      },
+      {
+        id: "abanyiginya",
+        name: "Abanyiginya",
+        totem: "Buffalo",
+        elders: [
+          {
+            id: "serugendo",
+            name: "Serugendo",
+            approximateEra: "19th century",
+            verificationScore: 86
+          },
+          {
+            id: "munyarugerero",
+            name: "Munyarugerero",
+            approximateEra: "Late 19th century",
+            verificationScore: 84
+          },
+          {
+            id: "rwagasore",
+            name: "Rwagasore",
+            approximateEra: "Early 20th century",
+            verificationScore: 85
+          },
+          {
+            id: "bizimungu",
+            name: "Bizimungu",
+            approximateEra: "Mid-20th century",
+            verificationScore: 83
+          },
+          {
+            id: "turatsinze",
+            name: "Turatsinze",
+            approximateEra: "Early 19th century",
+            verificationScore: 82
+          },
+          {
+            id: "habineza",
+            name: "Habineza",
+            approximateEra: "Mid-19th century",
+            verificationScore: 81
+          },
+          {
+            id: "niyonzima",
+            name: "Niyonzima",
+            approximateEra: "Late 19th century",
+            verificationScore: 80
+          },
+          {
+            id: "mukagasana",
+            name: "Mukagasana",
+            approximateEra: "Early 20th century",
+            verificationScore: 79,
+            notes: "Female elder known for diplomatic skills"
+          },
+          {
+            id: "rwakazina",
+            name: "Rwakazina",
+            approximateEra: "Mid-20th century",
+            verificationScore: 78
+          },
+          {
+            id: "munyarukiko",
+            name: "Munyarukiko",
+            approximateEra: "Late 20th century",
+            verificationScore: 77
+          }
+        ],
+        culturalPractices: [
+          "Traditional astronomy and calendar keeping",
+          "Elaborate ceremonies for childbirth"
+        ]
+      }
+    ]
+  },
+  {
+    id: "bahima",
+    name: "Bahima",
+    region: "Western Uganda (Ankole region)",
+    population: "750,000",
+    language: "Runyankole",
+    description: "The Bahima are traditionally pastoralists in western Uganda, known for their cattle-keeping culture and distinctive social structure. They were historically the pastoralist class within the Ankole kingdom.",
+    clans: [
+      {
+        id: "abahinda",
+        name: "Abahinda",
+        totem: "Lion",
+        origin: "The royal clan of traditional Ankole kingdom",
+        elders: [
+          {
+            id: "rushakoza",
+            name: "Rushakoza",
+            approximateEra: "19th century",
+            verificationScore: 92,
+            notes: "Royal lineage elder with significant historical knowledge"
+          },
+          {
+            id: "nimukama",
+            name: "Nimukama",
+            approximateEra: "Late 19th century",
+            verificationScore: 89
+          },
+          {
+            id: "buningwire",
+            name: "Buningwire",
+            approximateEra: "Early 20th century",
+            verificationScore: 87
+          },
+          {
+            id: "katongole",
+            name: "Katongole",
+            approximateEra: "Mid-20th century",
+            verificationScore: 86
+          },
+          {
+            id: "rubambansi",
+            name: "Rubambansi",
+            approximateEra: "Early 19th century",
+            verificationScore: 85
+          },
+          {
+            id: "kaihura",
+            name: "Kaihura",
+            approximateEra: "Mid-19th century",
+            verificationScore: 84
+          },
+          {
+            id: "kahigiriza",
+            name: "Kahigiriza",
+            approximateEra: "Late 19th century",
+            verificationScore: 83
+          },
+          {
+            id: "kamuturaki",
+            name: "Kamuturaki",
+            approximateEra: "Early 20th century",
+            verificationScore: 82
+          },
+          {
+            id: "rwakikyara",
+            name: "Rwakikyara",
+            approximateEra: "Mid-20th century",
+            verificationScore: 81
+          },
+          {
+            id: "barungi",
+            name: "Barungi",
+            approximateEra: "Late 20th century",
+            verificationScore: 80,
+            notes: "Female elder revered for pastoral knowledge"
+          }
+        ],
+        culturalPractices: [
+          "Complex cattle breeding traditions",
+          "Royal ceremonies and rituals",
+          "Traditional pastoral songs (Ebyevugo)"
+        ]
+      },
+      {
+        id: "abaishekatwa",
+        name: "Abaishekatwa",
+        totem: "Sheep",
+        elders: [
+          {
+            id: "komuhangi",
+            name: "Komuhangi",
+            approximateEra: "19th century",
+            verificationScore: 88
+          },
+          {
+            id: "karamagi",
+            name: "Karamagi",
+            approximateEra: "Late 19th century",
+            verificationScore: 86
+          },
+          {
+            id: "bitariho",
+            name: "Bitariho",
+            approximateEra: "Early 20th century",
+            verificationScore: 85
+          },
+          {
+            id: "rubaihayo",
+            name: "Rubaihayo",
+            approximateEra: "Mid-20th century",
+            verificationScore: 87
+          },
+          {
+            id: "kagyenda",
+            name: "Kagyenda",
+            approximateEra: "Early 19th century",
+            verificationScore: 84
+          },
+          {
+            id: "mutembei",
+            name: "Mutembei",
+            approximateEra: "Mid-19th century",
+            verificationScore: 83
+          },
+          {
+            id: "rwabwera",
+            name: "Rwabwera",
+            approximateEra: "Late 19th century",
+            verificationScore: 82
+          },
+          {
+            id: "mulindwa",
+            name: "Mulindwa",
+            approximateEra: "Early 20th century",
+            verificationScore: 81
+          },
+          {
+            id: "tusiime",
+            name: "Tusiime",
+            approximateEra: "Mid-20th century",
+            verificationScore: 80,
+            notes: "Known for innovations in cattle disease treatment"
+          },
+          {
+            id: "kyaruhanga",
+            name: "Kyaruhanga",
+            approximateEra: "Late 20th century",
+            verificationScore: 79
+          }
+        ],
+        culturalPractices: [
+          "Traditional cattle herding techniques",
+          "Specialized milk preservation methods"
+        ]
+      },
+      {
+        id: "abashambo",
+        name: "Abashambo",
+        totem: "Antelope",
+        elders: [
+          {
+            id: "rubahimbya",
+            name: "Rubahimbya",
+            approximateEra: "19th century",
+            verificationScore: 86
+          },
+          {
+            id: "ndinawe",
+            name: "Ndinawe",
+            approximateEra: "Late 19th century",
+            verificationScore: 84
+          },
+          {
+            id: "rwankangi",
+            name: "Rwankangi",
+            approximateEra: "Early 20th century",
+            verificationScore: 85
+          },
+          {
+            id: "ndyanabo",
+            name: "Ndyanabo",
+            approximateEra: "Mid-20th century",
+            verificationScore: 83
+          },
+          {
+            id: "bashasha",
+            name: "Bashasha",
+            approximateEra: "Early 19th century",
+            verificationScore: 82
+          },
+          {
+            id: "kashaija",
+            name: "Kashaija",
+            approximateEra: "Mid-19th century",
+            verificationScore: 81
+          },
+          {
+            id: "tuhumwire",
+            name: "Tuhumwire",
+            approximateEra: "Late 19th century",
+            verificationScore: 80,
+            notes: "Female elder known for cattle wealth"
+          },
+          {
+            id: "kabareebe",
+            name: "Kabareebe",
+            approximateEra: "Early 20th century",
+            verificationScore: 79
+          },
+          {
+            id: "rwobusisi",
+            name: "Rwobusisi",
+            approximateEra: "Mid-20th century",
+            verificationScore: 78
+          },
+          {
+            id: "nuwagaba",
+            name: "Nuwagaba",
+            approximateEra: "Late 20th century",
+            verificationScore: 77
+          }
+        ],
+        culturalPractices: [
+          "Traditional cattle markings and identification",
+          "Ceremonies for protecting livestock"
+        ]
+      },
+      {
+        id: "abagahe",
+        name: "Abagahe",
+        totem: "Crested Crane",
+        elders: [
+          {
+            id: "nkwasibwe",
+            name: "Nkwasibwe",
+            approximateEra: "19th century",
+            verificationScore: 87
+          },
+          {
+            id: "katureebe",
+            name: "Katureebe",
+            approximateEra: "Late 19th century",
+            verificationScore: 85
+          },
+          {
+            id: "rumanyika",
+            name: "Rumanyika",
+            approximateEra: "Early 20th century",
+            verificationScore: 86
+          },
+          {
+            id: "katukunda",
+            name: "Katukunda",
+            approximateEra: "Mid-20th century",
+            verificationScore: 84,
+            notes: "Female elder renowned for leadership"
+          },
+          {
+            id: "baitwabaruhanga",
+            name: "Baitwabaruhanga",
+            approximateEra: "Early 19th century",
+            verificationScore: 83
+          },
+          {
+            id: "tumusiime",
+            name: "Tumusiime",
+            approximateEra: "Mid-19th century",
+            verificationScore: 82
+          },
+          {
+            id: "kabarungyi",
+            name: "Kabarungyi",
+            approximateEra: "Late 19th century",
+            verificationScore: 81
+          },
+          {
+            id: "kangwagye",
+            name: "Kangwagye",
+            approximateEra: "Early 20th century",
+            verificationScore: 80
+          },
+          {
+            id: "ngabirano",
+            name: "Ngabirano",
+            approximateEra: "Mid-20th century",
+            verificationScore: 79
+          },
+          {
+            id: "rwankwenda",
+            name: "Rwankwenda",
+            approximateEra: "Late 20th century",
+            verificationScore: 78
+          }
+        ],
+        culturalPractices: [
+          "Traditional cattle-based wealth exchange",
+          "Elaborate milk processing techniques",
+          "Age-set system of social organization"
+        ]
+      }
+    ]
+  },
+  
   {
     id: "acholi",
     name: "Acholi",
