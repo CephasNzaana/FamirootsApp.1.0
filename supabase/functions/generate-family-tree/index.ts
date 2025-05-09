@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
-import { Configuration, OpenAIApi } from "https://esm.sh/openai@4.11.0";
+import OpenAI from "https://esm.sh/openai@4.11.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,14 +43,13 @@ serve(async (req) => {
     }
 
     const userId = user.id;
+    console.log("Authenticated user:", userId);
 
     try {
-      // Initialize OpenAI
-      const configuration = new Configuration({
-        apiKey: openaiApiKey,
+      // Initialize OpenAI client with the new SDK format
+      const openai = new OpenAI({
+        apiKey: openaiApiKey
       });
-      
-      const openai = new OpenAIApi(configuration);
 
       const prompt = `Generate a realistic Ugandan family tree based on the following information:
       
@@ -82,20 +81,25 @@ serve(async (req) => {
       ]
 
       Only return valid JSON with no additional text or explanations. The array should be culturally appropriate and accurate to Ugandan ${tribe} tribal traditions and ${clan} clan customs.`;
+
+      console.log("Calling OpenAI with prompt for family tree generation");
       
-      const completion = await openai.createChatCompletion({
-        model: "gpt-4",
+      // Use the updated OpenAI API format
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
         messages: [
           {"role": "system", "content": "You are an expert in Ugandan family structures, tribal customs, and clan traditions. You create accurate family trees based on tribal and clan customs."},
           {"role": "user", "content": prompt}
         ],
       });
 
+      console.log("OpenAI API response received");
       let familyTreeData;
       
       try {
         // Try to parse the OpenAI response
-        const responseText = completion.data.choices[0].message?.content || '';
+        const responseText = completion.choices[0].message.content || '';
+        console.log("Response content:", responseText.substring(0, 100) + "...");
         familyTreeData = JSON.parse(responseText);
         
         // Basic validation to ensure it's an array of family members
@@ -107,6 +111,7 @@ serve(async (req) => {
         
         // Use fallback data
         familyTreeData = generateFallbackFamilyTree(surname, tribe, clan);
+        console.log("Using fallback data due to parse error");
         
         // Insert family tree into database with fallback flag
         const { data: treeData, error: treeError } = await supabaseAdmin
@@ -136,6 +141,7 @@ serve(async (req) => {
         );
       }
 
+      console.log("Inserting tree into database");
       // Insert family tree into database
       const { data: treeData, error: treeError } = await supabaseAdmin
         .from('family_trees')
@@ -211,6 +217,7 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
     "Baganda": ["Mukasa", "Ssentamu", "Muwonge", "Kiwanuka", "Ssekitoleko"],
     "Banyankole": ["Tumusiime", "Asiimwe", "Twinamatsiko", "Mugisha", "Turyatemba"],
     "Basoga": ["Waiswa", "Isabirye", "Kirunda", "Balikowa", "Ngobi"],
+    "Bakiga": ["Byaruhanga", "Tumwebaze", "Kamugisha", "Turyamureeba", "Turinawe"],
     "default": ["John", "Robert", "David", "Michael", "James"]
   };
   
@@ -218,6 +225,7 @@ function generateFallbackFamilyTree(surname: string, tribe: string, clan: string
     "Baganda": ["Nakato", "Namugwanya", "Nansubuga", "Nalweyiso", "Namuddu"],
     "Banyankole": ["Kyomuhendo", "Atuhaire", "Ninsiima", "Kemigisha", "Komugisha"],
     "Basoga": ["Namukose", "Nabirye", "Nawudo", "Naigaga", "Nabiryo"],
+    "Bakiga": ["Kyomugisha", "Atwine", "Kebirungi", "Kobusingye", "Kenyangi"],
     "default": ["Mary", "Sarah", "Ruth", "Rebecca", "Elizabeth"]
   };
   

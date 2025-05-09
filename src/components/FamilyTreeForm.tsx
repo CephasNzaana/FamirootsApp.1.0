@@ -57,6 +57,21 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     "Langi", "Acholi", "Bagisu", "Lugbara", "Banyoro"
   ];
 
+  // Common clans for each tribe (simplified)
+  const commonClans = {
+    "Baganda": ["Abalangira", "Ffumbe", "Lugave", "Ngonge", "Nsenene"],
+    "Banyankole": ["Abashambo", "Abahinda", "Abakimbiri", "Abaishikatwa", "Abainika"],
+    "Basoga": ["Abaisemalinga", "Abaisengobi", "Abaisegaga", "Abaisekintu", "Abaisewuuna"],
+    "Bakiga": ["Abasigi", "Abaheesi", "Abanyangabo", "Abakongwe", "Abatimbo"],
+    "Iteso": ["Ikaribwok", "Ingoratok", "Irarak", "Iteso", "Atekok"],
+    "default": ["Enter your clan"]
+  };
+
+  // Get clans for selected tribe
+  const getClansForTribe = (tribe: string) => {
+    return commonClans[tribe] || commonClans.default;
+  };
+
   return (
     <Card className="w-full max-w-md bg-white shadow-lg border-2 border-uganda-black">
       <form onSubmit={handleSubmit}>
@@ -97,14 +112,41 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="clan">Clan</Label>
-            <Input
-              id="clan"
-              name="clan"
-              placeholder="e.g. Abasinga"
-              value={formData.clan}
-              onChange={handleChange}
-              className="focus:border-uganda-yellow focus:ring-uganda-yellow"
-            />
+            {formData.tribe ? (
+              <Select
+                value={formData.clan}
+                onValueChange={(value) => handleSelectChange("clan", value)}
+              >
+                <SelectTrigger id="clan" className="focus:border-uganda-yellow focus:ring-uganda-yellow">
+                  <SelectValue placeholder="Select a clan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getClansForTribe(formData.tribe).map((clan) => (
+                    <SelectItem key={clan} value={clan}>{clan}</SelectItem>
+                  ))}
+                  <SelectItem value="other">Other (Custom)</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="clan"
+                name="clan"
+                placeholder="e.g. Abasinga"
+                value={formData.clan}
+                onChange={handleChange}
+                className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+              />
+            )}
+            {formData.clan === "other" && (
+              <Input
+                id="custom-clan"
+                name="clan"
+                placeholder="Enter your clan name"
+                value=""
+                onChange={handleChange}
+                className="mt-2 focus:border-uganda-yellow focus:ring-uganda-yellow"
+              />
+            )}
           </div>
         </CardContent>
         <CardFooter>
