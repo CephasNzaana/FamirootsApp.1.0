@@ -79,7 +79,7 @@ const FamilyTrees = () => {
             </div>
           </div>
         </div>
-        {showAuth && <AuthForm onClose={() => setShowAuth(false)} defaultUsers={true} />}
+        {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
       </>
     );
   }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
@@ -74,7 +73,7 @@ const Elders = () => {
             </div>
           </div>
         </div>
-        {showAuth && <AuthForm onClose={() => setShowAuth(false)} defaultUsers={true} />}
+        {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
       </>
     );
   }
