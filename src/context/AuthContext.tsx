@@ -4,21 +4,32 @@ import { Session, User, WeakPassword } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
+type UserMetadata = {
+  role?: 'user' | 'expert' | 'admin';
+  full_name?: string;
+  tribe?: string;
+  clan?: string;
+  profileComplete?: boolean;
+};
+
 type AuthContextProps = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  userMetadata: UserMetadata | null;
   // Update the return types for these functions to match their implementations
   signIn: (email: string, password: string) => Promise<{
     user: User | null;
     session: Session | null;
     weakPassword?: WeakPassword | null;
   } | undefined>;
-  signUp: (email: string, password: string) => Promise<{
+  signUp: (email: string, password: string, metadata?: UserMetadata) => Promise<{
     user: User | null;
     session: Session | null;
   } | undefined>;
   signOut: () => Promise<void>;
+  updateUserMetadata: (metadata: Partial<UserMetadata>) => Promise<void>;
+  isProfileComplete: () => boolean;
 };
 
 const AuthContext = createContext<AuthContextProps>({} as AuthContextProps);
@@ -27,6 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [userMetadata, setUserMetadata] = useState<UserMetadata | null>(null);
 
   useEffect(() => {
     console.log("Setting up auth state listener");
@@ -36,6 +48,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Auth state change:", event, currentSession?.user?.email);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        
+        // Update metadata whenever auth state changes
+        if (currentSession?.user) {
+          const metadata = currentSession.user.user_metadata as UserMetadata;
+          setUserMetadata(metadata || {});
+        } else {
+          setUserMetadata(null);
+        }
+        
         setLoading(false);
       }
     );
@@ -45,6 +66,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Got existing session:", currentSession?.user?.email);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      
+      // Set initial metadata
+      if (currentSession?.user) {
+        const metadata = currentSession.user.user_metadata as UserMetadata;
+        setUserMetadata(metadata || {});
+      }
+      
       setLoading(false);
     });
 
@@ -67,10 +95,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, metadata: UserMetadata = {}) => {
     try {
-      console.log("Signing up with:", email);
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      console.log("Signing up with:", email, "metadata:", metadata);
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            ...metadata,
+            profileComplete: false
+          }
+        }
+      });
       console.log("Sign up response:", data, error);
       
       if (error) throw error;
@@ -94,15 +131,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateUserMetadata = async (metadata: Partial<UserMetadata>) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: { 
+          ...userMetadata,
+          ...metadata
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Update local state
+      if (data.user) {
+        const updatedMetadata = data.user.user_metadata as UserMetadata;
+        setUserMetadata(updatedMetadata);
+      }
+      
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      console.error("Update metadata error:", error);
+      toast.error(error.message || "Error updating profile");
+      throw error;
+    }
+  };
+
+  const isProfileComplete = () => {
+    if (!userMetadata) return false;
+    
+    // Determine what constitutes a "complete" profile
+    const requiredFields = ['full_name', 'tribe', 'clan'];
+    return requiredFields.every(field => !!userMetadata[field as keyof UserMetadata]);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         session,
         user,
         loading,
+        userMetadata,
         signIn,
         signUp,
         signOut,
+        updateUserMetadata,
+        isProfileComplete
       }}
     >
       {children}

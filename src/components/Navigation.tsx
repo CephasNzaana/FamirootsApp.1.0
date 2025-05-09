@@ -19,7 +19,7 @@ export const Navigation = () => {
   
   return (
     <NavigationMenu className="flex">
-      <NavigationMenuList>
+      <NavigationMenuList className="bg-white rounded-md shadow-sm">
         <NavigationMenuItem>
           <Link to="/">
             <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-white/90 hover:text-uganda-black")}>

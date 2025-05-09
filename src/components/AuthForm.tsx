@@ -24,42 +24,27 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  role: z.enum(["user", "expert", "admin"]).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Default user credentials that match what's in the database
-const DEFAULT_USERS = {
-  seeker: {
-    email: "user@test.com",
-    password: "Test@2025",
-    username: "DefaultSeeker",
-    role: "user"
-  },
-  expert: {
-    email: "expert@test.com",
-    password: "Test@2025",
-    username: "DefaultExpert",
-    role: "expert"
-  },
-  admin: {
-    email: "admin@test.com",
-    password: "Test@2025",
-    username: "DefaultAdmin",
-    role: "admin"
-  }
-};
-
 interface AuthFormProps {
   onClose: () => void;
-  defaultUsers?: boolean;
 }
 
-const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
+const AuthForm = ({ onClose }: AuthFormProps) => {
   const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("login");
@@ -69,6 +54,7 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
     defaultValues: {
       email: "",
       password: "",
+      role: "user",
     },
   });
 
@@ -80,28 +66,15 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
         toast.success("Logged in successfully!");
         onClose();
       } else {
-        await signUp(values.email, values.password);
+        // Include role in user metadata for signup
+        await signUp(values.email, values.password, {
+          role: values.role || "user",
+        });
         toast.success("Signed up successfully! Check your email for confirmation.");
         setActiveTab("login");
       }
     } catch (error: any) {
       toast.error(error.message || "Authentication failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDefaultUserLogin = async (userType: 'seeker' | 'expert' | 'admin') => {
-    setIsLoading(true);
-    try {
-      const user = DEFAULT_USERS[userType];
-      console.log(`Attempting login with ${userType}:`, user.email, user.password);
-      await signIn(user.email, user.password);
-      toast.success(`Logged in as ${user.username} (${user.role})`);
-      onClose();
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast.error(`Authentication failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -172,41 +145,6 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
                 </Button>
               </form>
             </Form>
-            
-            {defaultUsers && (
-              <div className="mt-6 border-t pt-4">
-                <h4 className="text-sm font-medium mb-3">Quick Login with Default Users:</h4>
-                <div className="grid gap-2">
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleDefaultUserLogin('seeker')}
-                    disabled={isLoading}
-                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                  >
-                    Login as User (user@test.com)
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleDefaultUserLogin('expert')}
-                    disabled={isLoading}
-                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                  >
-                    Login as Expert (expert@test.com)
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => handleDefaultUserLogin('admin')}
-                    disabled={isLoading}
-                    className="justify-start bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                  >
-                    Login as Admin (admin@test.com)
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Default password: Test@2025
-                </p>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="signup" className="py-4">
@@ -243,6 +181,32 @@ const AuthForm = ({ onClose, defaultUsers = true }: AuthFormProps) => {
                           disabled={isLoading}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account Type</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your account type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="user">Seeker (Regular User)</SelectItem>
+                          <SelectItem value="expert">Expert</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

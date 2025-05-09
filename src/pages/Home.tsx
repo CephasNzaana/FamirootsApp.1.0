@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
+import ProfileForm from "@/components/ProfileForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
 import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 import { TreeFormData, FamilyTree } from "@/types";
@@ -12,10 +13,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, userMetadata, isProfileComplete } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(false);
+  const [showProfileForm, setShowProfileForm] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [familyTree, setFamilyTree] = useState<FamilyTree | null>(null);
+
+  // Check if user is logged in but profile is incomplete
+  useEffect(() => {
+    if (user && !isProfileComplete()) {
+      setShowProfileForm(true);
+    }
+  }, [user, isProfileComplete]);
 
   const handleLogin = () => {
     setShowAuth(true);
@@ -378,7 +387,14 @@ const Home = () => {
       </footer>
       
       {showAuth && (
-        <AuthForm onClose={() => setShowAuth(false)} defaultUsers={true} />
+        <AuthForm onClose={() => setShowAuth(false)} />
+      )}
+
+      {showProfileForm && (
+        <ProfileForm 
+          open={showProfileForm} 
+          onClose={() => setShowProfileForm(false)} 
+        />
       )}
     </div>
   );
