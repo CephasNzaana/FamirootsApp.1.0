@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Users } from "lucide-react";
+import { Users, Trees } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import { FamilyTree, FamilyMember } from "@/types";
 import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
+import { ugandaTribesData } from "@/data/ugandaTribesClanData";
+import ClanFamilyTree from "@/components/ClanFamilyTree";
 
 const FamilyTrees = () => {
   const { user } = useAuth();
@@ -21,6 +23,8 @@ const FamilyTrees = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedTree, setSelectedTree] = useState<FamilyTree | null>(null);
   const [showTreeDialog, setShowTreeDialog] = useState<boolean>(false);
+  const [showClanDialog, setShowClanDialog] = useState<boolean>(false);
+  const [selectedClan, setSelectedClan] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,6 +112,24 @@ const FamilyTrees = () => {
     setSelectedTree(tree);
     setShowTreeDialog(true);
   };
+  
+  const handleViewClanElders = (tree: FamilyTree) => {
+    const tribe = ugandaTribesData.find(t => t.name === tree.tribe);
+    if (tribe) {
+      const clan = tribe.clans.find(c => c.name === tree.clan);
+      if (clan) {
+        setSelectedClan({
+          ...clan,
+          tribeName: tribe.name
+        });
+        setShowClanDialog(true);
+      } else {
+        toast.error(`Clan ${tree.clan} not found in tribe ${tree.tribe}`);
+      }
+    } else {
+      toast.error(`Tribe ${tree.tribe} not found`);
+    }
+  };
 
   if (!user) {
     return (
@@ -191,16 +213,27 @@ const FamilyTrees = () => {
                     <Users size={48} className="text-uganda-red/60" />
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between border-t bg-gray-50 py-3">
-                  <div className="text-sm text-gray-500">
-                    Created: {new Date(tree.createdAt).toLocaleDateString()}
+                <CardFooter className="flex flex-col border-t bg-gray-50 py-3">
+                  <div className="flex justify-between w-full mb-2">
+                    <div className="text-sm text-gray-500">
+                      Created: {new Date(tree.createdAt).toLocaleDateString()}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+                      onClick={() => handleViewTree(tree)}
+                    >
+                      View Family Tree
+                    </Button>
                   </div>
                   <Button 
                     size="sm" 
-                    className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                    onClick={() => handleViewTree(tree)}
+                    variant="outline"
+                    onClick={() => handleViewClanElders(tree)}
+                    className="w-full mt-2 flex items-center justify-center gap-2 border-uganda-red/30 hover:bg-uganda-red/10"
                   >
-                    View Family Tree
+                    <Trees className="h-4 w-4" />
+                    View Clan Elders Tree
                   </Button>
                 </CardFooter>
               </Card>
@@ -232,6 +265,18 @@ const FamilyTrees = () => {
         <Dialog open={showTreeDialog} onOpenChange={setShowTreeDialog}>
           <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
             <FamilyTreeDisplay tree={selectedTree} />
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {selectedClan && (
+        <Dialog open={showClanDialog} onOpenChange={setShowClanDialog}>
+          <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
+            <div className="py-2">
+              <h2 className="text-2xl font-bold mb-1">{selectedClan.name} Clan</h2>
+              <p className="text-gray-600 mb-6">Tribe: {selectedClan.tribeName}</p>
+              <ClanFamilyTree clan={selectedClan} />
+            </div>
           </DialogContent>
         </Dialog>
       )}
