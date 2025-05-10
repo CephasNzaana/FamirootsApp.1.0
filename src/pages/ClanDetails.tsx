@@ -16,12 +16,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const ClanDetails = () => {
   const { tribeId, clanId } = useParams();
   const navigate = useNavigate();
   const [clan, setClan] = useState<Clan | null>(null);
   const [tribe, setTribe] = useState<Tribe | null>(null);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+  const { user } = useAuth();
   
   useEffect(() => {
     // Find the tribe and clan from the data
@@ -45,10 +50,18 @@ const ClanDetails = () => {
     setClan(foundClan);
   }, [tribeId, clanId, navigate]);
   
+  const handleLogin = () => {
+    setLoginDialogOpen(true);
+  };
+
+  const handleSignup = () => {
+    setSignupDialogOpen(true);
+  };
+  
   if (!clan || !tribe) {
     return (
       <div className="min-h-screen bg-[#FAF6F1]">
-        <Header />
+        <Header onLogin={handleLogin} onSignup={handleSignup} />
         <div className="container mx-auto py-8 px-4">
           <div className="h-64 flex items-center justify-center">
             <p>Loading clan information...</p>
@@ -60,7 +73,7 @@ const ClanDetails = () => {
   
   return (
     <div className="min-h-screen bg-[#FAF6F1]">
-      <Header />
+      <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="container mx-auto py-8 px-4">
         <Button 
           variant="outline" 
