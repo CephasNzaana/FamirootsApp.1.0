@@ -13,34 +13,46 @@ export type Database = {
         Row: {
           birth_year: string | null
           created_at: string
+          death_year: string | null
           family_tree_id: string
+          gender: string | null
           generation: number
           id: string
+          is_elder: boolean | null
           name: string
           parent_id: string | null
           relationship: string
+          side: string | null
           updated_at: string
         }
         Insert: {
           birth_year?: string | null
           created_at?: string
+          death_year?: string | null
           family_tree_id: string
+          gender?: string | null
           generation: number
           id?: string
+          is_elder?: boolean | null
           name: string
           parent_id?: string | null
           relationship: string
+          side?: string | null
           updated_at?: string
         }
         Update: {
           birth_year?: string | null
           created_at?: string
+          death_year?: string | null
           family_tree_id?: string
+          gender?: string | null
           generation?: number
           id?: string
+          is_elder?: boolean | null
           name?: string
           parent_id?: string | null
           relationship?: string
+          side?: string | null
           updated_at?: string
         }
         Relationships: [

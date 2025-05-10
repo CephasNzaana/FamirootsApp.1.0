@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
@@ -62,19 +63,22 @@ const FamilyTrees = () => {
         }
         
         // Format members to match our FamilyMember type, providing default values for missing fields
-        const formattedMembers: FamilyMember[] = (membersData || []).map(member => ({
-          id: member.id,
-          name: member.name,
-          relationship: member.relationship,
-          birthYear: member.birth_year,
-          deathYear: member.death_year || undefined, // Handle missing death_year
-          generation: member.generation,
-          parentId: member.parent_id,
-          isElder: member.is_elder || false, // Default to false if not present
-          gender: member.gender || undefined, // Default to undefined if not present
-          side: (member.side as 'maternal' | 'paternal') || undefined, // Type cast and default
-          status: member.death_year ? 'deceased' : 'living' // Derive status from death_year
-        }));
+        const formattedMembers: FamilyMember[] = (membersData || []).map(member => {
+          // Safely access potentially missing properties with type assertions and default values
+          return {
+            id: member.id,
+            name: member.name,
+            relationship: member.relationship,
+            birthYear: member.birth_year,
+            deathYear: member.death_year || undefined,
+            generation: member.generation,
+            parentId: member.parent_id,
+            isElder: Boolean(member.is_elder),
+            gender: member.gender || undefined,
+            side: (member.side as 'maternal' | 'paternal') || undefined,
+            status: member.death_year ? 'deceased' : 'living'
+          };
+        });
         
         formattedTrees.push({
           id: tree.id,
