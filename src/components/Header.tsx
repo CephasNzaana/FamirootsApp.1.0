@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Navigation } from "@/components/Navigation"; 
-import { Menu, Home, Users, Book, User, ArrowUp } from "lucide-react";
+import { Menu, Home, Users, Book, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { 
   Sheet, 
@@ -23,9 +24,13 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
   return (
     <header className="w-full bg-white bg-opacity-90 backdrop-blur-sm shadow-md py-4 px-6 md:px-10 sticky top-0 z-50">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
-            <img src="/Logo.png" alt="FamiRoots Logo" className="h-10 w-10" />
+            <div className="flex space-x-0.5">
+              <div className="w-4 h-8 bg-uganda-black"></div>
+              <div className="w-4 h-8 bg-uganda-yellow"></div>
+              <div className="w-4 h-8 bg-uganda-red"></div>
+            </div>
             <h1 className="text-2xl font-bold text-uganda-black">
               Fami<span className="text-uganda-red">Roots</span>
             </h1>
@@ -69,33 +74,15 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
               </Button>
             </div>
           )}
-          
-          <div className="flex space-x-2">
-            <Button 
-              variant="default"
-              className="bg-uganda-red text-white hover:bg-uganda-red/90"
-              onClick={() => window.location.href = "mailto:corrections@famiroots.com"}
-            >
-              Submit Corrections
-            </Button>
-            <Button 
-              variant="default"
-              className="bg-uganda-red text-white hover:bg-uganda-red/90"
-              onClick={() => window.location.href = "/expert-registration"}
-            >
-              Register as Expert
-            </Button>
-          </div>
         </div>
 
         {/* Mobile Menu */}
         <Sheet>
           <SheetTrigger asChild className="md:hidden">
-            <div className="flex space-x-0.5 cursor-pointer">
-              <div className="w-2 h-6 bg-uganda-black"></div>
-              <div className="w-2 h-6 bg-uganda-yellow"></div>
-              <div className="w-2 h-6 bg-uganda-red"></div>
-            </div>
+            <Button variant="ghost" size="icon">
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px]">
             <SheetHeader>
