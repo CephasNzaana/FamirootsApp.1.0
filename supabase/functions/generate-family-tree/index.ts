@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
-import OpenAI from "https://esm.sh/openai@4.11.0";
+import { OpenAI } from "https://esm.sh/openai@4.11.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +46,7 @@ serve(async (req) => {
     console.log("Authenticated user:", userId);
 
     try {
-      // Initialize OpenAI client with the new SDK format
+      // Initialize OpenAI client
       const openai = new OpenAI({
         apiKey: openaiApiKey
       });
@@ -82,15 +82,15 @@ serve(async (req) => {
 
       Only return valid JSON with no additional text or explanations. The array should be culturally appropriate and accurate to Ugandan ${tribe} tribal traditions and ${clan} clan customs.`;
 
-      console.log("Calling OpenAI with prompt for family tree generation");
+      console.log("Calling OpenAI to generate family tree");
       
-      // Use the updated OpenAI API format
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {"role": "system", "content": "You are an expert in Ugandan family structures, tribal customs, and clan traditions. You create accurate family trees based on tribal and clan customs."},
           {"role": "user", "content": prompt}
         ],
+        temperature: 0.7,
       });
 
       console.log("OpenAI API response received");
@@ -99,8 +99,11 @@ serve(async (req) => {
       try {
         // Try to parse the OpenAI response
         const responseText = completion.choices[0].message.content || '';
-        console.log("Response content:", responseText.substring(0, 100) + "...");
-        familyTreeData = JSON.parse(responseText);
+        console.log("Response content preview:", responseText.substring(0, 100) + "...");
+        
+        // Clean the response text to ensure it's valid JSON
+        const jsonText = responseText.trim().replace(/```json|```/g, '');
+        familyTreeData = JSON.parse(jsonText);
         
         // Basic validation to ensure it's an array of family members
         if (!Array.isArray(familyTreeData)) {

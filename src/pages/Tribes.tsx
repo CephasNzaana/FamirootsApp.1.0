@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
@@ -19,38 +20,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 
 const Tribes = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(!user);
+  const [showAuth, setShowAuth] = useState<boolean>(false);
   const [selectedTribe, setSelectedTribe] = useState<string | null>(null);
+  const navigate = useNavigate();
   
-  if (!user) {
-    return (
-      <>
-        <Header 
-          onLogin={() => setShowAuth(true)} 
-          onSignup={() => setShowAuth(true)} 
-        />
-        <div className="min-h-[80vh] flex items-center justify-center">
-          <div className="max-w-md mx-auto text-center p-6 bg-white rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-            <p className="mb-6">Please login or sign up to access the Tribes and Clans database.</p>
-            <div className="flex justify-center space-x-4">
-              <button 
-                onClick={() => setShowAuth(true)}
-                className="bg-uganda-yellow text-uganda-black px-6 py-2 rounded-lg hover:bg-uganda-yellow/90 transition-colors"
-              >
-                Login / Sign Up
-              </button>
-            </div>
-          </div>
-        </div>
-        {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
-      </>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#FAF6F1]">
       <Header 
@@ -159,6 +137,16 @@ const Tribes = () => {
                                       </ul>
                                     </>
                                   )}
+
+                                  <div className="mt-6">
+                                    <Button 
+                                      onClick={() => navigate(`/clans/${tribe.id}/${clan.id}`)}
+                                      className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+                                    >
+                                      <Users className="h-4 w-4 mr-2" />
+                                      View Elder Family Connections
+                                    </Button>
+                                  </div>
                                 </AccordionContent>
                               </AccordionItem>
                             ))}
@@ -185,6 +173,7 @@ const Tribes = () => {
           </div>
         </div>
       </main>
+      {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import FamilyTrees from "./pages/FamilyTrees";
 import RelationshipAnalyzer from "./pages/RelationshipAnalyzer";
 import Tribes from "./pages/Tribes";
+import ClanDetails from "./pages/ClanDetails";
 import Elders from "./pages/Elders";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/family-trees" element={<FamilyTrees />} />
             <Route path="/relationship-analyzer" element={<RelationshipAnalyzer />} />
             <Route path="/tribes" element={<Tribes />} />
+            <Route path="/clans/:tribeId/:clanId" element={<ClanDetails />} />
             <Route path="/elders" element={<Elders />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
