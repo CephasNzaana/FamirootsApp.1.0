@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +11,7 @@ import Tribes from "./pages/Tribes";
 import ClanDetails from "./pages/ClanDetails";
 import Elders from "./pages/Elders";
 import NotFound from "./pages/NotFound";
+import Footer from "./components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -22,15 +22,18 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/family-trees" element={<FamilyTrees />} />
-            <Route path="/relationship-analyzer" element={<RelationshipAnalyzer />} />
-            <Route path="/tribes" element={<Tribes />} />
-            <Route path="/clans/:tribeId/:clanId" element={<ClanDetails />} />
-            <Route path="/elders" element={<Elders />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="flex flex-col min-h-screen">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/family-trees" element={<FamilyTrees />} />
+              <Route path="/relationship-analyzer" element={<RelationshipAnalyzer />} />
+              <Route path="/tribes" element={<Tribes />} />
+              <Route path="/clans/:tribeId/:clanId" element={<ClanDetails />} />
+              <Route path="/elders" element={<Elders />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Footer />
+          </div>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
