@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,31 +45,36 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   });
 
   const [availableElders, setAvailableElders] = useState<ElderReference[]>([]);
+  const [availableClans, setAvailableClans] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    if (name === "tribe") {
-      // Reset clan when tribe changes
-      setFormData((prev) => ({ 
-        ...prev, 
-        [name]: value,
-        clan: "" 
-      }));
-      
-      // Reset elders list
-      setAvailableElders([]);
-    } else if (name === "clan") {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      
-      // Load elders for the selected clan
+  // Load available clans when a tribe is selected
+  useEffect(() => {
+    if (formData.tribe) {
       const selectedTribe = ugandaTribesData.find(tribe => tribe.name === formData.tribe);
       if (selectedTribe) {
-        const selectedClan = selectedTribe.clans.find(clan => clan.name === formData.clan); // Ensure 'selectedClan' is defined here
+        const clanNames = selectedTribe.clans.map(clan => clan.name);
+        setAvailableClans(clanNames);
+      } else {
+        setAvailableClans([]);
+      }
+    } else {
+      setAvailableClans([]);
+    }
+  }, [formData.tribe]);
+
+  // Load available elders when a clan is selected
+  useEffect(() => {
+    if (formData.tribe && formData.clan) {
+      const selectedTribe = ugandaTribesData.find(tribe => tribe.name === formData.tribe);
+      if (selectedTribe) {
+        const selectedClan = selectedTribe.clans.find(clan => clan.name === formData.clan);
         if (selectedClan) {
+          console.log("Found clan:", selectedClan.name, "with elders:", selectedClan.elders);
           const elders = selectedClan.elders.map(elder => ({
             id: elder.id,
             name: elder.name,
@@ -76,9 +82,29 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
             verificationScore: elder.verificationScore,
             familyConnections: [] // Default empty array
           }));
-          setAvailableElders(elders as ElderReference[]); // Explicitly cast to ElderReference[]
+          setAvailableElders(elders);
+        } else {
+          console.log("No clan found with name:", formData.clan);
+          setAvailableElders([]);
         }
+      } else {
+        console.log("No tribe found with name:", formData.tribe);
+        setAvailableElders([]);
       }
+    } else {
+      setAvailableElders([]);
+    }
+  }, [formData.tribe, formData.clan]);
+
+  const handleSelectChange = (name: string, value: string) => {
+    if (name === "tribe") {
+      // Reset clan when tribe changes
+      setFormData((prev) => ({ 
+        ...prev, 
+        [name]: value,
+        clan: "",
+        selectedElders: []
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -150,25 +176,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   };
 
   // Common Ugandan tribes for suggestions
-  const commonTribes = [
-    "Baganda", "Banyankole", "Basoga", "Bakiga", "Iteso", 
-    "Langi", "Acholi", "Bagisu", "Lugbara", "Banyoro"
-  ];
-
-  // Common clans for each tribe (simplified)
-  const commonClans = {
-    "Baganda": ["Abalangira", "Ffumbe", "Lugave", "Ngonge", "Nsenene"],
-    "Banyankole": ["Abashambo", "Abahinda", "Abakimbiri", "Abaishikatwa", "Abainika"],
-    "Basoga": ["Abaisemalinga", "Abaisengobi", "Abaisegaga", "Abaisekintu", "Abaisewuuna"],
-    "Bakiga": ["Abasigi", "Abaheesi", "Abanyangabo", "Abakongwe", "Abatimbo"],
-    "Iteso": ["Ikaribwok", "Ingoratok", "Irarak", "Iteso", "Atekok"],
-    "default": ["Enter your clan"]
-  };
-
-  // Get clans for selected tribe
-  const getClansForTribe = (tribe: string) => {
-    return commonClans[tribe] || commonClans.default;
-  };
+  const commonTribes = ugandaTribesData.map(tribe => tribe.name);
 
   return (
     <Card className="w-full max-w-lg bg-white shadow-lg border-2 border-uganda-black">
@@ -264,7 +272,6 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">Common examples: Baganda, Banyankole, Basoga, Bakiga</p>
               </div>
               
               <div className="space-y-2">
@@ -278,19 +285,23 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                       <SelectValue placeholder="Select a clan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getClansForTribe(formData.tribe).map((clan) => (
-                        <SelectItem key={clan} value={clan}>{clan}</SelectItem>
-                      ))}
-                      <SelectItem value="other">Other (Custom)</SelectItem>
+                      {availableClans.length > 0 ? (
+                        availableClans.map((clan) => (
+                          <SelectItem key={clan} value={clan}>{clan}</SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="other">Other (Custom)</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 ) : (
                   <Input
                     id="clan"
                     name="clan"
-                    placeholder="e.g. Abasinga"
+                    placeholder="Please select a tribe first"
                     value={formData.clan}
                     onChange={handleChange}
+                    disabled
                     className="focus:border-uganda-yellow focus:ring-uganda-yellow"
                   />
                 )}
@@ -419,6 +430,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
               ) : availableElders.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-gray-500">No elders found for the selected clan</p>
+                  <p className="text-sm text-gray-400 mt-2">Try selecting another clan or contact an administrator</p>
                 </div>
               ) : (
                 <div className="space-y-3">

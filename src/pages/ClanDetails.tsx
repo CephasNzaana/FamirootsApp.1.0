@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import AuthForm from "@/components/AuthForm";
 
 const ClanDetails = () => {
   const { tribeId, clanId } = useParams();
@@ -26,6 +27,7 @@ const ClanDetails = () => {
   const [tribe, setTribe] = useState<Tribe | null>(null);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [signupDialogOpen, setSignupDialogOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -51,11 +53,11 @@ const ClanDetails = () => {
   }, [tribeId, clanId, navigate]);
   
   const handleLogin = () => {
-    setLoginDialogOpen(true);
+    setShowAuth(true);
   };
 
   const handleSignup = () => {
-    setSignupDialogOpen(true);
+    setShowAuth(true);
   };
   
   if (!clan || !tribe) {
@@ -130,6 +132,23 @@ const ClanDetails = () => {
           </div>
         </div>
       </main>
+
+      <footer className="bg-uganda-black text-white py-6 mt-12">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="flex justify-center space-x-2 mb-4">
+            <div className="w-4 h-4 bg-uganda-black"></div>
+            <div className="w-4 h-4 bg-uganda-yellow"></div>
+            <div className="w-4 h-4 bg-uganda-red"></div>
+          </div>
+          <p className="text-sm">
+            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
+          </p>
+        </div>
+      </footer>
+
+      {showAuth && (
+        <AuthForm onClose={() => setShowAuth(false)} />
+      )}
     </div>
   );
 };

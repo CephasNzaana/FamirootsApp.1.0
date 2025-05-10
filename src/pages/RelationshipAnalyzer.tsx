@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
 import Header from "@/components/Header";
@@ -11,45 +11,90 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { RelationshipResult } from "@/types";
-
-// Define tribes for selection - ensure no empty values
-const AVAILABLE_TRIBES = [
-  "Baganda",
-  "Banyankole",
-  "Basoga",
-  "Bakiga",
-  "Batoro",
-  "Other"
-];
+import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 
 const RelationshipAnalyzer = () => {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [result, setResult] = useState<RelationshipResult | null>(null);
+  const [availableClans1, setAvailableClans1] = useState<string[]>([]);
+  const [availableClans2, setAvailableClans2] = useState<string[]>([]);
+  const [availableElders1, setAvailableElders1] = useState<{id: string, name: string}[]>([]);
+  const [availableElders2, setAvailableElders2] = useState<{id: string, name: string}[]>([]);
   
   // Sample form data
   const [person1, setPerson1] = useState({
     name: "",
-    tribe: AVAILABLE_TRIBES[0],
+    tribe: "",
     clan: "",
     elderConnection: ""
   });
   
   const [person2, setPerson2] = useState({
     name: "",
-    tribe: AVAILABLE_TRIBES[0],
+    tribe: "",
     clan: "",
     elderConnection: ""
   });
 
-  const handleAnalyze = async () => {
-    if (!user) {
-      toast.error("Please login to use the relationship analyzer");
-      setShowAuth(true);
-      return;
+  // Update available clans when tribe changes
+  useEffect(() => {
+    if (person1.tribe) {
+      const foundTribe = ugandaTribesData.find(t => t.name === person1.tribe);
+      if (foundTribe) {
+        setAvailableClans1(foundTribe.clans.map(c => c.name));
+      } else {
+        setAvailableClans1([]);
+      }
+    } else {
+      setAvailableClans1([]);
     }
+  }, [person1.tribe]);
 
+  useEffect(() => {
+    if (person2.tribe) {
+      const foundTribe = ugandaTribesData.find(t => t.name === person2.tribe);
+      if (foundTribe) {
+        setAvailableClans2(foundTribe.clans.map(c => c.name));
+      } else {
+        setAvailableClans2([]);
+      }
+    } else {
+      setAvailableClans2([]);
+    }
+  }, [person2.tribe]);
+
+  // Update available elders when clan changes
+  useEffect(() => {
+    if (person1.tribe && person1.clan) {
+      const foundTribe = ugandaTribesData.find(t => t.name === person1.tribe);
+      if (foundTribe) {
+        const foundClan = foundTribe.clans.find(c => c.name === person1.clan);
+        if (foundClan) {
+          setAvailableElders1(foundClan.elders.map(e => ({id: e.id, name: e.name})));
+          return;
+        }
+      }
+    }
+    setAvailableElders1([]);
+  }, [person1.tribe, person1.clan]);
+
+  useEffect(() => {
+    if (person2.tribe && person2.clan) {
+      const foundTribe = ugandaTribesData.find(t => t.name === person2.tribe);
+      if (foundTribe) {
+        const foundClan = foundTribe.clans.find(c => c.name === person2.clan);
+        if (foundClan) {
+          setAvailableElders2(foundClan.elders.map(e => ({id: e.id, name: e.name})));
+          return;
+        }
+      }
+    }
+    setAvailableElders2([]);
+  }, [person2.tribe, person2.clan]);
+
+  const handleAnalyze = async () => {
     // Simple validation
     if (!person1.name || !person1.tribe || !person1.clan ||
         !person2.name || !person2.tribe || !person2.clan) {
@@ -60,38 +105,100 @@ const RelationshipAnalyzer = () => {
     setIsLoading(true);
 
     try {
-      // This would be an actual API call in production
-      // For now, let's simulate a response
-      setTimeout(() => {
-        const isSameClan = person1.clan.toLowerCase() === person2.clan.toLowerCase();
-        const isSameTribe = person1.tribe.toLowerCase() === person2.tribe.toLowerCase();
-        const commonElder = isSameClan && person1.elderConnection && person2.elderConnection && 
-                          person1.elderConnection.toLowerCase() === person2.elderConnection.toLowerCase();
-        
-        const mockResult: RelationshipResult = {
-          isRelated: isSameTribe && isSameClan,
-          relationshipType: isSameClan ? (commonElder ? "Direct Relation" : "Clan Relation") : "No Direct Relation",
-          generationalDistance: commonElder ? 3 : undefined,
-          clanContext: isSameClan 
-            ? `Both individuals belong to the ${person1.clan} clan of the ${person1.tribe} tribe.`
-            : `Individuals belong to different clans: ${person1.clan} and ${person2.clan}.`,
-          confidenceScore: isSameClan ? (commonElder ? 0.85 : 0.65) : 0.2,
-          commonElder: commonElder ? {
-            id: "mock-elder-id",
-            name: person1.elderConnection,
-            approximateEra: "Early 20th century",
-            verificationScore: 0.75,
-            familyConnections: ["Family A", "Family B"]
-          } : undefined
-        };
-
-        setResult(mockResult);
-        setIsLoading(false);
-      }, 1500);
+      // Get more detailed relationship analysis
+      const isSameClan = person1.clan.toLowerCase() === person2.clan.toLowerCase();
+      const isSameTribe = person1.tribe.toLowerCase() === person2.tribe.toLowerCase();
       
+      // Get actual elder data
+      let elder1 = null;
+      let elder2 = null;
+      
+      if (person1.elderConnection) {
+        const foundTribe = ugandaTribesData.find(t => t.name === person1.tribe);
+        if (foundTribe) {
+          const foundClan = foundTribe.clans.find(c => c.name === person1.clan);
+          if (foundClan) {
+            elder1 = foundClan.elders.find(e => e.id === person1.elderConnection);
+          }
+        }
+      }
+      
+      if (person2.elderConnection) {
+        const foundTribe = ugandaTribesData.find(t => t.name === person2.tribe);
+        if (foundTribe) {
+          const foundClan = foundTribe.clans.find(c => c.name === person2.clan);
+          if (foundClan) {
+            elder2 = foundClan.elders.find(e => e.id === person2.elderConnection);
+          }
+        }
+      }
+      
+      // Determine if they have a common elder
+      const commonElder = isSameClan && person1.elderConnection && person2.elderConnection && 
+                        person1.elderConnection === person2.elderConnection;
+      
+      // Get more detailed relationship type
+      let relationshipType = "No Relation";
+      let generationalDistance = undefined;
+      let confidenceScore = 0.2;
+      let clanContext = "";
+      
+      if (isSameTribe) {
+        if (isSameClan) {
+          if (commonElder) {
+            relationshipType = "Direct Family Relation";
+            generationalDistance = 3;
+            confidenceScore = 0.85;
+          } else if (elder1 && elder2) {
+            // Check if the elders are related in the clan
+            const clan = ugandaTribesData.find(t => t.name === person1.tribe)?.clans.find(c => c.name === person1.clan);
+            
+            // This would ideally check a predefined relationship database between elders
+            // For now, just making a simple check
+            relationshipType = "Distant Clan Relation";
+            generationalDistance = 5;
+            confidenceScore = 0.65;
+          } else {
+            relationshipType = "Same Clan, Unconfirmed Relation";
+            confidenceScore = 0.4;
+          }
+          
+          clanContext = `Both individuals belong to the ${person1.clan} clan of the ${person1.tribe} tribe.`;
+        } else {
+          relationshipType = "Same Tribe, Different Clans";
+          confidenceScore = 0.3;
+          clanContext = `Individuals belong to different clans: ${person1.clan} and ${person2.clan}, but same tribe: ${person1.tribe}.`;
+        }
+      } else {
+        clanContext = `Individuals belong to different tribes: ${person1.tribe} (${person1.clan} clan) and ${person2.tribe} (${person2.clan} clan).`;
+      }
+      
+      // Create detailed result
+      const mockResult: RelationshipResult = {
+        isRelated: isSameTribe && isSameClan,
+        relationshipType,
+        generationalDistance,
+        clanContext,
+        confidenceScore,
+        commonElder: commonElder && elder1 ? {
+          id: elder1.id,
+          name: elder1.name,
+          approximateEra: elder1.approximateEra,
+          verificationScore: elder1.verificationScore,
+          familyConnections: ["Family A", "Family B"]
+        } : undefined
+      };
+
+      setResult(mockResult);
+      
+      // Extra information for unrelated people
+      if (!mockResult.isRelated) {
+        toast.info("No direct relation found. You might want to explore historical clan migrations for possible distant connections.");
+      }
     } catch (error) {
       console.error("Error analyzing relationship:", error);
       toast.error("Failed to analyze relationship");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -103,6 +210,9 @@ const RelationshipAnalyzer = () => {
   const handleSignup = () => {
     setShowAuth(true);
   };
+
+  // Get all tribes from the data
+  const AVAILABLE_TRIBES = ugandaTribesData.map(tribe => tribe.name);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
@@ -146,7 +256,7 @@ const RelationshipAnalyzer = () => {
                         <Label htmlFor="person1-tribe">Tribe</Label>
                         <Select 
                           value={person1.tribe} 
-                          onValueChange={(value) => setPerson1({...person1, tribe: value})}
+                          onValueChange={(value) => setPerson1({...person1, tribe: value, clan: "", elderConnection: ""})}
                         >
                           <SelectTrigger id="person1-tribe">
                             <SelectValue placeholder="Select tribe" />
@@ -160,21 +270,37 @@ const RelationshipAnalyzer = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="person1-clan">Clan</Label>
-                        <Input 
-                          id="person1-clan"
-                          placeholder="Enter clan name" 
-                          value={person1.clan}
-                          onChange={(e) => setPerson1({...person1, clan: e.target.value})}
-                        />
+                        <Select 
+                          value={person1.clan} 
+                          onValueChange={(value) => setPerson1({...person1, clan: value, elderConnection: ""})}
+                          disabled={!person1.tribe}
+                        >
+                          <SelectTrigger id="person1-clan">
+                            <SelectValue placeholder={person1.tribe ? "Select clan" : "Select tribe first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableClans1.map((clan) => (
+                              <SelectItem key={clan} value={clan}>{clan}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="person1-elder">Known Elder Connection</Label>
-                        <Input 
-                          id="person1-elder"
-                          placeholder="Enter elder name (if known)" 
-                          value={person1.elderConnection}
-                          onChange={(e) => setPerson1({...person1, elderConnection: e.target.value})}
-                        />
+                        <Select 
+                          value={person1.elderConnection} 
+                          onValueChange={(value) => setPerson1({...person1, elderConnection: value})}
+                          disabled={!person1.clan}
+                        >
+                          <SelectTrigger id="person1-elder">
+                            <SelectValue placeholder={person1.clan ? "Select elder" : "Select clan first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableElders1.map((elder) => (
+                              <SelectItem key={elder.id} value={elder.id}>{elder.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
@@ -196,7 +322,7 @@ const RelationshipAnalyzer = () => {
                         <Label htmlFor="person2-tribe">Tribe</Label>
                         <Select 
                           value={person2.tribe} 
-                          onValueChange={(value) => setPerson2({...person2, tribe: value})}
+                          onValueChange={(value) => setPerson2({...person2, tribe: value, clan: "", elderConnection: ""})}
                         >
                           <SelectTrigger id="person2-tribe">
                             <SelectValue placeholder="Select tribe" />
@@ -210,21 +336,37 @@ const RelationshipAnalyzer = () => {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="person2-clan">Clan</Label>
-                        <Input 
-                          id="person2-clan"
-                          placeholder="Enter clan name" 
-                          value={person2.clan}
-                          onChange={(e) => setPerson2({...person2, clan: e.target.value})}
-                        />
+                        <Select 
+                          value={person2.clan} 
+                          onValueChange={(value) => setPerson2({...person2, clan: value, elderConnection: ""})}
+                          disabled={!person2.tribe}
+                        >
+                          <SelectTrigger id="person2-clan">
+                            <SelectValue placeholder={person2.tribe ? "Select clan" : "Select tribe first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableClans2.map((clan) => (
+                              <SelectItem key={clan} value={clan}>{clan}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="person2-elder">Known Elder Connection</Label>
-                        <Input 
-                          id="person2-elder"
-                          placeholder="Enter elder name (if known)" 
-                          value={person2.elderConnection}
-                          onChange={(e) => setPerson2({...person2, elderConnection: e.target.value})}
-                        />
+                        <Select 
+                          value={person2.elderConnection} 
+                          onValueChange={(value) => setPerson2({...person2, elderConnection: value})}
+                          disabled={!person2.clan}
+                        >
+                          <SelectTrigger id="person2-elder">
+                            <SelectValue placeholder={person2.clan ? "Select elder" : "Select clan first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableElders2.map((elder) => (
+                              <SelectItem key={elder.id} value={elder.id}>{elder.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>

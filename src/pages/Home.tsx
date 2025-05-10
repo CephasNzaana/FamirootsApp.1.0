@@ -60,12 +60,12 @@ const Home = () => {
         throw new Error(error.message || "Failed to generate family tree");
       }
 
+      if (!data) {
+        throw new Error("No data returned from family tree generation");
+      }
+
       let members = data.members;
       const treeId = data.treeId;
-
-      if (data.fallback) {
-        toast.info("Using fallback family tree data. The AI response could not be processed.");
-      }
 
       // Create family tree
       const newTree: FamilyTree = {
@@ -82,7 +82,7 @@ const Home = () => {
       toast.success("Family tree generated successfully!");
     } catch (error) {
       console.error("Error generating family tree:", error);
-      toast.error("Failed to generate family tree. Please try again.");
+      toast.error("Failed to generate family tree. Please try again later.");
     } finally {
       setIsLoading(false);
     }

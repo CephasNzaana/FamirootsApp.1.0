@@ -85,7 +85,7 @@ serve(async (req) => {
       console.log("Calling OpenAI to generate family tree");
       
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini", // Using a faster model
         messages: [
           {"role": "system", "content": "You are an expert in Ugandan family structures, tribal customs, and clan traditions. You create accurate family trees based on tribal and clan customs."},
           {"role": "user", "content": prompt}
@@ -116,16 +116,14 @@ serve(async (req) => {
         familyTreeData = generateFallbackFamilyTree(surname, tribe, clan);
         console.log("Using fallback data due to parse error");
         
-        // Insert family tree into database with fallback flag
+        // Insert family tree into database - modified to work with actual schema
         const { data: treeData, error: treeError } = await supabaseAdmin
           .from('family_trees')
           .insert({
             user_id: userId,
             surname,
             tribe,
-            clan,
-            members: familyTreeData,
-            fallback: true
+            clan
           })
           .select()
           .single();
@@ -134,32 +132,58 @@ serve(async (req) => {
           throw treeError;
         }
 
+        // Insert family members
+        for (const member of familyTreeData) {
+          await supabaseAdmin
+            .from('family_members')
+            .insert({
+              family_tree_id: treeData.id,
+              name: member.name,
+              relationship: member.relationship,
+              birth_year: member.birthYear,
+              generation: member.generation,
+              parent_id: member.parentId
+            });
+        }
+
         return new Response(
           JSON.stringify({ 
             members: familyTreeData, 
             treeId: treeData.id,
-            fallback: true 
           }),
           { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
       }
 
-      console.log("Inserting tree into database");
-      // Insert family tree into database
+      console.log("Inserting tree into database with normalized schema");
+      // Insert family tree into database - modified to work with actual schema
       const { data: treeData, error: treeError } = await supabaseAdmin
         .from('family_trees')
         .insert({
           user_id: userId,
           surname,
           tribe,
-          clan,
-          members: familyTreeData
+          clan
         })
         .select()
         .single();
         
       if (treeError) {
         throw treeError;
+      }
+
+      // Insert family members
+      for (const member of familyTreeData) {
+        await supabaseAdmin
+          .from('family_members')
+          .insert({
+            family_tree_id: treeData.id,
+            name: member.name,
+            relationship: member.relationship,
+            birth_year: member.birthYear,
+            generation: member.generation,
+            parent_id: member.parentId
+          });
       }
 
       // Return the generated family tree
@@ -177,16 +201,14 @@ serve(async (req) => {
       // Use fallback data
       const fallbackData = generateFallbackFamilyTree(surname, tribe, clan);
       
-      // Insert fallback family tree into database
+      // Insert fallback family tree into database - modified to work with actual schema
       const { data: treeData, error: treeError } = await supabaseAdmin
         .from('family_trees')
         .insert({
           user_id: userId,
           surname,
           tribe,
-          clan,
-          members: fallbackData,
-          fallback: true
+          clan
         })
         .select()
         .single();
@@ -195,11 +217,24 @@ serve(async (req) => {
         throw treeError;
       }
 
+      // Insert family members
+      for (const member of fallbackData) {
+        await supabaseAdmin
+          .from('family_members')
+          .insert({
+            family_tree_id: treeData.id,
+            name: member.name,
+            relationship: member.relationship,
+            birth_year: member.birthYear,
+            generation: member.generation,
+            parent_id: member.parentId
+          });
+      }
+
       return new Response(
         JSON.stringify({ 
           members: fallbackData, 
           treeId: treeData.id,
-          fallback: true 
         }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );

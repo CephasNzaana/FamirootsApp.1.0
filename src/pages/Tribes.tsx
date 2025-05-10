@@ -1,179 +1,135 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
-import { ugandaTribesData } from "@/data/ugandaTribesClanData";
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from "@/components/ui/accordion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ugandaTribesData } from "@/data/ugandaTribesClanData";
+import { Users, Book, ArrowRight } from "lucide-react";
 
 const Tribes = () => {
-  const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(false);
-  const [selectedTribe, setSelectedTribe] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [showAuth, setShowAuth] = useState<boolean>(false);
   
-  return (
-    <div className="min-h-screen bg-[#FAF6F1]">
-      <Header 
-        onLogin={() => setShowAuth(true)} 
-        onSignup={() => setShowAuth(true)} 
-      />
-      
-      <main className="container mx-auto py-8 px-4">
-        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-uganda-black">Ugandan Tribes & Clans</h1>
-        <p className="text-lg mb-8 max-w-3xl">
-          Explore the rich cultural heritage of Uganda's tribal and clan systems. Discover information about major tribes, 
-          their clan structures, and significant elders who have shaped Uganda's history.
-        </p>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tribes of Uganda</CardTitle>
-                <CardDescription>Select a tribe to explore its clans</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {ugandaTribesData.map(tribe => (
-                    <button
-                      key={tribe.id}
-                      onClick={() => setSelectedTribe(tribe.id)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        selectedTribe === tribe.id 
-                          ? "bg-uganda-yellow/30 border-l-4 border-uganda-yellow" 
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      <div className="font-medium">{tribe.name}</div>
-                      <div className="text-sm text-gray-500">{tribe.region}</div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="lg:col-span-2">
-            {selectedTribe ? (
-              (() => {
-                const tribe = ugandaTribesData.find(t => t.id === selectedTribe);
-                if (!tribe) return <p>Tribe not found</p>;
-                
-                return (
-                  <div className="space-y-6">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">{tribe.name}</CardTitle>
-                          <Badge className="bg-uganda-yellow text-uganda-black">{tribe.region}</Badge>
-                        </div>
-                        {tribe.language && (
-                          <CardDescription>
-                            Language: {tribe.language} {tribe.population && `• Population: ~${tribe.population}`}
-                          </CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent>
-                        <p className="mb-4">{tribe.description}</p>
-                        
-                        <div className="mt-6">
-                          <h3 className="text-xl font-semibold mb-4">Clans of the {tribe.name}</h3>
-                          
-                          <Accordion type="single" collapsible className="w-full">
-                            {tribe.clans.map(clan => (
-                              <AccordionItem key={clan.id} value={clan.id}>
-                                <AccordionTrigger className="hover:bg-gray-100 px-4 rounded-lg">
-                                  <div className="flex items-center justify-between w-full pr-4">
-                                    <span>{clan.name}</span>
-                                    {clan.totem && <span className="text-sm text-gray-500">Totem: {clan.totem}</span>}
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-4 pb-4">
-                                  {clan.origin && <p className="mb-2 text-gray-700">{clan.origin}</p>}
-                                  
-                                  <h4 className="font-medium mt-4 mb-2">Notable Elders:</h4>
-                                  <div className="space-y-3">
-                                    {clan.elders.map(elder => (
-                                      <div 
-                                        key={elder.id} 
-                                        className="bg-white p-3 rounded-lg border-l-4 border-uganda-yellow shadow-sm"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-medium">{elder.name}</span>
-                                          <Badge variant="outline" className="ml-2 bg-uganda-yellow/20">
-                                            {elder.approximateEra}
-                                          </Badge>
-                                        </div>
-                                        {elder.notes && <p className="text-sm mt-1 text-gray-600">{elder.notes}</p>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                  
-                                  {clan.culturalPractices && clan.culturalPractices.length > 0 && (
-                                    <>
-                                      <h4 className="font-medium mt-4 mb-2">Cultural Practices:</h4>
-                                      <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                                        {clan.culturalPractices.map((practice, i) => (
-                                          <li key={i}>{practice}</li>
-                                        ))}
-                                      </ul>
-                                    </>
-                                  )}
+  const handleLogin = () => {
+    setShowAuth(true);
+  };
 
-                                  <div className="mt-6">
-                                    <Button 
-                                      onClick={() => navigate(`/clans/${tribe.id}/${clan.id}`)}
-                                      className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                                    >
-                                      <Users className="h-4 w-4 mr-2" />
-                                      View Elder Family Connections
-                                    </Button>
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            ))}
-                          </Accordion>
-                        </div>
-                      </CardContent>
-                    </Card>
+  const handleSignup = () => {
+    setShowAuth(true);
+  };
+  
+  const handleViewClan = (tribeId: string, clanId: string) => {
+    navigate(`/clans/${tribeId}/${clanId}`);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
+      <Header
+        onLogin={handleLogin}
+        onSignup={handleSignup}
+      />
+      <main className="flex-grow py-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          <section className="mb-12 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-uganda-black">
+              Ugandan <span className="text-uganda-red">Tribes & Clans</span>
+            </h1>
+            <p className="text-lg md:text-xl max-w-3xl mx-auto text-gray-600">
+              Explore the rich heritage and cultural structure of Uganda's major tribes and their clan systems.
+            </p>
+          </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {ugandaTribesData.map((tribe) => (
+              <Card key={tribe.id} className="bg-white shadow-lg border-uganda-black">
+                <CardHeader className="border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xl font-bold">{tribe.name}</CardTitle>
+                    <Badge className="bg-uganda-yellow text-uganda-black">{tribe.region}</Badge>
                   </div>
-                );
-              })()
-            ) : (
-              <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8">
-                <div className="text-center">
-                  <div className="mx-auto w-16 h-16 bg-uganda-yellow/30 rounded-full flex items-center justify-center mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <p className="text-gray-700 mb-4">{tribe.description}</p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <div className="flex items-center text-sm">
+                      <Users className="h-4 w-4 mr-1 text-uganda-red" />
+                      <span>Population: {tribe.population || 'Unknown'}</span>
+                    </div>
+                    {tribe.language && (
+                      <div className="flex items-center text-sm">
+                        <Book className="h-4 w-4 mr-1 text-uganda-red" />
+                        <span>Language: {tribe.language}</span>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-medium mb-1">Select a Tribe</h3>
-                  <p className="text-gray-500">Choose a tribe from the list to view detailed information about its clans and elders</p>
-                </div>
-              </div>
-            )}
+
+                  <h3 className="font-semibold mb-2 text-lg">Clans of the {tribe.name}</h3>
+                  
+                  <ScrollArea className="h-64 rounded-md border p-2">
+                    <Accordion type="single" collapsible className="w-full">
+                      {tribe.clans.map((clan) => (
+                        <AccordionItem key={clan.id} value={clan.id}>
+                          <AccordionTrigger className="hover:bg-gray-50 px-3 rounded-md">
+                            {clan.name} Clan
+                          </AccordionTrigger>
+                          <AccordionContent className="px-3 pt-2">
+                            {clan.totem && (
+                              <div className="text-sm mb-2">
+                                <span className="font-medium">Totem:</span> {clan.totem}
+                              </div>
+                            )}
+                            {clan.origin && (
+                              <div className="text-sm mb-2">
+                                <span className="font-medium">Origin:</span> {clan.origin.substring(0, 100)}
+                                {clan.origin.length > 100 ? '...' : ''}
+                              </div>
+                            )}
+                            <div className="text-sm mb-2">
+                              <span className="font-medium">Elders:</span> {clan.elders.length}
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleViewClan(tribe.id, clan.id)}
+                              className="mt-2 w-full hover:bg-uganda-red hover:text-white transition-colors flex items-center justify-between"
+                            >
+                              <span>View Clan Family Tree</span>
+                              <ArrowRight className="h-4 w-4" />
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </main>
-      {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
+
+      <footer className="bg-uganda-black text-white py-6 mt-12">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="flex justify-center space-x-2 mb-4">
+            <div className="w-4 h-4 bg-uganda-black"></div>
+            <div className="w-4 h-4 bg-uganda-yellow"></div>
+            <div className="w-4 h-4 bg-uganda-red"></div>
+          </div>
+          <p className="text-sm">
+            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
+          </p>
+        </div>
+      </footer>
+      
+      {showAuth && (
+        <AuthForm onClose={() => setShowAuth(false)} />
+      )}
     </div>
   );
 };
