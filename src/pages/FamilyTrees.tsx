@@ -6,17 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
-import { FamilyTree } from "@/types";
+import { FamilyTree, FamilyMember } from "@/types";
+import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 
 const FamilyTrees = () => {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<boolean>(!user);
   const [familyTrees, setFamilyTrees] = useState<FamilyTree[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedTree, setSelectedTree] = useState<FamilyTree | null>(null);
+  const [showTreeDialog, setShowTreeDialog] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,28 +34,60 @@ const FamilyTrees = () => {
   const fetchFamilyTrees = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      // First fetch the family trees
+      const { data: treesData, error: treesError } = await supabase
         .from('family_trees')
         .select('*')
         .eq('user_id', user?.id);
 
-      if (error) throw error;
+      if (treesError) throw treesError;
       
-      // Transform the data to match FamilyTree type
-      if (data) {
-        const formattedTrees: FamilyTree[] = data.map(tree => ({
+      if (!treesData || treesData.length === 0) {
+        setFamilyTrees([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Now fetch family members for each tree
+      const formattedTrees: FamilyTree[] = [];
+      
+      for (const tree of treesData) {
+        const { data: membersData, error: membersError } = await supabase
+          .from('family_members')
+          .select('*')
+          .eq('family_tree_id', tree.id);
+          
+        if (membersError) {
+          console.error(`Error fetching members for tree ${tree.id}:`, membersError);
+          continue;
+        }
+        
+        // Format members to match our FamilyMember type
+        const formattedMembers: FamilyMember[] = (membersData || []).map(member => ({
+          id: member.id,
+          name: member.name,
+          relationship: member.relationship,
+          birthYear: member.birth_year,
+          deathYear: member.death_year,
+          generation: member.generation,
+          parentId: member.parent_id,
+          isElder: member.is_elder || false,
+          gender: member.gender,
+          side: member.side,
+        }));
+        
+        formattedTrees.push({
           id: tree.id,
           userId: tree.user_id,
           surname: tree.surname,
           tribe: tree.tribe,
           clan: tree.clan,
           createdAt: tree.created_at,
-          members: [] // Default to empty array since we don't have members data yet
-        }));
-        setFamilyTrees(formattedTrees);
-      } else {
-        setFamilyTrees([]);
+          members: formattedMembers
+        });
       }
+      
+      setFamilyTrees(formattedTrees);
     } catch (error) {
       console.error("Error fetching family trees:", error);
       toast.error("Failed to load family trees");
@@ -64,11 +100,9 @@ const FamilyTrees = () => {
     navigate("/");
   };
 
-  const handleViewTree = (treeId: string) => {
-    // For now, just show a toast indicating this would navigate to the tree view
-    toast.info("Viewing tree will be implemented soon");
-    // Implement navigation to tree view when ready
-    // navigate(`/family-trees/${treeId}`);
+  const handleViewTree = (tree: FamilyTree) => {
+    setSelectedTree(tree);
+    setShowTreeDialog(true);
   };
 
   if (!user) {
@@ -160,9 +194,9 @@ const FamilyTrees = () => {
                   <Button 
                     size="sm" 
                     className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                    onClick={() => handleViewTree(tree.id)}
+                    onClick={() => handleViewTree(tree)}
                   >
-                    View
+                    View Family Tree
                   </Button>
                 </CardFooter>
               </Card>
@@ -189,6 +223,18 @@ const FamilyTrees = () => {
           </div>
         )}
       </main>
+
+      {selectedTree && (
+        <Dialog open={showTreeDialog} onOpenChange={setShowTreeDialog}>
+          <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
+            <FamilyTreeDisplay tree={selectedTree} />
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {showAuth && (
+        <AuthForm onClose={() => setShowAuth(false)} />
+      )}
     </div>
   );
 };

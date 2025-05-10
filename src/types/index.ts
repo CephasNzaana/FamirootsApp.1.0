@@ -1,4 +1,3 @@
-
 export type User = {
   id: string;
   email: string;
@@ -24,6 +23,7 @@ export interface FamilyMember {
   name: string;
   relationship: string;
   birthYear?: string;
+  deathYear?: string; // Added death year
   generation: number;
   parentId?: string;
   isElder: boolean;
@@ -31,6 +31,7 @@ export interface FamilyMember {
   marriedTo?: string; // ID of spouse
   clanConnectionId?: string; // Reference to a specific clan elder
   side?: 'maternal' | 'paternal'; // Which side of family
+  status?: 'living' | 'deceased'; // Added living status
 }
 
 export type FamilyTree = {
@@ -47,11 +48,15 @@ export interface SiblingInfo {
   name: string;
   gender: string;
   birthYear: string;
+  deathYear?: string; // Added death year
+  status?: 'living' | 'deceased';
 }
 
 export interface SpouseInfo {
   name: string;
   birthYear: string;
+  deathYear?: string; // Added death year
+  status?: 'living' | 'deceased';
 }
 
 export interface Cultural {
@@ -85,6 +90,8 @@ export interface ClanElder {
   approximateEra: string;
   verificationScore: number;
   notes?: string;
+  deathYear?: string; // Added death year
+  status?: 'deceased'; // Elders are typically deceased
 }
 
 export interface Clan {

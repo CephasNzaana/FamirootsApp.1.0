@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AuthForm from "@/components/AuthForm";
@@ -122,11 +122,29 @@ const ClanDetails = () => {
           </Card>
           
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Elder Family Connections</h2>
-            <p className="text-gray-700">
-              The family tree below shows how the elders of the {clan.name} clan are related to each other.
-              Understanding these relationships is crucial for comprehending the clan structure and heritage.
-            </p>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Elder Family Connections</h2>
+              <Button 
+                onClick={() => user ? navigate("/family-trees") : setShowAuth(true)}
+                className="bg-uganda-red text-white hover:bg-uganda-red/90"
+              >
+                Create Your Family Tree
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="bg-uganda-yellow/10 p-4 rounded-lg border border-uganda-yellow mb-6">
+              <div className="flex items-start gap-3">
+                <Users className="text-uganda-black mt-1" />
+                <div>
+                  <h3 className="font-medium text-lg">Explore Clan Relationships</h3>
+                  <p className="text-gray-700">
+                    Below you can see how the elders of the {clan.name} clan are connected to each other. 
+                    Understanding these relationships is crucial for comprehending your own family heritage.
+                  </p>
+                </div>
+              </div>
+            </div>
             
             <ClanFamilyTree clan={clan} />
           </div>

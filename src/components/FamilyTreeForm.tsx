@@ -23,6 +23,9 @@ import {
   RadioGroup,
   RadioGroupItem
 } from "@/components/ui/radio-group";
+import { 
+  Switch
+} from "@/components/ui/switch";
 import { PlusCircle, MinusCircle } from "lucide-react";
 import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 
@@ -118,6 +121,17 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     });
   };
 
+  const handleSiblingStatusChange = (index: number, isDeceased: boolean) => {
+    setFormData(prev => {
+      const updatedSiblings = [...prev.siblings];
+      updatedSiblings[index] = { 
+        ...updatedSiblings[index], 
+        status: isDeceased ? 'deceased' : 'living'
+      };
+      return { ...prev, siblings: updatedSiblings };
+    });
+  };
+
   const addSibling = () => {
     setFormData(prev => ({
       ...prev,
@@ -139,6 +153,16 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     setFormData(prev => ({
       ...prev,
       spouse: { ...prev.spouse, [field]: value }
+    }));
+  };
+
+  const handleSpouseStatusChange = (isDeceased: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      spouse: { 
+        ...prev.spouse, 
+        status: isDeceased ? 'deceased' : 'living'
+      }
     }));
   };
 
@@ -324,7 +348,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                 <div className="flex items-center justify-between">
                   <Label className="text-lg font-semibold">Spouse Information</Label>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="spouse-name">Name</Label>
                     <Input
@@ -335,15 +359,36 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                       className="focus:border-uganda-yellow focus:ring-uganda-yellow"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="spouse-birthYear">Birth Year</Label>
-                    <Input
-                      id="spouse-birthYear"
-                      value={formData.spouse.birthYear}
-                      onChange={(e) => handleSpouseChange("birthYear", e.target.value)}
-                      placeholder="YYYY"
-                      className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="spouse-birthYear">Birth Year</Label>
+                      <Input
+                        id="spouse-birthYear"
+                        value={formData.spouse.birthYear}
+                        onChange={(e) => handleSpouseChange("birthYear", e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="spouse-deathYear">Death Year (if deceased)</Label>
+                      <Input
+                        id="spouse-deathYear"
+                        value={formData.spouse.deathYear || ""}
+                        onChange={(e) => handleSpouseChange("deathYear", e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        disabled={formData.spouse.status !== "deceased"}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="spouse-deceased"
+                      checked={formData.spouse.status === "deceased"}
+                      onCheckedChange={handleSpouseStatusChange}
                     />
+                    <Label htmlFor="spouse-deceased">Deceased</Label>
                   </div>
                 </div>
               </div>
@@ -379,7 +424,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <div className="space-y-1">
                         <Label htmlFor={`sibling-${index}-name`}>Name</Label>
                         <Input
@@ -390,30 +435,56 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                           className="focus:border-uganda-yellow focus:ring-uganda-yellow"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`sibling-${index}-gender`}>Gender</Label>
-                        <Select
-                          value={sibling.gender}
-                          onValueChange={(value) => handleSiblingChange(index, "gender", value)}
-                        >
-                          <SelectTrigger id={`sibling-${index}-gender`} className="focus:border-uganda-yellow focus:ring-uganda-yellow">
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor={`sibling-${index}-gender`}>Gender</Label>
+                          <Select
+                            value={sibling.gender}
+                            onValueChange={(value) => handleSiblingChange(index, "gender", value)}
+                          >
+                            <SelectTrigger id={`sibling-${index}-gender`} className="focus:border-uganda-yellow focus:ring-uganda-yellow">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`sibling-${index}-birthYear`}>Birth Year</Label>
+                          <Input
+                            id={`sibling-${index}-birthYear`}
+                            value={sibling.birthYear}
+                            onChange={(e) => handleSiblingChange(index, "birthYear", e.target.value)}
+                            placeholder="YYYY"
+                            className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`sibling-${index}-birthYear`}>Birth Year</Label>
-                        <Input
-                          id={`sibling-${index}-birthYear`}
-                          value={sibling.birthYear}
-                          onChange={(e) => handleSiblingChange(index, "birthYear", e.target.value)}
-                          placeholder="YYYY"
-                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
-                        />
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch 
+                            id={`sibling-${index}-deceased`}
+                            checked={sibling.status === "deceased"}
+                            onCheckedChange={(checked) => handleSiblingStatusChange(index, checked)}
+                          />
+                          <Label htmlFor={`sibling-${index}-deceased`}>Deceased</Label>
+                        </div>
+                        {sibling.status === "deceased" && (
+                          <div className="space-y-1">
+                            <Label htmlFor={`sibling-${index}-deathYear`}>Death Year</Label>
+                            <Input
+                              id={`sibling-${index}-deathYear`}
+                              value={sibling.deathYear || ""}
+                              onChange={(e) => handleSiblingChange(index, "deathYear", e.target.value)}
+                              placeholder="YYYY"
+                              className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
