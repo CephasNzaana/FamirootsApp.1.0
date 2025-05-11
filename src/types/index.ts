@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   email: string;
@@ -9,12 +10,28 @@ export interface TreeFormData {
   surname: string;
   tribe: string;
   clan: string;
-  familyName: string; // New field for user's full name
-  gender: string; // New field for user's gender
-  side: 'maternal' | 'paternal'; // Which side of family to focus on
+  familyName: string; // User's full name
+  gender: string; // User's gender
+  birthYear?: string; // User's birth year
+  birthPlace?: string; // User's birth place
   siblings: SiblingInfo[]; // Array of siblings
   spouse: SpouseInfo; // Spouse information
   selectedElders: string[]; // IDs of selected clan elders
+  parents: {
+    father: ParentInfo;
+    mother: ParentInfo;
+  };
+  grandparents: {
+    paternal: {
+      grandfather: ParentInfo;
+      grandmother: ParentInfo;
+    };
+    maternal: {
+      grandfather: ParentInfo;
+      grandmother: ParentInfo;
+    };
+  };
+  children: ChildInfo[]; // Array of children
 }
 
 // Family Tree Types
@@ -23,15 +40,15 @@ export interface FamilyMember {
   name: string;
   relationship: string;
   birthYear?: string;
-  deathYear?: string; // Added death year
+  deathYear?: string;
   generation: number;
   parentId?: string;
   isElder: boolean;
-  gender?: string; // Added gender field
+  gender?: string;
   marriedTo?: string; // ID of spouse
   clanConnectionId?: string; // Reference to a specific clan elder
-  side?: 'maternal' | 'paternal'; // Which side of family
-  status?: 'living' | 'deceased'; // Added living status
+  side?: 'maternal' | 'paternal';
+  status?: 'living' | 'deceased';
 }
 
 export type FamilyTree = {
@@ -48,14 +65,29 @@ export interface SiblingInfo {
   name: string;
   gender: string;
   birthYear: string;
-  deathYear?: string; // Added death year
+  deathYear?: string;
   status?: 'living' | 'deceased';
 }
 
 export interface SpouseInfo {
   name: string;
   birthYear: string;
-  deathYear?: string; // Added death year
+  deathYear?: string;
+  status?: 'living' | 'deceased';
+}
+
+export interface ParentInfo {
+  name: string;
+  birthYear: string;
+  deathYear?: string;
+  status?: 'living' | 'deceased';
+}
+
+export interface ChildInfo {
+  name: string;
+  gender: string;
+  birthYear: string;
+  deathYear?: string;
   status?: 'living' | 'deceased';
 }
 
@@ -90,7 +122,7 @@ export interface ClanElder {
   approximateEra: string;
   verificationScore: number;
   notes?: string;
-  deathYear?: string; // Added death year
+  deathYear?: string;
   status?: 'deceased'; // Elders are typically deceased
 }
 

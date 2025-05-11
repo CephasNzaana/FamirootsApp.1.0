@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import UserProfile from "@/components/UserProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { FamilyTree } from "@/types";
+import { FamilyTree, FamilyMember } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -39,7 +39,47 @@ const ProfilePage = () => {
 
       if (treesError) throw treesError;
       
-      setFamilyTrees(treesData || []);
+      if (treesData) {
+        // Transform data to match FamilyTree type
+        const formattedTrees: FamilyTree[] = [];
+        
+        for (const tree of treesData) {
+          // Fetch family members for this tree
+          const { data: membersData, error: membersError } = await supabase
+            .from('family_members')
+            .select('*')
+            .eq('family_tree_id', tree.id);
+            
+          if (membersError) throw membersError;
+          
+          // Format members to match our FamilyMember type
+          const formattedMembers: FamilyMember[] = (membersData || []).map(member => ({
+            id: member.id,
+            name: member.name,
+            relationship: member.relationship,
+            birthYear: member.birth_year,
+            deathYear: member.death_year || undefined,
+            generation: member.generation,
+            parentId: member.parent_id,
+            isElder: Boolean(member.is_elder),
+            gender: member.gender || undefined,
+            side: (member.side as 'maternal' | 'paternal') || undefined,
+            status: member.death_year ? 'deceased' : 'living'
+          }));
+          
+          formattedTrees.push({
+            id: tree.id,
+            userId: tree.user_id,
+            surname: tree.surname,
+            tribe: tree.tribe,
+            clan: tree.clan,
+            createdAt: tree.created_at,
+            members: formattedMembers
+          });
+        }
+        
+        setFamilyTrees(formattedTrees);
+      }
     } catch (error) {
       console.error("Error fetching user data:", error);
       toast.error("Failed to load your profile data");

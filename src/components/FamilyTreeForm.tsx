@@ -20,10 +20,6 @@ import {
   TabsTrigger 
 } from "@/components/ui/tabs";
 import { 
-  RadioGroup,
-  RadioGroupItem
-} from "@/components/ui/radio-group";
-import { 
   Switch
 } from "@/components/ui/switch";
 import { PlusCircle, MinusCircle } from "lucide-react";
@@ -40,11 +36,25 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     tribe: "",
     clan: "",
     familyName: "",
-    side: "paternal", // Default to paternal side
     gender: "male", // Default to male
     siblings: [{ name: "", gender: "male", birthYear: "" }],
     spouse: { name: "", birthYear: "" },
-    selectedElders: []
+    selectedElders: [],
+    parents: {
+      father: { name: "", birthYear: "", deathYear: "" },
+      mother: { name: "", birthYear: "", deathYear: "" }
+    },
+    grandparents: {
+      paternal: {
+        grandfather: { name: "", birthYear: "", deathYear: "" },
+        grandmother: { name: "", birthYear: "", deathYear: "" }
+      },
+      maternal: {
+        grandfather: { name: "", birthYear: "", deathYear: "" },
+        grandmother: { name: "", birthYear: "", deathYear: "" }
+      }
+    },
+    children: []
   });
 
   const [availableElders, setAvailableElders] = useState<ElderReference[]>([]);
@@ -166,6 +176,58 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     }));
   };
 
+  const handleParentChange = (parent: 'father' | 'mother', field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      parents: {
+        ...prev.parents,
+        [parent]: {
+          ...prev.parents[parent],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  const handleGrandparentChange = (side: 'paternal' | 'maternal', grandparent: 'grandfather' | 'grandmother', field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      grandparents: {
+        ...prev.grandparents,
+        [side]: {
+          ...prev.grandparents[side],
+          [grandparent]: {
+            ...prev.grandparents[side][grandparent],
+            [field]: value
+          }
+        }
+      }
+    }));
+  };
+
+  const addChild = () => {
+    setFormData(prev => ({
+      ...prev,
+      children: [...prev.children, { name: "", gender: "male", birthYear: "" }]
+    }));
+  };
+
+  const handleChildChange = (index: number, field: string, value: string) => {
+    setFormData(prev => {
+      const updatedChildren = [...prev.children];
+      updatedChildren[index] = { ...updatedChildren[index], [field]: value };
+      return { ...prev, children: updatedChildren };
+    });
+  };
+
+  const removeChild = (index: number) => {
+    setFormData(prev => {
+      const updatedChildren = [...prev.children];
+      updatedChildren.splice(index, 1);
+      return { ...prev, children: updatedChildren };
+    });
+  };
+
   const toggleElderSelection = (elderId: string) => {
     setFormData(prev => {
       const isSelected = prev.selectedElders.includes(elderId);
@@ -213,9 +275,11 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="family">Family Details</TabsTrigger>
+              <TabsTrigger value="parents">Parents</TabsTrigger>
+              <TabsTrigger value="grandparents">Grandparents</TabsTrigger>
+              <TabsTrigger value="family">Other Family</TabsTrigger>
               <TabsTrigger value="elders">Clan Elders</TabsTrigger>
             </TabsList>
             
@@ -247,38 +311,43 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
               
               <div className="space-y-2">
                 <Label htmlFor="gender">Your Gender</Label>
-                <RadioGroup 
-                  value={formData.gender} 
+                <Select
+                  value={formData.gender}
                   onValueChange={(value) => handleSelectChange("gender", value)}
-                  className="flex space-x-4"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="male" id="gender-male" />
-                    <Label htmlFor="gender-male">Male</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="female" id="gender-female" />
-                    <Label htmlFor="gender-female">Female</Label>
-                  </div>
-                </RadioGroup>
+                  <SelectTrigger id="gender" className="focus:border-uganda-yellow focus:ring-uganda-yellow">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="side">Family Side</Label>
-                <RadioGroup 
-                  value={formData.side} 
-                  onValueChange={(value) => handleSelectChange("side", value)}
-                  className="flex space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="paternal" id="side-paternal" />
-                    <Label htmlFor="side-paternal">Father's Side</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="maternal" id="side-maternal" />
-                    <Label htmlFor="side-maternal">Mother's Side</Label>
-                  </div>
-                </RadioGroup>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="birthYear">Your Birth Year</Label>
+                  <Input
+                    id="birthYear"
+                    name="birthYear"
+                    placeholder="YYYY"
+                    value={formData.birthYear || ""}
+                    onChange={handleChange}
+                    className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birthPlace">Your Birth Place</Label>
+                  <Input
+                    id="birthPlace"
+                    name="birthPlace"
+                    placeholder="e.g. Kampala"
+                    value={formData.birthPlace || ""}
+                    onChange={handleChange}
+                    className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -339,6 +408,288 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                     className="mt-2 focus:border-uganda-yellow focus:ring-uganda-yellow"
                   />
                 )}
+              </div>
+            </TabsContent>
+            
+            {/* Parents Tab */}
+            <TabsContent value="parents" className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Father's Information</Label>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="father-name">Father's Name</Label>
+                    <Input
+                      id="father-name"
+                      value={formData.parents.father.name}
+                      onChange={(e) => handleParentChange('father', 'name', e.target.value)}
+                      placeholder="Father's full name"
+                      className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="father-birthYear">Birth Year</Label>
+                      <Input
+                        id="father-birthYear"
+                        value={formData.parents.father.birthYear}
+                        onChange={(e) => handleParentChange('father', 'birthYear', e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="father-deathYear">Death Year (if deceased)</Label>
+                      <Input
+                        id="father-deathYear"
+                        value={formData.parents.father.deathYear || ""}
+                        onChange={(e) => handleParentChange('father', 'deathYear', e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="father-deceased"
+                      checked={formData.parents.father.deathYear !== undefined && formData.parents.father.deathYear !== ""}
+                      onCheckedChange={(checked) => {
+                        if (checked && !formData.parents.father.deathYear) {
+                          handleParentChange('father', 'deathYear', "");
+                        } else if (!checked) {
+                          handleParentChange('father', 'deathYear', "");
+                        }
+                      }}
+                    />
+                    <Label htmlFor="father-deceased">Deceased</Label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Mother's Information</Label>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="mother-name">Mother's Name</Label>
+                    <Input
+                      id="mother-name"
+                      value={formData.parents.mother.name}
+                      onChange={(e) => handleParentChange('mother', 'name', e.target.value)}
+                      placeholder="Mother's full name"
+                      className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mother-birthYear">Birth Year</Label>
+                      <Input
+                        id="mother-birthYear"
+                        value={formData.parents.mother.birthYear}
+                        onChange={(e) => handleParentChange('mother', 'birthYear', e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mother-deathYear">Death Year (if deceased)</Label>
+                      <Input
+                        id="mother-deathYear"
+                        value={formData.parents.mother.deathYear || ""}
+                        onChange={(e) => handleParentChange('mother', 'deathYear', e.target.value)}
+                        placeholder="YYYY"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="mother-deceased"
+                      checked={formData.parents.mother.deathYear !== undefined && formData.parents.mother.deathYear !== ""}
+                      onCheckedChange={(checked) => {
+                        if (checked && !formData.parents.mother.deathYear) {
+                          handleParentChange('mother', 'deathYear', "");
+                        } else if (!checked) {
+                          handleParentChange('mother', 'deathYear', "");
+                        }
+                      }}
+                    />
+                    <Label htmlFor="mother-deceased">Deceased</Label>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* Grandparents Tab */}
+            <TabsContent value="grandparents" className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Paternal Grandparents</Label>
+                </div>
+                
+                <div className="border p-3 rounded-md bg-gray-50 space-y-3">
+                  <Label className="font-medium">Grandfather (Father's Father)</Label>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="paternal-grandfather-name">Name</Label>
+                      <Input
+                        id="paternal-grandfather-name"
+                        value={formData.grandparents.paternal.grandfather.name}
+                        onChange={(e) => handleGrandparentChange('paternal', 'grandfather', 'name', e.target.value)}
+                        placeholder="Full name"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="paternal-grandfather-birthYear">Birth Year</Label>
+                        <Input
+                          id="paternal-grandfather-birthYear"
+                          value={formData.grandparents.paternal.grandfather.birthYear}
+                          onChange={(e) => handleGrandparentChange('paternal', 'grandfather', 'birthYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="paternal-grandfather-deathYear">Death Year</Label>
+                        <Input
+                          id="paternal-grandfather-deathYear"
+                          value={formData.grandparents.paternal.grandfather.deathYear || ""}
+                          onChange={(e) => handleGrandparentChange('paternal', 'grandfather', 'deathYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border p-3 rounded-md bg-gray-50 space-y-3">
+                  <Label className="font-medium">Grandmother (Father's Mother)</Label>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="paternal-grandmother-name">Name</Label>
+                      <Input
+                        id="paternal-grandmother-name"
+                        value={formData.grandparents.paternal.grandmother.name}
+                        onChange={(e) => handleGrandparentChange('paternal', 'grandmother', 'name', e.target.value)}
+                        placeholder="Full name"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="paternal-grandmother-birthYear">Birth Year</Label>
+                        <Input
+                          id="paternal-grandmother-birthYear"
+                          value={formData.grandparents.paternal.grandmother.birthYear}
+                          onChange={(e) => handleGrandparentChange('paternal', 'grandmother', 'birthYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="paternal-grandmother-deathYear">Death Year</Label>
+                        <Input
+                          id="paternal-grandmother-deathYear"
+                          value={formData.grandparents.paternal.grandmother.deathYear || ""}
+                          onChange={(e) => handleGrandparentChange('paternal', 'grandmother', 'deathYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Maternal Grandparents</Label>
+                </div>
+                
+                <div className="border p-3 rounded-md bg-gray-50 space-y-3">
+                  <Label className="font-medium">Grandfather (Mother's Father)</Label>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="maternal-grandfather-name">Name</Label>
+                      <Input
+                        id="maternal-grandfather-name"
+                        value={formData.grandparents.maternal.grandfather.name}
+                        onChange={(e) => handleGrandparentChange('maternal', 'grandfather', 'name', e.target.value)}
+                        placeholder="Full name"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="maternal-grandfather-birthYear">Birth Year</Label>
+                        <Input
+                          id="maternal-grandfather-birthYear"
+                          value={formData.grandparents.maternal.grandfather.birthYear}
+                          onChange={(e) => handleGrandparentChange('maternal', 'grandfather', 'birthYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="maternal-grandfather-deathYear">Death Year</Label>
+                        <Input
+                          id="maternal-grandfather-deathYear"
+                          value={formData.grandparents.maternal.grandfather.deathYear || ""}
+                          onChange={(e) => handleGrandparentChange('maternal', 'grandfather', 'deathYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border p-3 rounded-md bg-gray-50 space-y-3">
+                  <Label className="font-medium">Grandmother (Mother's Mother)</Label>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="maternal-grandmother-name">Name</Label>
+                      <Input
+                        id="maternal-grandmother-name"
+                        value={formData.grandparents.maternal.grandmother.name}
+                        onChange={(e) => handleGrandparentChange('maternal', 'grandmother', 'name', e.target.value)}
+                        placeholder="Full name"
+                        className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="maternal-grandmother-birthYear">Birth Year</Label>
+                        <Input
+                          id="maternal-grandmother-birthYear"
+                          value={formData.grandparents.maternal.grandmother.birthYear}
+                          onChange={(e) => handleGrandparentChange('maternal', 'grandmother', 'birthYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="maternal-grandmother-deathYear">Death Year</Label>
+                        <Input
+                          id="maternal-grandmother-deathYear"
+                          value={formData.grandparents.maternal.grandmother.deathYear || ""}
+                          onChange={(e) => handleGrandparentChange('maternal', 'grandmother', 'deathYear', e.target.value)}
+                          placeholder="YYYY"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
             
@@ -489,6 +840,85 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
                     </div>
                   </div>
                 ))}
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-semibold">Children</Label>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={addChild}
+                    className="flex items-center text-uganda-red"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-1" /> Add Child
+                  </Button>
+                </div>
+                
+                {formData.children.map((child, index) => (
+                  <div key={index} className="border p-3 rounded-md bg-gray-50 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <Label className="font-medium">Child {index + 1}</Label>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => removeChild(index)}
+                        className="h-8 w-8 p-0 text-uganda-red"
+                      >
+                        <MinusCircle className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor={`child-${index}-name`}>Name</Label>
+                        <Input
+                          id={`child-${index}-name`}
+                          value={child.name}
+                          onChange={(e) => handleChildChange(index, "name", e.target.value)}
+                          placeholder="Name"
+                          className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor={`child-${index}-gender`}>Gender</Label>
+                          <Select
+                            value={child.gender}
+                            onValueChange={(value) => handleChildChange(index, "gender", value)}
+                          >
+                            <SelectTrigger id={`child-${index}-gender`} className="focus:border-uganda-yellow focus:ring-uganda-yellow">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor={`child-${index}-birthYear`}>Birth Year</Label>
+                          <Input
+                            id={`child-${index}-birthYear`}
+                            value={child.birthYear}
+                            onChange={(e) => handleChildChange(index, "birthYear", e.target.value)}
+                            placeholder="YYYY"
+                            className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {formData.children.length === 0 && (
+                  <div className="text-center p-4 border border-dashed border-gray-300 rounded-md">
+                    <p className="text-gray-500">Click "Add Child" to add children to your family tree</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
             

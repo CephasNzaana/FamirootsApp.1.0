@@ -1,19 +1,67 @@
 
-import React from "react";
-import Header from "@/components/Header";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import AuthForm from "@/components/AuthForm";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
-import { Dna, Check, MapPin, Users, Target, Shield, Globe } from "lucide-react";
+import Header from "@/components/Header";
+import AuthForm from "@/components/AuthForm";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Dna, 
+  Globe, 
+  Users, 
+  FileText, 
+  MapPin, 
+  ShieldCheck, 
+  CircleCheck, 
+  Building
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DNATest = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = React.useState<boolean>(!user);
+  const [showAuth, setShowAuth] = useState<boolean>(!user);
+  const [kitType, setKitType] = useState<string>("standard");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [shippingAddress, setShippingAddress] = useState({
+    fullName: "",
+    address: "",
+    city: "",
+    country: "Uganda",
+    postalCode: ""
+  });
+  const navigate = useNavigate();
 
-  const handleOrderTest = () => {
-    toast.success("Your DNA kit order has been placed! Check your email for details.");
+  const handleOrderKit = () => {
+    // Check if user is authenticated
+    if (!user) {
+      toast.error("Please log in to order a DNA kit");
+      setShowAuth(true);
+      return;
+    }
+
+    // Basic form validation
+    if (!paymentMethod || !shippingAddress.fullName || !shippingAddress.address || !shippingAddress.city) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Simulated successful order
+    toast.success("Your DNA kit has been ordered successfully!");
+    
+    // In a real application, this would send the order to the backend
+    setTimeout(() => {
+      navigate("/profile#dna");
+    }, 2000);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setShippingAddress(prev => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -24,246 +72,351 @@ const DNATest = () => {
       />
       
       <main className="container mx-auto py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8 text-center">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-bold mb-4 text-uganda-black">
-              Discover Your <span className="text-uganda-red">Genetic Heritage</span>
+              Discover Your Genetic Heritage
             </h1>
-            <p className="text-lg max-w-3xl mx-auto text-gray-600">
-              Unlock the secrets of your DNA and connect with relatives across Uganda and beyond. Our DNA testing service reveals your ancestral origins with unprecedented accuracy.
+            <p className="text-lg max-w-2xl mx-auto text-gray-600">
+              Our DNA testing service connects you to your ancestral roots and helps you discover relatives across Uganda and beyond.
             </p>
           </div>
 
-          {/* DNA Test Kit Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            {/* Basic Package */}
-            <Card className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-uganda-yellow/10 h-2 w-full"></div>
-              <CardHeader>
-                <CardTitle>Basic Heritage DNA</CardTitle>
-                <CardDescription>Essential DNA analysis for beginners</CardDescription>
-                <div className="text-3xl font-bold mt-2">$79.99</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Ethnicity Breakdown across 42 regions in Africa</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Find DNA Matches in our growing Ugandan database</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Tribal and clan connection insights</span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full bg-uganda-black hover:bg-uganda-black/80 text-white"
-                  onClick={handleOrderTest}
-                >
-                  Order Test Kit
-                </Button>
-              </CardFooter>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <Card className="bg-white shadow-md border border-gray-200">
+                <CardHeader className="border-b border-gray-200 bg-gray-50">
+                  <CardTitle className="text-xl font-medium text-gray-700 flex items-center gap-2">
+                    <Dna className="h-5 w-5 text-uganda-yellow" />
+                    Order Your DNA Kit
+                  </CardTitle>
+                  <CardDescription>
+                    Select a kit type and enter your shipping information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  <div className="space-y-3">
+                    <Label>Select Kit Type</Label>
+                    <RadioGroup
+                      value={kitType}
+                      onValueChange={setKitType}
+                      className="grid grid-cols-1 gap-4"
+                    >
+                      <div className="flex items-start space-x-3 border p-4 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="standard" id="standard" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="standard" className="font-medium text-lg cursor-pointer">
+                            Standard DNA Kit ($89)
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Ethnicity estimate, family connections, and basic health insights
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3 border p-4 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="premium" id="premium" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="premium" className="font-medium text-lg cursor-pointer">
+                            Premium DNA Kit ($149)
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Everything in Standard plus detailed health reports, genetic traits, and deeper ancestry analysis
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3 border p-4 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="family" id="family" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="family" className="font-medium text-lg cursor-pointer">
+                            Family Pack (3 Kits - $199)
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Test multiple family members and discover how you relate to each other
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-3">
+                    <Label>Shipping Information</Label>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="fullName">Full Name</Label>
+                          <Input 
+                            id="fullName"
+                            name="fullName"
+                            value={shippingAddress.fullName}
+                            onChange={handleChange}
+                            placeholder="Enter your full name"
+                            className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="address">Address</Label>
+                          <Input 
+                            id="address"
+                            name="address"
+                            value={shippingAddress.address}
+                            onChange={handleChange}
+                            placeholder="Enter your address"
+                            className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="city">City</Label>
+                            <Input 
+                              id="city"
+                              name="city"
+                              value={shippingAddress.city}
+                              onChange={handleChange}
+                              placeholder="Enter your city"
+                              className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="postalCode">Postal Code</Label>
+                            <Input 
+                              id="postalCode"
+                              name="postalCode"
+                              value={shippingAddress.postalCode}
+                              onChange={handleChange}
+                              placeholder="Enter postal code"
+                              className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="country">Country</Label>
+                          <Input 
+                            id="country"
+                            name="country"
+                            value={shippingAddress.country}
+                            onChange={handleChange}
+                            placeholder="Enter your country"
+                            className="focus:border-uganda-yellow focus:ring-uganda-yellow"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-3">
+                    <Label>Payment Method</Label>
+                    <RadioGroup
+                      value={paymentMethod}
+                      onValueChange={setPaymentMethod}
+                      className="grid grid-cols-1 gap-4"
+                    >
+                      <div className="flex items-center space-x-3 border p-3 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="credit-card" id="credit-card" />
+                        <Label htmlFor="credit-card" className="cursor-pointer">Credit/Debit Card</Label>
+                      </div>
+                      <div className="flex items-center space-x-3 border p-3 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="paypal" id="paypal" />
+                        <Label htmlFor="paypal" className="cursor-pointer">PayPal</Label>
+                      </div>
+                      <div className="flex items-center space-x-3 border p-3 rounded-lg cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="mobile-money" id="mobile-money" />
+                        <Label htmlFor="mobile-money" className="cursor-pointer">Mobile Money</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-gray-50 border-t border-gray-200 p-6">
+                  <Button 
+                    className="w-full bg-uganda-red hover:bg-uganda-red/90 text-white"
+                    onClick={handleOrderKit}
+                  >
+                    Complete Your Order
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
             
-            {/* Premium Package */}
-            <Card className="border-2 border-uganda-yellow rounded-lg overflow-hidden shadow-lg relative">
-              <div className="absolute top-0 right-0 bg-uganda-yellow text-uganda-black text-xs font-bold py-1 px-3 rounded-bl-lg">
-                MOST POPULAR
-              </div>
-              <div className="bg-uganda-red h-2 w-full"></div>
-              <CardHeader>
-                <CardTitle>Premium Heritage DNA</CardTitle>
-                <CardDescription>Complete ancestral discovery</CardDescription>
-                <div className="text-3xl font-bold mt-2">$129.99</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Everything in Basic Heritage DNA</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Advanced ethnicity analysis across 120+ regions</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Historical migration patterns of your ancestors</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Health predispositions and traits analysis</span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full bg-uganda-red hover:bg-uganda-red/90 text-white"
-                  onClick={handleOrderTest}
-                >
-                  Order Test Kit
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            {/* Family Package */}
-            <Card className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-uganda-yellow/10 h-2 w-full"></div>
-              <CardHeader>
-                <CardTitle>Family Heritage DNA</CardTitle>
-                <CardDescription>For multiple family members</CardDescription>
-                <div className="text-3xl font-bold mt-2">$219.99</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Two Premium Heritage DNA test kits</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Family connection mapping</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Shared ancestral traits analysis</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>20% discount on additional test kits</span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full bg-uganda-black hover:bg-uganda-black/80 text-white"
-                  onClick={handleOrderTest}
-                >
-                  Order Family Kit
-                </Button>
-              </CardFooter>
-            </Card>
+            <div className="space-y-6">
+              <Card className="bg-white shadow-md border border-gray-200">
+                <CardHeader className="border-b border-gray-200 bg-gray-50">
+                  <CardTitle className="text-xl font-medium text-gray-700">
+                    What You'll Discover With DNA Testing
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-uganda-yellow/20 flex items-center justify-center flex-shrink-0">
+                        <Globe className="h-5 w-5 text-uganda-red" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-lg mb-1">Ethnic Origins</h3>
+                        <p className="text-gray-600">
+                          Discover the percentage breakdown of your ethnicity across Ugandan tribes and other African ancestry.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-uganda-yellow/20 flex items-center justify-center flex-shrink-0">
+                        <Users className="h-5 w-5 text-uganda-red" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-lg mb-1">Relative Connections</h3>
+                        <p className="text-gray-600">
+                          Connect with previously unknown relatives who share your DNA, expanding your family network.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-uganda-yellow/20 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-5 w-5 text-uganda-red" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-lg mb-1">Migration Patterns</h3>
+                        <p className="text-gray-600">
+                          Trace your ancestors' journeys and discover the historical migration routes of your family.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-uganda-yellow/20 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-5 w-5 text-uganda-red" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-lg mb-1">Health Insights</h3>
+                        <p className="text-gray-600">
+                          Learn about genetic health predispositions and traits that may affect your wellbeing.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-white shadow-md border border-gray-200">
+                <CardHeader className="border-b border-gray-200 bg-gray-50">
+                  <CardTitle className="text-xl font-medium text-gray-700 flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-uganda-yellow" />
+                    How It Works
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ol className="space-y-6">
+                    <li className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-uganda-red flex items-center justify-center text-white font-bold flex-shrink-0">
+                        1
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-1">Order Your Kit</h3>
+                        <p className="text-gray-600">
+                          Select a kit type and complete your order. We'll ship your DNA collection kit to your address.
+                        </p>
+                      </div>
+                    </li>
+                    
+                    <li className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-uganda-red flex items-center justify-center text-white font-bold flex-shrink-0">
+                        2
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-1">Collect Your Sample</h3>
+                        <p className="text-gray-600">
+                          Follow the simple instructions to collect your saliva sample and return it using the prepaid package.
+                        </p>
+                      </div>
+                    </li>
+                    
+                    <li className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-uganda-red flex items-center justify-center text-white font-bold flex-shrink-0">
+                        3
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-1">Lab Processing</h3>
+                        <p className="text-gray-600">
+                          Our lab processes your DNA sample using state-of-the-art genomic technology (6-8 weeks).
+                        </p>
+                      </div>
+                    </li>
+                    
+                    <li className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-uganda-red flex items-center justify-center text-white font-bold flex-shrink-0">
+                        4
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-1">Explore Your Results</h3>
+                        <p className="text-gray-600">
+                          Receive notification when your results are ready. Access your DNA insights through your FamiRoots account.
+                        </p>
+                      </div>
+                    </li>
+                  </ol>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-
-          {/* How It Works */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-10 text-center">How FamiRoots DNA Testing Works</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          
+          <div className="mt-12 bg-white shadow-md border border-gray-200 rounded-lg p-6">
+            <div className="max-w-4xl mx-auto space-y-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-uganda-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-uganda-red">1</span>
-                </div>
-                <h3 className="font-semibold mb-2">Order Your Kit</h3>
-                <p className="text-sm text-gray-600">Choose your test kit and place your order online</p>
+                <h2 className="text-2xl font-bold mb-2 text-uganda-black">DNA Testing Partners</h2>
+                <p className="text-gray-600">
+                  We partner with world-class genomics laboratories to ensure accurate and comprehensive DNA analysis
+                </p>
               </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-uganda-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-uganda-red">2</span>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <Building className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <p className="font-medium">AfriGenomics Lab</p>
                 </div>
-                <h3 className="font-semibold mb-2">Collect Sample</h3>
-                <p className="text-sm text-gray-600">Simple cheek swab that takes less than 2 minutes</p>
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <Building className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <p className="font-medium">Heritage DNA</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <Building className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <p className="font-medium">Global Ancestry</p>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <Building className="h-10 w-10 text-gray-400" />
+                  </div>
+                  <p className="font-medium">GeneticTruth</p>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-uganda-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-uganda-red">3</span>
+              
+              <div className="bg-uganda-yellow/10 p-6 rounded-lg border border-uganda-yellow/20">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0">
+                    <CircleCheck className="h-6 w-6 text-uganda-red" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Privacy Commitment</h3>
+                    <p className="text-gray-600">
+                      Your DNA data is protected with industry-leading security. We never sell your genetic information to third parties without your explicit consent. You maintain control over how your data is used and shared.
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-semibold mb-2">Mail It Back</h3>
-                <p className="text-sm text-gray-600">Return your sample in the prepaid envelope provided</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-uganda-yellow/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl font-bold text-uganda-red">4</span>
-                </div>
-                <h3 className="font-semibold mb-2">Get Results</h3>
-                <p className="text-sm text-gray-600">View your detailed ancestry results online in 4-6 weeks</p>
               </div>
             </div>
-          </section>
-
-          {/* Features */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-10 text-center">Discover Your Heritage Through DNA</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <MapPin className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Ethnicity Estimate</h3>
-                <p className="text-gray-600">
-                  Discover your ethnic origins across 120+ regions worldwide, with special focus on African tribal connections.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <Users className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">DNA Matches</h3>
-                <p className="text-gray-600">
-                  Connect with relatives you never knew existed. Find distant cousins and expand your family network.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <Target className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Clan Connections</h3>
-                <p className="text-gray-600">
-                  Our unique Ugandan database helps identify your connections to specific clans within tribal groups.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <Globe className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Migration Patterns</h3>
-                <p className="text-gray-600">
-                  Trace your ancestors' migration routes through generations and understand your family's historical journey.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <Dna className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">DNA Traits</h3>
-                <p className="text-gray-600">
-                  Discover how your DNA influences physical traits, preferences, and certain abilities.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <Shield className="h-10 w-10 text-uganda-red mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Privacy Protected</h3>
-                <p className="text-gray-600">
-                  Your DNA data is protected with industry-leading security standards and privacy controls.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* FAQ Section */}
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
-            <div className="space-y-6 max-w-3xl mx-auto">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold mb-2">How accurate are the ethnicity results?</h3>
-                <p className="text-gray-600">
-                  Our ethnicity estimates are highly accurate, based on comparison with thousands of DNA samples from reference populations. We continually update our database for increased accuracy, particularly for African populations.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold mb-2">How does the DNA sample collection work?</h3>
-                <p className="text-gray-600">
-                  Our DNA kits use a simple cheek swab method that is painless and takes less than two minutes. The kit includes clear instructions, collection tubes, and a prepaid return envelope.
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h3 className="text-lg font-semibold mb-2">Is my DNA data kept private?</h3>
-                <p className="text-gray-600">
-                  Yes, protecting your privacy is our top priority. Your DNA data is stored in encrypted systems, and we never sell your personal information to third parties. You control who can see your information and can delete your data at any time.
-                </p>
-              </div>
-            </div>
-            <div className="text-center mt-8">
-              <Button 
-                className="bg-uganda-red hover:bg-uganda-red/90 text-white"
-                onClick={handleOrderTest}
-              >
-                Order Your DNA Kit Today
-              </Button>
-            </div>
-          </section>
+          </div>
         </div>
       </main>
-
-      {/* Footer will be shared component */}
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />
