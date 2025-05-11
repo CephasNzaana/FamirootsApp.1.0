@@ -12,6 +12,8 @@ import Tribes from "./pages/Tribes";
 import ClanDetails from "./pages/ClanDetails";
 import Elders from "./pages/Elders";
 import NotFound from "./pages/NotFound";
+import DNATest from "./pages/DNATest";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,8 @@ const App = () => (
             <Route path="/tribes" element={<Tribes />} />
             <Route path="/clans/:tribeId/:clanId" element={<ClanDetails />} />
             <Route path="/elders" element={<Elders />} />
+            <Route path="/dna-test" element={<DNATest />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

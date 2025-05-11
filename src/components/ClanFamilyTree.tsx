@@ -1,10 +1,10 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { ClanElder, Clan } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { User, Calendar, Heart, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ElderRelations {
   [key: string]: {
@@ -19,6 +19,10 @@ interface ClanFamilyTreeProps {
 
 // This component shows the family relationships between clan elders
 const ClanFamilyTree = ({ clan }: ClanFamilyTreeProps) => {
+  const [centralElder, setCentralElder] = useState<string | null>(
+    clan.elders.length > 0 ? clan.elders[0].id : null
+  );
+  
   // Generate consistent relationships between elders based on their IDs
   const getRelationships = (elders: ClanElder[]): ElderRelations => {
     if (elders.length <= 1) {
@@ -94,40 +98,41 @@ const ClanFamilyTree = ({ clan }: ClanFamilyTreeProps) => {
   
   const elderRelationships = getRelationships(clan.elders);
   
-  // Group elders by relationship groups to visualize the family structure
-  const groupEldersByRelationships = (elders: ClanElder[], relationships: ElderRelations) => {
-    const groups: Record<string, ClanElder[]> = {};
-    const processed = new Set<string>();
+  // Function to calculate the position for a node in the sun chart
+  const calculateNodePosition = (index: number, total: number, isCentral: boolean = false) => {
+    if (isCentral) return { x: 0, y: 0 };
     
-    // Start with each elder as potential group roots
-    elders.forEach(elder => {
-      if (processed.has(elder.id)) return;
-      
-      // Create a new group
-      const groupId = `group-${elder.id}`;
-      groups[groupId] = [elder];
-      processed.add(elder.id);
-      
-      // Find direct relations
-      const related = elders.filter(e => 
-        relationships[e.id]?.relatedToId === elder.id ||
-        relationships[elder.id]?.relatedToId === e.id
-      );
-      
-      // Add related elders to this group
-      related.forEach(rel => {
-        if (!processed.has(rel.id)) {
-          groups[groupId].push(rel);
-          processed.add(rel.id);
-        }
-      });
-    });
+    // These calculations position elders in a circle around the central elder
+    const radius = 200; // Radius for the circle
     
-    // Return only groups with more than one member
-    return Object.values(groups).filter(g => g.length > 0);
+    // Calculate the angle based on the index and total members
+    const angleStep = (2 * Math.PI) / total;
+    const angle = index * angleStep;
+    
+    // Convert polar coordinates to Cartesian coordinates
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
+    
+    return { x, y };
   };
-  
-  const elderGroups = groupEldersByRelationships(clan.elders, elderRelationships);
+
+  const centralElderObj = clan.elders.find(elder => elder.id === centralElder);
+  const otherElders = clan.elders.filter(elder => elder.id !== centralElder);
+
+  if (clan.elders.length === 0) {
+    return (
+      <Card className="w-full bg-white shadow-md">
+        <CardHeader className="border-b">
+          <CardTitle className="text-xl">No Elders Found</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center p-12">
+            <p className="text-gray-500">No elder information available for this clan.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full bg-white shadow-md">
@@ -140,79 +145,143 @@ const ClanFamilyTree = ({ clan }: ClanFamilyTreeProps) => {
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="space-y-8">
-          {elderGroups.map((group, groupIndex) => (
-            <div key={groupIndex} className="border border-dashed border-uganda-yellow/50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Users className="mr-2 h-5 w-5 text-uganda-red" />
-                Family Group {groupIndex + 1}
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {group.map(elder => {
-                  const relationship = elderRelationships[elder.id];
-                  const relatedElder = relationship?.relatedToId 
-                    ? clan.elders.find(e => e.id === relationship.relatedToId) 
-                    : null;
-                    
-                  return (
-                    <HoverCard key={elder.id}>
-                      <HoverCardTrigger asChild>
-                        <div 
-                          className="p-4 border-l-4 border-uganda-yellow bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer"
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="font-semibold text-lg">{elder.name}</h3>
-                              <p className="text-sm text-gray-600">{elder.approximateEra}</p>
-                            </div>
-                            
-                            {elder.verificationScore && (
-                              <Badge variant="outline" className="bg-uganda-yellow/20">
-                                Verified: {elder.verificationScore}/10
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {relationship && relatedElder && (
-                            <div className="mt-2 text-sm bg-gray-100 p-2 rounded">
-                              <span className="font-medium">{relationship.relation}</span>{" "}
-                              <span className="text-uganda-red">{relatedElder.name}</span>
-                            </div>
-                          )}
+        <div className="relative min-h-[500px] w-full">
+          {/* Sun chart container */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Central elder */}
+            {centralElderObj && (
+              <div className="absolute z-10">
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <div 
+                      className="p-4 border-4 border-uganda-red rounded-full bg-uganda-yellow/10 shadow-lg hover:shadow-xl transition-shadow w-32 h-32 flex flex-col items-center justify-center cursor-pointer"
+                    >
+                      <div className="font-bold text-center">{centralElderObj.name}</div>
+                      <div className="text-xs text-gray-600 text-center">{centralElderObj.approximateEra}</div>
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-64">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">{centralElderObj.name}</h4>
+                      <div className="flex items-center text-sm">
+                        <Calendar className="h-4 w-4 mr-2 text-uganda-yellow" />
+                        <span>{centralElderObj.approximateEra}</span>
+                      </div>
+                      
+                      {centralElderObj.notes && (
+                        <p className="text-sm text-gray-600 mt-2 italic">{centralElderObj.notes}</p>
+                      )}
+                      
+                      {elderRelationships[centralElderObj.id]?.relatedToId && (
+                        <div className="mt-2 pt-2 border-t text-sm">
+                          <span className="block font-medium">Family Connection:</span>
+                          <span>
+                            {elderRelationships[centralElderObj.id].relation} {
+                              clan.elders.find(e => e.id === elderRelationships[centralElderObj.id].relatedToId)?.name
+                            }
+                          </span>
                         </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">{elder.name}</h4>
-                          <div className="flex items-center text-sm">
-                            <Calendar className="h-4 w-4 mr-2 text-uganda-yellow" />
-                            <span>{elder.approximateEra}</span>
-                          </div>
-                          
-                          <div className="flex items-center text-sm">
-                            <Heart className="h-4 w-4 mr-2 text-gray-500" />
-                            <span>Deceased Elder</span>
-                          </div>
-                          
-                          {elder.notes && (
-                            <p className="text-sm text-gray-600 mt-2 italic">{elder.notes}</p>
-                          )}
-                          
-                          {relationship && relatedElder && (
-                            <div className="mt-2 pt-2 border-t text-sm">
-                              <span className="block font-medium text-uganda-black">Family Connection:</span>
-                              <span>{relationship.relation} {relatedElder.name}</span>
-                            </div>
-                          )}
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  );
-                })}
+                      )}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
-            </div>
-          ))}
+            )}
+            
+            {/* Draw dashed circle */}
+            <div 
+              className="rounded-full border border-dashed border-gray-300 absolute"
+              style={{
+                width: `400px`,
+                height: `400px`,
+                opacity: 0.5
+              }}
+            />
+            
+            {/* Other elders */}
+            {otherElders.map((elder, index) => {
+              const position = calculateNodePosition(index, otherElders.length);
+              return (
+                <HoverCard key={elder.id}>
+                  <HoverCardTrigger asChild>
+                    <div 
+                      className="absolute p-3 border-2 border-uganda-red bg-white rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      style={{
+                        transform: `translate(${position.x}px, ${position.y}px)`,
+                        zIndex: 5
+                      }}
+                      onClick={() => setCentralElder(elder.id)}
+                    >
+                      <div className="font-medium">{elder.name}</div>
+                      <div className="text-xs text-gray-500">{elder.approximateEra}</div>
+                      
+                      {elderRelationships[elder.id] && centralElderObj && elderRelationships[elder.id].relatedToId === centralElderObj.id && (
+                        <div className="mt-1 text-xs bg-gray-100 p-1 rounded-sm">
+                          {elderRelationships[elder.id].relation} {centralElderObj.name}
+                        </div>
+                      )}
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-64 z-20">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">{elder.name}</h4>
+                      <div className="flex items-center text-sm">
+                        <Calendar className="h-4 w-4 mr-2 text-uganda-yellow" />
+                        <span>{elder.approximateEra}</span>
+                      </div>
+                      
+                      {elder.notes && (
+                        <p className="text-sm text-gray-600 mt-2 italic">{elder.notes}</p>
+                      )}
+                      
+                      {elderRelationships[elder.id] && (
+                        <div className="mt-2 pt-2 border-t text-sm">
+                          <span className="block font-medium">Family Connection:</span>
+                          <span>
+                            {elderRelationships[elder.id].relation} {
+                              clan.elders.find(e => e.id === elderRelationships[elder.id].relatedToId)?.name
+                            }
+                          </span>
+                        </div>
+                      )}
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full mt-2 border-uganda-yellow text-uganda-black hover:bg-uganda-yellow/10"
+                        onClick={() => setCentralElder(elder.id)}
+                      >
+                        Set as Central Elder
+                      </Button>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              );
+            })}
+            
+            {/* Connection lines between related elders */}
+            <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+              {otherElders.map((elder, index) => {
+                if (elderRelationships[elder.id]?.relatedToId === centralElder) {
+                  const position = calculateNodePosition(index, otherElders.length);
+                  return (
+                    <line 
+                      key={`line-${elder.id}-${centralElder}`}
+                      x1="0" 
+                      y1="0" 
+                      x2={position.x} 
+                      y2={position.y}
+                      stroke="#D90000" 
+                      strokeWidth="1"
+                      strokeDasharray="4"
+                      opacity="0.6"
+                    />
+                  );
+                }
+                return null;
+              })}
+            </svg>
+          </div>
         </div>
       </CardContent>
     </Card>
