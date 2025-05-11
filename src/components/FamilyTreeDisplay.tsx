@@ -4,10 +4,15 @@ import { FamilyTree, FamilyMember } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { User, Calendar, Heart, Users, Plus, CircleX } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { User, Calendar, Heart, Users, Plus, CircleX, UserPlus, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import FamilyTreeStats from "@/components/FamilyTreeStats";
+import { Form } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState as useHookState } from "react";
 
 interface FamilyTreeDisplayProps {
   tree: FamilyTree;
@@ -16,6 +21,8 @@ interface FamilyTreeDisplayProps {
 const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
   // Principal person is the user, at the center of the sun chart
   const [principalPerson, setPrincipalPerson] = useState<string | null>(null);
+  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
+  const [addingRelationship, setAddingRelationship] = useState<string>("");
   
   // Group family members by generation
   const membersByGeneration: Record<number, FamilyMember[]> = {};
@@ -89,83 +96,49 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
     if (!centralPerson) return [];
     
     const placeholders = [];
+    const existingRelationships = new Set(tree.members.map(m => m.relationship));
     
-    // Potential parent placeholder
-    if (!tree.members.some(m => m.relationship === 'father')) {
-      placeholders.push({
-        relationship: 'father',
-        generation: centralPerson.generation - 1,
-        position: { angle: 0 }
-      });
-    }
+    // Define possible relationships to check
+    const possibleRelationships = [
+      { name: 'father', generation: -1, angle: 0 },
+      { name: 'mother', generation: -1, angle: Math.PI },
+      { name: 'paternal grandfather', generation: -2, angle: Math.PI * 1.75 },
+      { name: 'paternal grandmother', generation: -2, angle: Math.PI * 1.25 },
+      { name: 'maternal grandfather', generation: -2, angle: Math.PI * 0.75 },
+      { name: 'maternal grandmother', generation: -2, angle: Math.PI * 0.25 },
+      { name: 'sibling', generation: 0, angle: Math.PI * 0.5 },
+      { name: 'spouse', generation: 0, angle: Math.PI * 1.5 },
+      { name: 'child', generation: 1, angle: Math.PI },
+      { name: 'uncle', generation: -1, angle: Math.PI * 0.25 },
+      { name: 'aunt', generation: -1, angle: Math.PI * 1.75 },
+      { name: 'cousin', generation: 0, angle: Math.PI * 0.75 },
+    ];
     
-    if (!tree.members.some(m => m.relationship === 'mother')) {
-      placeholders.push({
-        relationship: 'mother',
-        generation: centralPerson.generation - 1,
-        position: { angle: Math.PI }
-      });
-    }
-    
-    // Grandparent placeholders
-    if (!tree.members.some(m => m.relationship === 'paternal grandfather')) {
-      placeholders.push({
-        relationship: 'paternal grandfather',
-        generation: centralPerson.generation - 2,
-        position: { angle: Math.PI * 1.75 }
-      });
-    }
-    
-    if (!tree.members.some(m => m.relationship === 'paternal grandmother')) {
-      placeholders.push({
-        relationship: 'paternal grandmother',
-        generation: centralPerson.generation - 2,
-        position: { angle: Math.PI * 1.25 }
-      });
-    }
-    
-    if (!tree.members.some(m => m.relationship === 'maternal grandfather')) {
-      placeholders.push({
-        relationship: 'maternal grandfather',
-        generation: centralPerson.generation - 2,
-        position: { angle: Math.PI * 0.75 }
-      });
-    }
-    
-    if (!tree.members.some(m => m.relationship === 'maternal grandmother')) {
-      placeholders.push({
-        relationship: 'maternal grandmother',
-        generation: centralPerson.generation - 2,
-        position: { angle: Math.PI * 0.25 }
-      });
-    }
-    
-    // Sibling placeholder
-    if (!tree.members.some(m => m.relationship.includes('sibling') || m.relationship.includes('brother') || m.relationship.includes('sister'))) {
-      placeholders.push({
-        relationship: 'sibling',
-        generation: centralPerson.generation,
-        position: { angle: Math.PI * 0.5 }
-      });
-    }
-    
-    // Spouse placeholder
-    if (!tree.members.some(m => m.relationship === 'spouse')) {
-      placeholders.push({
-        relationship: 'spouse',
-        generation: centralPerson.generation,
-        position: { angle: Math.PI * 1.5 }
-      });
-    }
-    
-    // Child placeholder
-    if (!tree.members.some(m => m.relationship.includes('son') || m.relationship.includes('daughter') || m.relationship === 'child')) {
-      placeholders.push({
-        relationship: 'child',
-        generation: centralPerson.generation + 1,
-        position: { angle: Math.PI }
-      });
-    }
+    // Add placeholders for missing relationships
+    possibleRelationships.forEach(rel => {
+      let shouldAdd = true;
+      
+      // Check if relationship is already present in some form
+      if (rel.name === 'sibling') {
+        shouldAdd = !Array.from(existingRelationships).some(r => 
+          r.includes('sibling') || r.includes('brother') || r.includes('sister')
+        );
+      } else if (rel.name === 'child') {
+        shouldAdd = !Array.from(existingRelationships).some(r => 
+          r.includes('son') || r.includes('daughter') || r === 'child'
+        );
+      } else {
+        shouldAdd = !existingRelationships.has(rel.name);
+      }
+      
+      if (shouldAdd) {
+        placeholders.push({
+          relationship: rel.name,
+          generation: centralPerson.generation + rel.generation,
+          position: { angle: rel.angle }
+        });
+      }
+    });
     
     return placeholders;
   };
@@ -176,8 +149,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
   const calculateNodePosition = (generation: number, index: number, totalInGeneration: number) => {
     // These calculations position family members in concentric circles
     // Each generation gets its own ring
-    const baseRadius = 150; // Base radius for the sun chart
-    const radiusIncrement = 100; // Increment per generation
+    const baseRadius = 100; // Smaller base radius for more compact tree
+    const radiusIncrement = 70; // Smaller increment for more compact generations
     const centralGeneration = centralPerson?.generation || 0;
     const genDifference = Math.abs(generation - centralGeneration);
     const radius = baseRadius + genDifference * radiusIncrement;
@@ -195,9 +168,27 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
 
   const handleAddFamilyMember = (relationship?: string) => {
     if (relationship) {
-      toast.info(`Add ${relationship} feature will be available soon!`);
+      setAddingRelationship(relationship);
+      setAddMemberDialogOpen(true);
     } else {
-      toast.info("Add family member feature will be available soon!");
+      setAddingRelationship("");
+      setAddMemberDialogOpen(true);
+    }
+  };
+
+  const onSubmitNewMember = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const gender = formData.get('gender') as string;
+    const birthYear = formData.get('birthYear') as string;
+    const relationship = addingRelationship || formData.get('relationship') as string;
+    
+    if (name && relationship) {
+      toast.success(`Added ${name} as ${relationship}. This feature will be fully implemented soon!`);
+      setAddMemberDialogOpen(false);
+    } else {
+      toast.error("Please provide at least a name and relationship");
     }
   };
 
@@ -238,7 +229,7 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
           </Button>
         </CardHeader>
         <CardContent className="p-6 overflow-x-auto">
-          <div className="relative min-h-[700px] w-full">
+          <div className="relative min-h-[600px] w-full">
             {/* Sun chart container */}
             <div className="absolute inset-0 flex items-center justify-center">
               {/* Central person */}
@@ -249,14 +240,48 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                       <div 
                         className={`tree-node bg-uganda-yellow/20 p-4 rounded-full border-4 cursor-pointer
                         ${centralPerson.isElder ? 'border-uganda-red' : 'border-uganda-yellow'} 
-                        shadow-lg relative hover:shadow-xl transition-shadow w-32 h-32 flex flex-col items-center justify-center`}
+                        shadow-lg relative hover:shadow-xl transition-shadow w-24 h-24 flex flex-col items-center justify-center`}
                         id={`member-${centralPerson.id}`}
                       >
-                        <div className="font-bold text-[#333333] text-center">{centralPerson.name}</div>
-                        <div className="text-xs text-gray-500 text-center">{centralPerson.relationship || "You"}</div>
+                        {centralPerson.photoUrl ? (
+                          <div className="overflow-hidden rounded-full w-16 h-16 bg-gray-100 border border-gray-300">
+                            <img 
+                              src={centralPerson.photoUrl} 
+                              alt={centralPerson.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="bg-uganda-yellow/50 rounded-full p-2 mb-1">
+                            <UserCircle2 size={24} className="text-uganda-black" />
+                          </div>
+                        )}
+                        <div className="text-xs font-bold text-[#333333] text-center truncate max-w-full">
+                          {centralPerson.name}
+                        </div>
                         {centralPerson.isElder && (
                           <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white">Elder</Badge>
                         )}
+                        
+                        {/* Connector dots around the central node */}
+                        {Array.from({ length: 8 }).map((_, i) => {
+                          const angle = (i * Math.PI) / 4;
+                          const x = Math.cos(angle) * 12;
+                          const y = Math.sin(angle) * 12;
+                          return (
+                            <div 
+                              key={`connector-${i}`}
+                              className="absolute w-2 h-2 bg-gray-400 rounded-full"
+                              style={{
+                                transform: `translate(${x}px, ${y}px)`,
+                                top: '50%',
+                                left: '50%',
+                                marginLeft: '-1px',
+                                marginTop: '-1px'
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-64 p-4 border border-gray-200 shadow-lg">
@@ -301,8 +326,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                     <div 
                       className="rounded-full border border-dashed border-gray-300 absolute"
                       style={{
-                        width: `${300 + Math.abs(gen - (centralPerson?.generation || 0)) * 200}px`,
-                        height: `${300 + Math.abs(gen - (centralPerson?.generation || 0)) * 200}px`,
+                        width: `${200 + Math.abs(gen - (centralPerson?.generation || 0)) * 140}px`,
+                        height: `${200 + Math.abs(gen - (centralPerson?.generation || 0)) * 140}px`,
                         opacity: 0.5
                       }}
                     />
@@ -314,32 +339,48 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                         <HoverCard key={member.id}>
                           <HoverCardTrigger asChild>
                             <div 
-                              className={`absolute tree-node bg-white p-3 rounded-md border-2 cursor-pointer
+                              className={`absolute tree-node bg-white p-2 rounded-full border-2 cursor-pointer
                               ${member.isElder ? 'border-uganda-red bg-uganda-yellow/10' : 'border-gray-200'} 
                               shadow-sm hover:shadow-md transition-shadow`}
                               style={{
                                 transform: `translate(${position.x}px, ${position.y}px)`,
-                                zIndex: 5
+                                zIndex: 5,
+                                width: '50px',
+                                height: '50px',
                               }}
                               onClick={() => setPrincipalPerson(member.id)}
                               id={`member-${member.id}`}
                             >
-                              <div className="font-medium text-[#333333]">{member.name}</div>
-                              <div className="text-xs text-gray-500">{member.relationship}</div>
-                              <div className="flex items-center gap-1 text-xs text-gray-400">
-                                {member.birthYear && (
-                                  <span>b. {member.birthYear}</span>
-                                )}
-                                {member.deathYear && (
-                                  <>
-                                    <span>-</span>
-                                    <span>d. {member.deathYear}</span>
-                                  </>
-                                )}
-                              </div>
-                              {member.isElder && (
-                                <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white">Elder</Badge>
+                              {member.photoUrl ? (
+                                <div className="overflow-hidden rounded-full w-full h-full">
+                                  <img 
+                                    src={member.photoUrl} 
+                                    alt={member.name} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center">
+                                  <UserCircle2 size={20} className="text-gray-400 mb-1" />
+                                  <div className="text-[8px] font-medium text-[#333333] truncate w-full text-center">
+                                    {member.name}
+                                  </div>
+                                </div>
                               )}
+                              {member.isElder && (
+                                <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white p-0 h-4 min-w-4 flex items-center justify-center">E</Badge>
+                              )}
+
+                              {/* Connector dots */}
+                              <div 
+                                className="absolute w-2 h-2 bg-gray-400 rounded-full" 
+                                style={{
+                                  bottom: position.y > 0 ? '-1px' : 'auto',
+                                  top: position.y <= 0 ? '-1px' : 'auto',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)'
+                                }}
+                              />
 
                               {/* Connection line to central person */}
                               <div 
@@ -411,8 +452,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                 // Use provided angle if available, otherwise calculate based on index
                 let position;
                 if (placeholder.position?.angle !== undefined) {
-                  const baseRadius = 150;
-                  const radiusIncrement = 100;
+                  const baseRadius = 100;
+                  const radiusIncrement = 70;
                   const genDifference = Math.abs(placeholder.generation - centralPerson.generation);
                   const radius = baseRadius + genDifference * radiusIncrement;
                   position = {
@@ -430,17 +471,30 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                 return (
                   <div 
                     key={`placeholder-${index}`}
-                    className="absolute tree-node bg-gray-100 p-2 rounded-md border-2 border-dashed border-gray-300 cursor-pointer hover:bg-uganda-yellow/10 hover:border-uganda-yellow transition-colors"
+                    className="absolute tree-node bg-gray-100/80 p-2 rounded-full border-2 border-dashed border-gray-300 cursor-pointer hover:bg-uganda-yellow/10 hover:border-uganda-yellow transition-colors flex items-center justify-center"
                     style={{
                       transform: `translate(${position.x}px, ${position.y}px)`,
-                      zIndex: 5
+                      zIndex: 5,
+                      width: '40px',
+                      height: '40px'
                     }}
                     onClick={() => handleAddFamilyMember(placeholder.relationship)}
                   >
-                    <div className="text-sm font-medium text-gray-500 flex items-center">
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add {placeholder.relationship}
+                    <div className="text-xs font-medium text-gray-500 flex flex-col items-center">
+                      <UserPlus className="h-4 w-4 mb-1" />
+                      <span className="text-[6px] truncate w-full text-center">Add {placeholder.relationship}</span>
                     </div>
+                    
+                    {/* Connector dot */}
+                    <div 
+                      className="absolute w-2 h-2 bg-gray-300 rounded-full" 
+                      style={{
+                        bottom: position.y > 0 ? '-1px' : 'auto',
+                        top: position.y <= 0 ? '-1px' : 'auto',
+                        left: '50%',
+                        transform: 'translateX(-50%)'
+                      }}
+                    />
                     
                     {/* Connection line to central person */}
                     <div 
@@ -485,6 +539,93 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
           </div>
         </CardContent>
       </Card>
+      
+      <Dialog open={addMemberDialogOpen} onOpenChange={setAddMemberDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {addingRelationship 
+                ? `Add ${addingRelationship.charAt(0).toUpperCase() + addingRelationship.slice(1)}` 
+                : "Add Family Member"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={onSubmitNewMember}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <label htmlFor="name" className="text-sm font-medium">
+                  Name
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Full name"
+                  required
+                />
+              </div>
+              
+              {!addingRelationship && (
+                <div className="grid gap-2">
+                  <label htmlFor="relationship" className="text-sm font-medium">
+                    Relationship
+                  </label>
+                  <Input
+                    id="relationship"
+                    name="relationship"
+                    placeholder="e.g., father, mother, sibling"
+                    required
+                  />
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <label htmlFor="gender" className="text-sm font-medium">
+                    Gender
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="birthYear" className="text-sm font-medium">
+                    Birth Year
+                  </label>
+                  <Input
+                    id="birthYear"
+                    name="birthYear"
+                    placeholder="e.g., 1980"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <label htmlFor="notes" className="text-sm font-medium">
+                  Notes
+                </label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  placeholder="Any additional information..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddMemberDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
+                Add Family Member
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

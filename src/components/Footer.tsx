@@ -9,7 +9,9 @@ import {
   Instagram, 
   Youtube, 
   Smartphone, 
-  Send
+  Send,
+  MessageSquare,
+  BrandTiktok
 } from "lucide-react";
 
 const Footer = () => {
@@ -36,20 +38,23 @@ const Footer = () => {
                 Preserving Ugandan family heritage through innovative clan-based family tree technology.
               </p>
               <div className="flex space-x-3">
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="bg-uganda-yellow/90 hover:bg-uganda-yellow p-2 rounded-full transition-colors">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="bg-[#0077B5] hover:bg-[#0077B5]/80 p-2 rounded-full transition-colors">
                   <Linkedin size={16} />
                 </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="bg-uganda-yellow/90 hover:bg-uganda-yellow p-2 rounded-full transition-colors">
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="bg-[#1DA1F2] hover:bg-[#1DA1F2]/80 p-2 rounded-full transition-colors">
                   <Twitter size={16} />
                 </a>
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="bg-uganda-yellow/90 hover:bg-uganda-yellow p-2 rounded-full transition-colors">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="bg-[#4267B2] hover:bg-[#4267B2]/80 p-2 rounded-full transition-colors">
                   <Facebook size={16} />
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="bg-uganda-yellow/90 hover:bg-uganda-yellow p-2 rounded-full transition-colors">
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-[#FFDC80] via-[#E1306C] to-[#833AB4] hover:opacity-90 p-2 rounded-full transition-colors">
                   <Instagram size={16} />
                 </a>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="bg-uganda-yellow/90 hover:bg-uganda-yellow p-2 rounded-full transition-colors">
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="bg-[#FF0000] hover:bg-[#FF0000]/80 p-2 rounded-full transition-colors">
                   <Youtube size={16} />
+                </a>
+                <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="bg-black hover:bg-black/80 p-2 rounded-full transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M15 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M15 2v2c-3.33 0-6 2-6 6v8"/></svg>
                 </a>
               </div>
             </div>
@@ -75,6 +80,9 @@ const Footer = () => {
                 </li>
                 <li>
                   <a href="/elders" className="text-gray-300 hover:text-uganda-yellow transition-colors">Clan Elders</a>
+                </li>
+                <li>
+                  <a href="/profile" className="text-gray-300 hover:text-uganda-yellow transition-colors">My Profile</a>
                 </li>
               </ul>
             </div>

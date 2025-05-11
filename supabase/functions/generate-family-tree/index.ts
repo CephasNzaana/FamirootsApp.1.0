@@ -82,6 +82,8 @@ serve(async (req) => {
       ...familyData
     };
 
+    console.log("Sending data to OpenAI:", JSON.stringify(userData));
+
     // Call OpenAI to generate a family tree based on the user's input
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -98,17 +100,18 @@ serve(async (req) => {
             
             Your task is to create a family tree structure based on the provided information about a user's family.
             
-            Follow these rules:
-            1. Only use the information provided by the user. DO NOT invent or add fictitious family members.
-            2. For any missing information, DO NOT fill in gaps with made-up data.
+            Follow these strict rules:
+            1. ONLY use the information explicitly provided by the user. DO NOT invent or add any fictitious family members.
+            2. If a family connection wasn't explicitly mentioned, DO NOT create it.
             3. Use generation numbers to represent the family hierarchy (0 for the main user, -1 for parents, -2 for grandparents, 1 for children).
             4. The response should be a valid JSON object that includes an array of family members, each with unique IDs.
             5. Make the user the central person in the family tree.
-            6. Include all relationships that can be inferred from the provided data.
+            6. Include all relationships that can be directly inferred from the provided data.
+            7. Never add placeholder or fictional members. Only include members that were explicitly mentioned in the input data.
             
             Each family member should include:
             - id: a unique string identifier (like "member1", "member2", etc.)
-            - name: the person's name
+            - name: the person's name as provided in the input
             - relationship: their relationship to the main user (e.g., "self", "father", "paternal grandfather")
             - birthYear: birth year if provided
             - deathYear: death year if provided
@@ -117,14 +120,14 @@ serve(async (req) => {
             - isElder: boolean indicating if this person is a clan elder
             - gender: "male" or "female" if provided
             
-            Return only the valid JSON with no additional explanations or text outside the JSON.`
+            Return only the valid JSON with no additional explanations or text outside the JSON. Make sure to never include invented family members.`
           },
           {
             role: 'user',
-            content: `Please create a family tree structure based on this information: ${JSON.stringify(userData)}`
+            content: `Please create a family tree structure strictly based on only this information, with no invented members: ${JSON.stringify(userData)}`
           }
         ],
-        temperature: 0.5,
+        temperature: 0.3,
       }),
     });
 
@@ -138,6 +141,7 @@ serve(async (req) => {
 
     // Parse the OpenAI response to get the family tree structure
     const aiResponseText = openAIData.choices[0].message.content;
+    console.log("OpenAI response:", aiResponseText);
     
     let familyTreeData;
     try {

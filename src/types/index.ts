@@ -32,6 +32,7 @@ export interface TreeFormData {
     };
   };
   children: ChildInfo[]; // Array of children
+  extendedFamily: ExtendedFamilyMember[]; // Additional family members
 }
 
 // Family Tree Types
@@ -49,6 +50,18 @@ export interface FamilyMember {
   clanConnectionId?: string; // Reference to a specific clan elder
   side?: 'maternal' | 'paternal';
   status?: 'living' | 'deceased';
+  photoUrl?: string; // URL to member's photo
+  biography?: string; // Short biography
+}
+
+export interface ExtendedFamilyMember {
+  name: string;
+  relationship: string;
+  gender: string;
+  birthYear: string;
+  deathYear?: string;
+  status?: 'living' | 'deceased';
+  notes?: string;
 }
 
 export type FamilyTree = {
@@ -110,10 +123,11 @@ export interface ElderReference {
 export interface RelationshipResult {
   isRelated: boolean;
   relationshipType?: string;
-  commonElder?: ElderReference;
+  commonElders?: ElderReference[]; // Updated to handle multiple elders
   generationalDistance?: number;
   clanContext: string;
   confidenceScore: number;
+  verificationPath?: string[]; // Path showing the connection
 }
 
 export interface ClanElder {
@@ -124,6 +138,13 @@ export interface ClanElder {
   notes?: string;
   deathYear?: string;
   status?: 'deceased'; // Elders are typically deceased
+  connections?: ClanElderConnection[]; // Connections to other elders
+}
+
+export interface ClanElderConnection {
+  elderIds: string[];
+  relationshipType: string;
+  description?: string;
 }
 
 export interface Clan {
@@ -144,6 +165,38 @@ export interface Tribe {
   language?: string;
   description: string;
   clans: Clan[];
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  birthYear?: string;
+  birthPlace?: string;
+  biography?: string;
+  tribe?: string;
+  clan?: string;
+  photoUrl?: string;
+  familyTreeIds?: string[];
+  dnaTestResults?: DNATestResult[];
+}
+
+export interface DNATestResult {
+  id: string;
+  userId: string;
+  dateSubmitted: string;
+  dateProcessed?: string;
+  status: 'submitted' | 'processing' | 'completed';
+  ethnicityBreakdown?: Record<string, number>;
+  geneticMatches?: GeneticMatch[];
+}
+
+export interface GeneticMatch {
+  id: string;
+  name: string;
+  relationshipEstimate: string;
+  sharedDNA: number;
+  contactInfo?: string;
 }
 
 export const DEFAULT_USERS = {
