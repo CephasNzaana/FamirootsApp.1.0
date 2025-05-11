@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import DNATest from "./pages/DNATest";
 import ProfilePage from "./pages/ProfilePage";
 import UserProfilePage from "./pages/UserProfilePage";
+import Traditions from "./pages/Traditions";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dna-test" element={<DNATest />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/user-profile" element={<UserProfilePage />} />
+            <Route path="/traditions" element={<Traditions />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

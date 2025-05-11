@@ -20,22 +20,35 @@ export const ensureProfileTableSchema = async () => {
   }
 };
 
-// Function to update a profile with extended fields
+// Function to update a user profile with extended fields
 export const updateUserProfile = async (userId: string, profileData: any) => {
   try {
-    // Use upsert to ensure we create or update as needed
+    // Use a more robust approach to handle missing fields
+    const updateData: Record<string, any> = {};
+    
+    // Only add fields that are actually provided
+    if (profileData.fullName !== undefined) updateData.full_name = profileData.fullName;
+    if (profileData.email !== undefined) updateData.email = profileData.email || '';
+    if (profileData.photoUrl !== undefined) updateData.avatar_url = profileData.photoUrl || null;
+    if (profileData.biography !== undefined) updateData.biography = profileData.biography || '';
+    if (profileData.birthYear !== undefined) updateData.birth_year = profileData.birthYear || '';
+    if (profileData.birthPlace !== undefined) updateData.birth_place = profileData.birthPlace || '';
+    if (profileData.tribe !== undefined) updateData.tribe = profileData.tribe || '';
+    if (profileData.clan !== undefined) updateData.clan = profileData.clan || '';
+    
+    // Always update the timestamp when profile is modified
+    updateData.updated_at = new Date().toISOString();
+    
+    // Use upsert to create or update as needed
     const { error } = await supabase
       .from('profiles')
-      .update({
-        full_name: profileData.fullName,
-        email: profileData.email || '',
-        avatar_url: profileData.photoUrl || null,
-        // These fields may not exist in the database yet and will be ignored
-        // until the schema is updated
-      })
-      .eq('id', userId);
+      .upsert({
+        id: userId,
+        ...updateData
+      });
       
     if (error) {
+      console.error('Error updating profile:', error);
       throw error;
     }
     

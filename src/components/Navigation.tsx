@@ -72,6 +72,17 @@ export const Navigation = () => {
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
+        
+        {user && (
+          <NavigationMenuItem>
+            <Link to="/user-profile">
+              <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-white text-uganda-black hover:bg-white/90 hover:text-uganda-black")}>
+                <User className="mr-2 h-4 w-4" />
+                My Profile
+              </NavigationMenuLink>
+            </Link>
+          </NavigationMenuItem>
+        )}
       </NavigationMenuList>
     </NavigationMenu>
   );

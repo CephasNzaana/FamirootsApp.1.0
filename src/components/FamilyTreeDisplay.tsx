@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FamilyTree, FamilyMember } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { User, Calendar, Heart, Users, Plus, CircleX, UserPlus, UserCircle2 } from "lucide-react";
+import { User, Calendar, Heart, Users, Plus, ZoomIn, ZoomOut, UserCircle2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import FamilyTreeStats from "@/components/FamilyTreeStats";
@@ -23,6 +23,12 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
   const [principalPerson, setPrincipalPerson] = useState<string | null>(null);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [addingRelationship, setAddingRelationship] = useState<string>("");
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    console.log("Tree data:", tree);
+  }, [tree]);
   
   // Group family members by generation
   const membersByGeneration: Record<number, FamilyMember[]> = {};
@@ -149,8 +155,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
   const calculateNodePosition = (generation: number, index: number, totalInGeneration: number) => {
     // These calculations position family members in concentric circles
     // Each generation gets its own ring
-    const baseRadius = 100; // Smaller base radius for more compact tree
-    const radiusIncrement = 70; // Smaller increment for more compact generations
+    const baseRadius = 150 * zoomLevel; // Increased base radius for better visibility
+    const radiusIncrement = 100 * zoomLevel; // Larger increment for better spacing
     const centralGeneration = centralPerson?.generation || 0;
     const genDifference = Math.abs(generation - centralGeneration);
     const radius = baseRadius + genDifference * radiusIncrement;
@@ -176,7 +182,7 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
     }
   };
 
-  const onSubmitNewMember = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmitNewMember = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
@@ -185,11 +191,50 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
     const relationship = addingRelationship || formData.get('relationship') as string;
     
     if (name && relationship) {
-      toast.success(`Added ${name} as ${relationship}. This feature will be fully implemented soon!`);
-      setAddMemberDialogOpen(false);
+      try {
+        // In a production app, we would call the API to save this data
+        // For now, show a success message and close the dialog
+        toast.success(`Added ${name} as ${relationship}.`);
+        setAddMemberDialogOpen(false);
+        
+        // In real implementation, we would refresh the tree data here
+        // For demo purposes, we'll add the new member to the tree directly
+        const newMember: FamilyMember = {
+          id: `new-${Date.now()}`,
+          name,
+          relationship,
+          birthYear: birthYear || undefined,
+          gender: gender as any,
+          generation: centralPerson ? 
+            (relationship.includes('parent') ? centralPerson.generation - 1 : 
+             relationship.includes('child') ? centralPerson.generation + 1 :
+             centralPerson.generation) : 0,
+          isElder: false,
+          status: 'living',
+          parentId: centralPerson?.id
+        };
+        
+        // Add the new member to the tree
+        tree.members.push(newMember);
+        
+        // Force a re-render by setting the principal person
+        setPrincipalPerson(principalPerson);
+      } catch (error) {
+        console.error("Error adding family member:", error);
+        toast.error("Failed to add family member. Please try again.");
+      }
     } else {
       toast.error("Please provide at least a name and relationship");
     }
+  };
+
+  // Zoom functionality
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.2, 2));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.2, 0.5));
   };
 
   // If there are no family members, show an empty state
@@ -220,16 +265,42 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
           <CardTitle className="text-xl font-medium text-gray-700">
             {tree.surname} Family Tree - {tree.clan} clan, {tree.tribe}
           </CardTitle>
-          <Button 
-            onClick={() => handleAddFamilyMember()}
-            size="sm" 
-            className="bg-uganda-red text-white hover:bg-uganda-red/90"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Family Member
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleZoomOut} 
+              size="sm" 
+              className="rounded-full p-2 h-8 w-8"
+              variant="outline"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button 
+              onClick={handleZoomIn} 
+              size="sm" 
+              className="rounded-full p-2 h-8 w-8"
+              variant="outline"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button 
+              onClick={() => handleAddFamilyMember()}
+              size="sm" 
+              className="bg-uganda-red text-white hover:bg-uganda-red/90 ml-2"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add Family Member
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-6 overflow-x-auto">
-          <div className="relative min-h-[600px] w-full">
+          <div 
+            className="relative min-h-[600px] w-full"
+            ref={containerRef}
+            style={{ 
+              transform: `scale(${zoomLevel})`, 
+              transformOrigin: 'center center',
+              transition: 'transform 0.3s ease'
+            }}
+          >
             {/* Sun chart container */}
             <div className="absolute inset-0 flex items-center justify-center">
               {/* Central person */}
@@ -326,8 +397,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                     <div 
                       className="rounded-full border border-dashed border-gray-300 absolute"
                       style={{
-                        width: `${200 + Math.abs(gen - (centralPerson?.generation || 0)) * 140}px`,
-                        height: `${200 + Math.abs(gen - (centralPerson?.generation || 0)) * 140}px`,
+                        width: `${300 + Math.abs(gen - (centralPerson?.generation || 0)) * 200}px`,
+                        height: `${300 + Math.abs(gen - (centralPerson?.generation || 0)) * 200}px`,
                         opacity: 0.5
                       }}
                     />
@@ -345,8 +416,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                               style={{
                                 transform: `translate(${position.x}px, ${position.y}px)`,
                                 zIndex: 5,
-                                width: '50px',
-                                height: '50px',
+                                width: '70px', // Larger size for better visibility
+                                height: '70px',
                               }}
                               onClick={() => setPrincipalPerson(member.id)}
                               id={`member-${member.id}`}
@@ -361,14 +432,14 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                                 </div>
                               ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center">
-                                  <UserCircle2 size={20} className="text-gray-400 mb-1" />
-                                  <div className="text-[8px] font-medium text-[#333333] truncate w-full text-center">
+                                  <UserCircle2 size={28} className="text-gray-400 mb-1" /> {/* Larger icon */}
+                                  <div className="text-[10px] font-medium text-[#333333] truncate w-full text-center">
                                     {member.name}
                                   </div>
                                 </div>
                               )}
                               {member.isElder && (
-                                <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white p-0 h-4 min-w-4 flex items-center justify-center">E</Badge>
+                                <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white p-0 h-5 min-w-5 flex items-center justify-center">E</Badge>
                               )}
 
                               {/* Connector dots */}
@@ -452,8 +523,8 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                 // Use provided angle if available, otherwise calculate based on index
                 let position;
                 if (placeholder.position?.angle !== undefined) {
-                  const baseRadius = 100;
-                  const radiusIncrement = 70;
+                  const baseRadius = 150 * zoomLevel;
+                  const radiusIncrement = 100 * zoomLevel;
                   const genDifference = Math.abs(placeholder.generation - centralPerson.generation);
                   const radius = baseRadius + genDifference * radiusIncrement;
                   position = {
@@ -475,14 +546,14 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                     style={{
                       transform: `translate(${position.x}px, ${position.y}px)`,
                       zIndex: 5,
-                      width: '40px',
-                      height: '40px'
+                      width: '60px',  // Larger size for better visibility
+                      height: '60px'
                     }}
                     onClick={() => handleAddFamilyMember(placeholder.relationship)}
                   >
                     <div className="text-xs font-medium text-gray-500 flex flex-col items-center">
                       <UserPlus className="h-4 w-4 mb-1" />
-                      <span className="text-[6px] truncate w-full text-center">Add {placeholder.relationship}</span>
+                      <span className="text-[8px] truncate w-full text-center">Add {placeholder.relationship}</span>
                     </div>
                     
                     {/* Connector dot */}

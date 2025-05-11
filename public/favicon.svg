@@ -1,29 +1,18 @@
 
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <!-- Background -->
-  <rect width="128" height="128" fill="#000000" rx="16" ry="16"/>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Tree trunk - black (Uganda flag color) -->
+  <rect x="28" y="32" width="8" height="30" fill="#000000"/>
   
-  <!-- Tree Trunk -->
-  <rect x="58" y="80" width="12" height="30" fill="#FFCE00"/>
+  <!-- Tree bottom branches - yellow (Uganda flag color) -->
+  <path d="M20 32 L32 20 L44 32 Z" fill="#FFCE00"/>
   
-  <!-- Tree Foliage - Bottom Layer -->
-  <circle cx="64" cy="72" r="28" fill="#D90000"/>
+  <!-- Tree middle branches - red (Uganda flag color) -->
+  <path d="M16 32 L32 16 L48 32 Z" fill="#D90000"/>
   
-  <!-- Tree Foliage - Middle Layer -->
-  <circle cx="64" cy="50" r="20" fill="#FFCE00"/>
+  <!-- Tree top branches - black (Uganda flag color) -->
+  <path d="M24 24 L32 8 L40 24 Z" fill="#000000"/>
   
-  <!-- Tree Foliage - Top Layer -->
-  <circle cx="64" cy="32" r="12" fill="#000000"/>
-  
-  <!-- Clan Connection Lines -->
-  <line x1="44" y1="72" x2="38" y2="90" stroke="#FFCE00" stroke-width="2"/>
-  <line x1="84" y1="72" x2="90" y2="90" stroke="#FFCE00" stroke-width="2"/>
-  <line x1="50" y1="50" x2="34" y2="56" stroke="#FFCE00" stroke-width="2"/>
-  <line x1="78" y1="50" x2="94" y2="56" stroke="#FFCE00" stroke-width="2"/>
-  
-  <!-- Connection Nodes -->
-  <circle cx="38" cy="90" r="4" fill="#FFCE00"/>
-  <circle cx="90" cy="90" r="4" fill="#FFCE00"/>
-  <circle cx="34" cy="56" r="4" fill="#FFCE00"/>
-  <circle cx="94" cy="56" r="4" fill="#FFCE00"/>
+  <!-- Tree roots - black (Uganda flag color) -->
+  <path d="M28 62 L24 64 L26 62 L22 64 L24 62 Z" fill="#000000"/>
+  <path d="M36 62 L40 64 L38 62 L42 64 L40 62 Z" fill="#000000"/>
 </svg>
