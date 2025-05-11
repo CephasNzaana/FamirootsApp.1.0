@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -134,7 +133,7 @@ const RelationshipAnalyzer = () => {
       }
       
       // Determine if they have a common elder
-      const commonElder = isSameClan && person1.elderConnection && person2.elderConnection && 
+      const commonElders = isSameClan && person1.elderConnection && person2.elderConnection && 
                         person1.elderConnection === person2.elderConnection;
       
       // Get more detailed relationship type
@@ -145,7 +144,7 @@ const RelationshipAnalyzer = () => {
       
       if (isSameTribe) {
         if (isSameClan) {
-          if (commonElder) {
+          if (commonElders) {
             relationshipType = "Direct Family Relation";
             generationalDistance = 3;
             confidenceScore = 0.85;
@@ -180,13 +179,15 @@ const RelationshipAnalyzer = () => {
         generationalDistance,
         clanContext,
         confidenceScore,
-        commonElder: commonElder && elder1 ? {
-          id: elder1.id,
-          name: elder1.name,
-          approximateEra: elder1.approximateEra,
-          verificationScore: elder1.verificationScore,
-          familyConnections: ["Family A", "Family B"]
-        } : undefined
+        commonElders: commonElders && elder1 ? [
+          {
+            id: elder1.id,
+            name: elder1.name,
+            approximateEra: elder1.approximateEra,
+            verificationScore: elder1.verificationScore,
+            familyConnections: ["Family A", "Family B"]
+          }
+        ] : undefined
       };
 
       setResult(mockResult);
@@ -402,11 +403,15 @@ const RelationshipAnalyzer = () => {
                       <div>{result.relationshipType || 'Unknown'}</div>
                     </div>
                     
-                    {result.commonElder && (
+                    {result.commonElders && (
                       <div className="space-y-2">
-                        <div className="font-medium">Common Elder:</div>
-                        <div>{result.commonElder.name}</div>
-                        <div className="text-sm text-gray-600">Era: {result.commonElder.approximateEra}</div>
+                        <div className="font-medium">Common Elders:</div>
+                        <div>{result.commonElders.map((elder, idx) => (
+                          <div key={idx} className="flex items-center">
+                            <div className="text-sm">{elder.name}</div>
+                            <div className="text-sm text-gray-600">Era: {elder.approximateEra}</div>
+                          </div>
+                        ))}</div>
                       </div>
                     )}
                     

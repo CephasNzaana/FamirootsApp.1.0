@@ -54,7 +54,8 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         grandmother: { name: "", birthYear: "", deathYear: "" }
       }
     },
-    children: []
+    children: [],
+    extendedFamily: [] // Add the missing extendedFamily property
   });
 
   const [availableElders, setAvailableElders] = useState<ElderReference[]>([]);

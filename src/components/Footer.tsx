@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,7 @@ import {
   Youtube, 
   Smartphone, 
   Send,
-  MessageSquare,
-  BrandTiktok
+  MessageSquare
 } from "lucide-react";
 
 const Footer = () => {

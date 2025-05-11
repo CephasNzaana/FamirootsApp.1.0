@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -15,10 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Calendar, Clock, Dna, FileText, MapPin, UserCircle, Users } from 'lucide-react';
 import FamilyTreeDisplay from '@/components/FamilyTreeDisplay';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { updateUserProfile } from '@/hooks/useSupabaseDatabase';
 
 const UserProfilePage = () => {
   const { user } = useAuth();
@@ -174,20 +175,19 @@ const UserProfilePage = () => {
     }
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: profileForm.fullName,
-          birth_year: profileForm.birthYear,
-          birth_place: profileForm.birthPlace,
-          tribe: profileForm.tribe,
-          clan: profileForm.clan,
-          biography: profileForm.biography,
-          updated_at: new Date().toISOString()
-        });
+      // Use our helper function to update the profile
+      const { success, error } = await updateUserProfile(user.id, {
+        fullName: profileForm.fullName,
+        email: user.email,
+        biography: profileForm.biography,
+        birthYear: profileForm.birthYear,
+        birthPlace: profileForm.birthPlace,
+        tribe: profileForm.tribe,
+        clan: profileForm.clan,
+        photoUrl: profile?.photoUrl
+      });
       
-      if (error) throw error;
+      if (!success) throw error;
       
       toast.success('Profile updated successfully');
       setIsEditing(false);
