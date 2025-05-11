@@ -69,11 +69,11 @@ const UserProfilePage = () => {
         id: user?.id || '',
         fullName: profileData?.full_name || user?.email?.split('@')[0] || '',
         email: user?.email || '',
-        biography: profileData?.biography || '',
-        birthYear: profileData?.birth_year || '',
-        birthPlace: profileData?.birth_place || '',
-        tribe: profileData?.tribe || '',
-        clan: profileData?.clan || '',
+        biography: '',  // These fields may not exist in the database yet
+        birthYear: '',
+        birthPlace: '',
+        tribe: '',
+        clan: '',
         photoUrl: profileData?.avatar_url || ''
       };
       
@@ -111,22 +111,27 @@ const UserProfilePage = () => {
           }
           
           // Convert database format to app format
-          const members = (membersData || []).map(member => ({
-            id: member.id,
-            name: member.name,
-            relationship: member.relationship,
-            birthYear: member.birth_year,
-            deathYear: member.death_year,
-            generation: member.generation,
-            parentId: member.parent_id,
-            isElder: Boolean(member.is_elder),
-            gender: member.gender,
-            marriedTo: member.married_to,
-            clanConnectionId: member.clan_connection_id,
-            side: member.side as 'maternal' | 'paternal' | undefined,
-            status: member.death_year ? 'deceased' : 'living',
-            photoUrl: member.photo_url
-          }));
+          const members = (membersData || []).map(member => {
+            const status = member.death_year ? 'deceased' : 'living';
+            
+            return {
+              id: member.id,
+              name: member.name,
+              relationship: member.relationship,
+              birthYear: member.birth_year,
+              deathYear: member.death_year,
+              generation: member.generation,
+              parentId: member.parent_id,
+              isElder: Boolean(member.is_elder),
+              gender: member.gender,
+              // Handle fields that might not exist in the database
+              marriedTo: undefined,
+              clanConnectionId: undefined,
+              side: member.side as 'maternal' | 'paternal' | undefined,
+              status: status as 'living' | 'deceased',
+              photoUrl: undefined
+            };
+          });
           
           processedTrees.push({
             id: tree.id,
@@ -179,12 +184,8 @@ const UserProfilePage = () => {
       const { success, error } = await updateUserProfile(user.id, {
         fullName: profileForm.fullName,
         email: user.email,
-        biography: profileForm.biography,
-        birthYear: profileForm.birthYear,
-        birthPlace: profileForm.birthPlace,
-        tribe: profileForm.tribe,
-        clan: profileForm.clan,
         photoUrl: profile?.photoUrl
+        // Other fields will be added once the database schema is updated
       });
       
       if (!success) throw error;
