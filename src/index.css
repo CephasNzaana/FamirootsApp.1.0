@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 12%;
 
-    --primary: 48 100% 50%;
+    --primary: 194 90% 46%; /* MyHeritage blue */
     --primary-foreground: 0 0% 12%;
 
     --secondary: 0 100% 42%;
@@ -31,9 +31,9 @@
 
     --border: 0 0% 86%;
     --input: 0 0% 86%;
-    --ring: 48 100% 50%;
+    --ring: 194 90% 46%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -55,7 +55,7 @@
     --popover: 0 0% 15%;
     --popover-foreground: 45 10% 95%;
 
-    --primary: 48 100% 50%;
+    --primary: 194 90% 46%; /* MyHeritage blue */
     --primary-foreground: 0 0% 12%;
 
     --secondary: 0 100% 42%;
@@ -72,7 +72,7 @@
 
     --border: 0 0% 25%;
     --input: 0 0% 25%;
-    --ring: 48 100% 50%;
+    --ring: 194 90% 46%;
   }
 }
 
@@ -82,33 +82,57 @@
   }
 
   body {
-    @apply bg-background text-foreground bg-pattern-light;
+    @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
   }
 }
 
 @layer components {
-  .uganda-border {
-    @apply border-2 border-uganda-black shadow-md hover:shadow-lg transition-shadow duration-300;
+  /* MyHeritage style buttons */
+  .myheritage-btn-primary {
+    @apply bg-[#1EAEDB] text-white font-medium py-2 px-4 rounded hover:bg-[#0FA0CE] transition-all duration-200;
   }
 
-  .btn-primary {
-    @apply bg-uganda-yellow text-uganda-black font-medium py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all duration-200;
+  .myheritage-btn-secondary {
+    @apply border border-[#1EAEDB] text-[#1EAEDB] font-medium py-2 px-4 rounded hover:bg-[#1EAEDB]/10 transition-all duration-200;
   }
 
-  .btn-secondary {
-    @apply bg-uganda-red text-white font-medium py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all duration-200;
-  }
-
-  .btn-outline {
-    @apply bg-transparent border-2 border-uganda-black text-uganda-black font-medium py-2 px-4 rounded-lg hover:bg-uganda-black hover:text-white transition-all duration-200;
-  }
-
+  /* Tree nodes with MyHeritage styling */
   .tree-node {
-    @apply bg-white border border-uganda-black rounded-lg p-3 inline-block shadow-md;
+    @apply bg-white border border-gray-300 rounded-md p-3 inline-block shadow-sm;
   }
 
   .tree-connector {
-    @apply bg-uganda-black h-0.5 w-6 absolute top-1/2 -translate-y-1/2;
+    @apply bg-gray-400 h-0.5 w-6 absolute top-1/2 -translate-y-1/2;
   }
+  
+  /* MyHeritage specific styles */
+  .myheritage-card {
+    @apply bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden;
+  }
+  
+  .myheritage-card-header {
+    @apply bg-gray-50 border-b border-gray-200 p-4;
+  }
+  
+  .myheritage-link {
+    @apply text-[#1EAEDB] hover:underline cursor-pointer;
+  }
+  
+  .myheritage-badge {
+    @apply bg-[#1EAEDB]/20 text-[#1EAEDB] text-xs px-2 py-0.5 rounded-full;
+  }
+}
+
+/* Uganda flag colors maintained for brand identity */
+.uganda-black {
+  @apply text-black;
+}
+
+.uganda-yellow {
+  @apply text-yellow-400;
+}
+
+.uganda-red {
+  @apply text-red-600;
 }

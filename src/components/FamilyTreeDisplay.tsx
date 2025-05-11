@@ -3,7 +3,6 @@ import { useState } from "react";
 import { FamilyTree, FamilyMember } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { User, Calendar, Heart } from "lucide-react";
 
@@ -67,10 +66,10 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
   };
 
   return (
-    <Card className="w-full bg-white shadow-lg border-2 border-uganda-black animation-fade-in">
-      <CardHeader className="border-b border-uganda-black border-opacity-20">
-        <CardTitle className="text-xl font-bold">
-          Family Tree: {tree.surname} ({tree.clan} clan, {tree.tribe})
+    <Card className="w-full bg-white shadow-md border border-gray-200">
+      <CardHeader className="border-b border-gray-200 bg-gray-50">
+        <CardTitle className="text-xl font-medium text-gray-700">
+          {tree.surname} Family Tree - {tree.clan} clan, {tree.tribe}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
@@ -85,34 +84,39 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                   <HoverCard key={member.id}>
                     <HoverCardTrigger asChild>
                       <div 
-                        className={`tree-node bg-white p-3 rounded-lg border cursor-pointer
-                        ${member.isElder ? 'border-uganda-red border-2' : 'border-uganda-yellow'} 
-                        shadow-md relative animate-slide-up hover:shadow-lg transition-shadow`}
+                        className={`tree-node bg-white p-3 rounded-md border-2 cursor-pointer
+                        ${member.isElder ? 'border-[#1EAEDB] bg-[#F1F0FB]/30' : 'border-gray-200'} 
+                        shadow-sm relative hover:shadow-md transition-shadow`}
                         id={`member-${member.id}`}
                       >
-                        <div className="font-medium">{member.name}</div>
+                        <div className="font-medium text-[#333333]">{member.name}</div>
                         <div className="text-xs text-gray-500">{member.relationship}</div>
-                        {member.birthYear && (
-                          <div className="text-xs text-gray-400">b. {member.birthYear}</div>
-                        )}
-                        {member.deathYear && (
-                          <div className="text-xs text-gray-400">d. {member.deathYear}</div>
-                        )}
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          {member.birthYear && (
+                            <span>b. {member.birthYear}</span>
+                          )}
+                          {member.deathYear && (
+                            <>
+                              <span>-</span>
+                              <span>d. {member.deathYear}</span>
+                            </>
+                          )}
+                        </div>
                         {member.isElder && (
-                          <Badge className="absolute -top-2 -right-2 bg-uganda-red text-white">Elder</Badge>
+                          <Badge className="absolute -top-2 -right-2 bg-[#1EAEDB] text-white">Elder</Badge>
                         )}
                       </div>
                     </HoverCardTrigger>
-                    <HoverCardContent className="w-64 p-4">
+                    <HoverCardContent className="w-64 p-4 border border-gray-200 shadow-lg">
                       <div className="space-y-2">
-                        <h4 className="font-semibold">{member.name}</h4>
+                        <h4 className="font-semibold text-[#333333]">{member.name}</h4>
                         <div className="flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-uganda-red" />
+                          <User className="h-4 w-4 text-[#1EAEDB]" />
                           <span>{member.relationship}</span>
                         </div>
                         {member.birthYear && (
                           <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4 text-uganda-yellow" />
+                            <Calendar className="h-4 w-4 text-[#555555]" />
                             <span>Born: {member.birthYear}</span>
                           </div>
                         )}
@@ -123,11 +127,11 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-sm">
-                            <Heart className="h-4 w-4 text-uganda-red" />
+                            <Heart className="h-4 w-4 text-[#ea384c]" />
                             <span>Living</span>
                           </div>
                         )}
-                        <div className="text-xs text-gray-500 mt-2">
+                        <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
                           {getRelationshipDescription(member)}
                         </div>
                       </div>
