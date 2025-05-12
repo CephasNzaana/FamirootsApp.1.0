@@ -10,11 +10,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Users, Trees } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import AuthForm from "@/components/AuthForm";
 import { FamilyTree, FamilyMember } from "@/types";
-import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
 import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 import ClanFamilyTree from "@/components/ClanFamilyTree";
+import FamilyTreeMultiView from "@/components/FamilyTreeMultiView";
 
 const FamilyTrees = () => {
   const { user } = useAuth();
@@ -264,7 +265,7 @@ const FamilyTrees = () => {
       {selectedTree && (
         <Dialog open={showTreeDialog} onOpenChange={setShowTreeDialog}>
           <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
-            <FamilyTreeDisplay tree={selectedTree} />
+            <FamilyTreeMultiView tree={selectedTree} />
           </DialogContent>
         </Dialog>
       )}
@@ -280,6 +281,8 @@ const FamilyTrees = () => {
           </DialogContent>
         </Dialog>
       )}
+      
+      <Footer />
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />

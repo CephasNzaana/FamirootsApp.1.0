@@ -1,7 +1,12 @@
 
-import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import React, { useState } from 'react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import AuthForm from '@/components/AuthForm';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
@@ -9,572 +14,529 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Dna,
-  Check,
-  ChevronRight,
-  Clock,
-  Truck,
-  UserSearch,
-  Users,
-  ShieldCheck,
-} from "lucide-react";
-import Header from "@/components/Header";
-import AuthForm from "@/components/AuthForm";
-
-// UGX conversion rate: Approximate at 1 USD = 3700 UGX
-const UGX_CONVERSION_RATE = 3700;
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast } from '@/components/ui/sonner';
+import { Dna, Droplets, CheckCircle, Zap, Mail, Package, Calendar, Clock, CreditCard } from 'lucide-react';
 
 const DNATest = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(!user);
-  const [selectedTest, setSelectedTest] = useState<string | null>(null);
-  const [formStep, setFormStep] = useState<number>(0);
-  
-  const dnaTestPackages = [
+  const [showAuth, setShowAuth] = useState<boolean>(false);
+  const [selectedKit, setSelectedKit] = useState<string>('basic');
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    country: 'Uganda',
+    message: '',
+    paymentMethod: 'mobileMoney'
+  });
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success('Your DNA test kit order has been placed!');
+    // In a real app, we would send this data to an API
+  };
+
+  const handleLogin = () => {
+    setShowAuth(true);
+  };
+
+  const handleSignup = () => {
+    setShowAuth(true);
+  };
+
+  const dnaKits = [
     {
-      id: "ancestry",
-      name: "Ancestry DNA",
-      description: "Trace your Ugandan ancestry and discover your tribal heritage",
-      priceUSD: 99,
-      priceUGX: 99 * UGX_CONVERSION_RATE,
+      id: 'basic',
+      name: 'Basic Ancestry',
+      price: 150000,
+      description: 'Discover your tribal and clan lineage with our basic ancestry test.',
       features: [
-        "Tribal lineage breakdown",
-        "Clan connections analysis",
-        "Historical migration patterns",
-        "Regional ancestry mapping",
-        "25+ Ugandan ethnic groups covered"
+        'Tribal ancestry identification',
+        'Basic clan connections',
+        'Results within 4-6 weeks',
+        'Email report'
       ],
-      turnaround: "3-4 weeks",
-      icon: <Dna className="h-8 w-8 text-uganda-yellow" />
+      processingTime: '4-6 weeks'
     },
     {
-      id: "heritage",
-      name: "Heritage Connect",
-      description: "Connect with potential relatives through our extensive DNA database",
-      priceUSD: 149,
-      priceUGX: 149 * UGX_CONVERSION_RATE,
+      id: 'premium',
+      name: 'Premium Heritage',
+      price: 250000,
+      description: 'Our most popular kit with detailed clan and family connections.',
       features: [
-        "Everything in Ancestry DNA",
-        "Relative matching across database",
-        "Clan connection verification",
-        "Extended family finder",
-        "Interactive family chart mapping"
+        'Detailed tribal ancestry',
+        'Extended clan connections',
+        'Family finder database access',
+        'Results within 2-3 weeks',
+        'Interactive online report'
       ],
-      turnaround: "4-5 weeks",
-      icon: <Users className="h-8 w-8 text-uganda-yellow" />
+      processingTime: '2-3 weeks'
     },
     {
-      id: "premium",
-      name: "Premium Heritage",
-      description: "Our most comprehensive DNA test with expert analysis and historical research",
-      priceUSD: 199,
-      priceUGX: 199 * UGX_CONVERSION_RATE,
+      id: 'ultimate',
+      name: 'Ultimate Lineage',
+      price: 350000,
+      description: 'The most comprehensive DNA analysis for Ugandan heritage.',
       features: [
-        "Everything in Heritage Connect",
-        "Elder verification analysis",
-        "Personalized heritage report",
-        "One-on-one consultation",
-        "Historical documentation research",
-        "Exclusive access to clan archives"
+        'Detailed tribal and sub-tribal ancestry',
+        'Complete clan mapping',
+        'Elder connections identification',
+        'Family finder database access',
+        'Results within 1-2 weeks',
+        'Interactive online report',
+        'Consultation with heritage expert'
       ],
-      turnaround: "5-6 weeks",
-      icon: <ShieldCheck className="h-8 w-8 text-uganda-yellow" />
+      processingTime: '1-2 weeks'
     }
   ];
-  
-  const handleSelectPackage = (packageId: string) => {
-    setSelectedTest(packageId);
-    if (user) {
-      setFormStep(1);
-    } else {
-      setShowAuth(true);
-    }
+
+  const getSelectedKitDetails = () => {
+    return dnaKits.find(kit => kit.id === selectedKit);
   };
-  
-  const handleOrderSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Your DNA test kit has been ordered!");
-    setFormStep(2);
-  };
-  
-  const formatUGX = (amount: number) => {
-    return new Intl.NumberFormat('en-UG', {
-      style: 'currency',
-      currency: 'UGX',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
-  const getSelectedPackage = () => {
-    return dnaTestPackages.find(pkg => pkg.id === selectedTest);
-  };
-  
-  const renderStepContent = () => {
-    const selectedPackage = getSelectedPackage();
-    
-    switch (formStep) {
-      case 0:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-center text-uganda-black">
-              Choose Your DNA Test Package
-            </h2>
-            <p className="text-center text-gray-600 mb-8">
-              Our DNA testing services are specifically calibrated for Ugandan tribal and clan heritage analysis.
+
+  const kitDetails = getSelectedKitDetails();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
+      <Header onLogin={handleLogin} onSignup={handleSignup} />
+      
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          <section className="mb-12 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-uganda-black">
+              DNA Testing for <span className="text-uganda-red">Ugandan Heritage</span>
+            </h1>
+            <p className="text-lg md:text-xl max-w-3xl mx-auto text-gray-600 mb-8">
+              Discover your ancestral connections and clan heritage with our specialized DNA testing services.
             </p>
-            
-            <Tabs defaultValue="cards" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cards">Packages</TabsTrigger>
-                <TabsTrigger value="table">Comparison</TabsTrigger>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button 
+                size="lg" 
+                className="bg-uganda-red text-white hover:bg-uganda-red/90"
+                onClick={() => document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <Dna className="mr-2 h-5 w-5" />
+                Order Your DNA Kit
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-white font-bold text-uganda-black border-uganda-yellow hover:bg-uganda-yellow/10"
+                onClick={() => document.getElementById('dna-kits')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <Droplets className="mr-2 h-5 w-5" />
+                Explore DNA Kit Options
+              </Button>
+            </div>
+          </section>
+
+          {/* How It Works Section */}
+          <section className="mb-16">
+            <h2 className="text-3xl font-bold mb-8 text-center text-uganda-black">How It Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mb-4">
+                    <span className="font-bold text-lg">1</span>
+                  </div>
+                  <CardTitle>Order Your Kit</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Select your DNA test kit option and complete the order form. We'll ship your kit to your address in Uganda or internationally.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mb-4">
+                    <span className="font-bold text-lg">2</span>
+                  </div>
+                  <CardTitle>Collect Your Sample</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Follow the simple instructions to collect your DNA sample using the provided cheek swab. Return the sample in the prepaid envelope.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="w-12 h-12 bg-uganda-yellow rounded-full flex items-center justify-center mb-4">
+                    <span className="font-bold text-lg">3</span>
+                  </div>
+                  <CardTitle>Receive Your Results</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Our lab will analyze your DNA and connect it to our specialized Ugandan heritage database. Receive your detailed ancestry report.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* DNA Kit Options Section */}
+          <section id="dna-kits" className="mb-16 scroll-mt-16">
+            <h2 className="text-3xl font-bold mb-8 text-center text-uganda-black">DNA Test Kit Options</h2>
+            <Tabs defaultValue="basic" onValueChange={setSelectedKit}>
+              <TabsList className="grid grid-cols-3 mb-8">
+                <TabsTrigger value="basic">Basic Ancestry</TabsTrigger>
+                <TabsTrigger value="premium">Premium Heritage</TabsTrigger>
+                <TabsTrigger value="ultimate">Ultimate Lineage</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="cards" className="space-y-6 pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {dnaTestPackages.map(pkg => (
-                    <Card key={pkg.id} className={`overflow-hidden ${selectedTest === pkg.id ? 'ring-2 ring-uganda-red' : ''}`}>
-                      <CardHeader className="bg-gradient-to-br from-uganda-yellow/20 to-uganda-red/10">
-                        <div className="flex justify-between">
-                          <div>
-                            <CardTitle>{pkg.name}</CardTitle>
-                            <CardDescription className="mt-1.5">{pkg.description}</CardDescription>
-                          </div>
-                          {pkg.icon}
+              {dnaKits.map(kit => (
+                <TabsContent key={kit.id} value={kit.id} className="bg-white p-6 rounded-lg shadow-md">
+                  <div className="flex flex-col md:flex-row gap-8">
+                    <div className="md:w-2/3">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-2xl font-bold text-uganda-black">{kit.name}</h3>
+                          <p className="text-gray-600">{kit.description}</p>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-6">
-                        <div className="flex items-end gap-1 mb-4">
-                          <span className="text-3xl font-bold text-uganda-black">{formatUGX(pkg.priceUGX)}</span>
-                        </div>
-                        <ul className="space-y-2">
-                          {pkg.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-start">
-                              <Check className="h-5 w-5 mr-2 text-green-500 shrink-0" />
-                              <span className="text-sm">{feature}</span>
+                        <Badge className={`${kit.id === 'premium' ? 'bg-uganda-yellow text-uganda-black' : 'bg-uganda-red text-white'}`}>
+                          {kit.id === 'premium' ? 'Most Popular' : (kit.id === 'ultimate' ? 'Most Detailed' : 'Essential')}
+                        </Badge>
+                      </div>
+                      
+                      <div className="mb-6">
+                        <h4 className="font-semibold mb-2 flex items-center">
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                          Features
+                        </h4>
+                        <ul className="space-y-2 pl-6">
+                          {kit.features.map((feature, index) => (
+                            <li key={index} className="flex items-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-uganda-yellow mr-2"></div>
+                              {feature}
                             </li>
                           ))}
                         </ul>
-                        <div className="text-sm text-gray-600 mt-4 flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          Results in {pkg.turnaround}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center">
+                          <Mail className="h-5 w-5 text-uganda-red mr-2" />
+                          <div>
+                            <p className="font-semibold">Report Delivery</p>
+                            <p className="text-sm text-gray-600">
+                              {kit.id === 'basic' ? 'Email PDF' : 'Interactive Online Portal'}
+                            </p>
+                          </div>
                         </div>
-                      </CardContent>
-                      <CardFooter className="bg-gray-50">
-                        <Button 
-                          className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                          onClick={() => handleSelectPackage(pkg.id)}
-                        >
-                          Select Package
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="table" className="pt-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="text-left p-3 border">Features</th>
-                        {dnaTestPackages.map(pkg => (
-                          <th key={pkg.id} className="text-left p-3 border">
-                            {pkg.name} <br />
-                            <span className="text-sm font-normal">{formatUGX(pkg.priceUGX)}</span>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-3 border">Tribal lineage breakdown</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            <Check className="h-5 w-5 mx-auto text-green-500" />
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="bg-gray-50">
-                        <td className="p-3 border">Clan connections analysis</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            <Check className="h-5 w-5 mx-auto text-green-500" />
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td className="p-3 border">Relative matching</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            {pkg.id !== "ancestry" ? (
-                              <Check className="h-5 w-5 mx-auto text-green-500" />
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="bg-gray-50">
-                        <td className="p-3 border">Extended family finder</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            {pkg.id !== "ancestry" ? (
-                              <Check className="h-5 w-5 mx-auto text-green-500" />
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td className="p-3 border">Elder verification analysis</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            {pkg.id === "premium" ? (
-                              <Check className="h-5 w-5 mx-auto text-green-500" />
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="bg-gray-50">
-                        <td className="p-3 border">One-on-one consultation</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            {pkg.id === "premium" ? (
-                              <Check className="h-5 w-5 mx-auto text-green-500" />
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td className="p-3 border">Results turnaround</td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border text-center">
-                            {pkg.turnaround}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr className="bg-gray-100">
-                        <td className="p-3 border"></td>
-                        {dnaTestPackages.map(pkg => (
-                          <td key={pkg.id} className="p-3 border">
-                            <Button 
-                              className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                              onClick={() => handleSelectPackage(pkg.id)}
-                            >
-                              Select
-                            </Button>
-                          </td>
-                        ))}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </TabsContent>
+                        <div className="flex items-center">
+                          <Package className="h-5 w-5 text-uganda-red mr-2" />
+                          <div>
+                            <p className="font-semibold">Kit Delivery</p>
+                            <p className="text-sm text-gray-600">3-7 business days</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <Calendar className="h-5 w-5 text-uganda-red mr-2" />
+                          <div>
+                            <p className="font-semibold">Sample Access</p>
+                            <p className="text-sm text-gray-600">{kit.id === 'basic' ? '1 year' : (kit.id === 'premium' ? '5 years' : 'Lifetime')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="h-5 w-5 text-uganda-red mr-2" />
+                          <div>
+                            <p className="font-semibold">Processing Time</p>
+                            <p className="text-sm text-gray-600">{kit.processingTime}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="md:w-1/3 flex flex-col justify-between bg-gray-50 p-6 rounded-lg">
+                      <div>
+                        <div className="text-center mb-4">
+                          <p className="text-sm text-gray-600">Price</p>
+                          <p className="text-3xl font-bold text-uganda-black">
+                            {kit.price.toLocaleString()} UGX
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Free shipping within Uganda
+                          </p>
+                        </div>
+                        
+                        {kit.id === 'premium' && (
+                          <Alert className="mb-4 bg-uganda-yellow/20 border-uganda-yellow">
+                            <Zap className="h-4 w-4" />
+                            <AlertTitle>Most Popular Choice</AlertTitle>
+                            <AlertDescription>
+                              Recommended for those seeking detailed clan connections.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                      
+                      <Button 
+                        className="w-full bg-uganda-red text-white hover:bg-uganda-red/90"
+                        onClick={() => {
+                          setSelectedKit(kit.id);
+                          document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                      >
+                        Select {kit.name}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+              ))}
             </Tabs>
-          </div>
-        );
-      
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-uganda-black">
-                Order DNA Test Kit
-              </h2>
-              <div>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setFormStep(0)}
-                  className="text-sm"
-                >
-                  Change Package
-                </Button>
-              </div>
-            </div>
-            
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <div>
-                  <h3 className="font-medium">{selectedPackage?.name}</h3>
-                  <p className="text-sm text-gray-600">{selectedPackage?.description}</p>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold">{formatUGX(selectedPackage?.priceUGX || 0)}</div>
-                  <div className="text-sm text-gray-600">Results in {selectedPackage?.turnaround}</div>
-                </div>
-              </div>
-            </div>
-            
-            <form onSubmit={handleOrderSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input id="fullName" placeholder="Your full name" required />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="Your email address" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" placeholder="Your phone number" required />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="address">Delivery Address</Label>
-                  <Input id="address" placeholder="Street address" required />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" placeholder="City" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="district">District</Label>
-                    <Input id="district" placeholder="District" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="postalCode">Postal Code</Label>
-                    <Input id="postalCode" placeholder="Postal code" required />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="paymentMethod">Payment Method</Label>
-                  <select 
-                    id="paymentMethod" 
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    required
-                  >
-                    <option value="">Select payment method</option>
-                    <option value="mobile">Mobile Money</option>
-                    <option value="card">Credit/Debit Card</option>
-                    <option value="bank">Bank Transfer</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <Button 
-                  type="submit" 
-                  className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                >
-                  Complete Order
-                </Button>
-              </div>
-            </form>
-          </div>
-        );
-      
-      case 2:
-        return (
-          <div className="space-y-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
-            </div>
-            
-            <h2 className="text-2xl font-bold text-uganda-black">
-              Order Successful!
-            </h2>
-            
-            <p className="text-gray-600">
-              Thank you for ordering the {selectedPackage?.name} test kit. 
-              We've sent a confirmation email with order details.
-            </p>
-            
-            <div className="bg-gray-50 p-4 rounded-lg max-w-md mx-auto">
-              <h3 className="font-medium mb-2">What happens next?</h3>
-              <ol className="text-left space-y-4 text-sm">
-                <li className="flex items-start">
-                  <div className="bg-uganda-yellow w-6 h-6 rounded-full flex items-center justify-center mr-3 shrink-0">
-                    <span className="font-bold">1</span>
-                  </div>
-                  <div>
-                    <span className="font-medium block">Kit Delivery</span>
-                    Your DNA test kit will be delivered in 3-5 business days.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-uganda-yellow w-6 h-6 rounded-full flex items-center justify-center mr-3 shrink-0">
-                    <span className="font-bold">2</span>
-                  </div>
-                  <div>
-                    <span className="font-medium block">Sample Collection</span>
-                    Follow the included instructions to collect your sample.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-uganda-yellow w-6 h-6 rounded-full flex items-center justify-center mr-3 shrink-0">
-                    <span className="font-bold">3</span>
-                  </div>
-                  <div>
-                    <span className="font-medium block">Return &amp; Process</span>
-                    Return your sample in the prepaid envelope for testing.
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-uganda-yellow w-6 h-6 rounded-full flex items-center justify-center mr-3 shrink-0">
-                    <span className="font-bold">4</span>
-                  </div>
-                  <div>
-                    <span className="font-medium block">Get Results</span>
-                    Receive your heritage results in {selectedPackage?.turnaround}.
-                  </div>
-                </li>
-              </ol>
-            </div>
-            
-            <div>
-              <Button 
-                onClick={() => setFormStep(0)}
-                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-              >
-                Order Another Kit
-              </Button>
-            </div>
-          </div>
-        );
-      
-      default:
-        return null;
-    }
-  };
+          </section>
 
-  return (
-    <div className="min-h-screen bg-[#FAF6F1]">
-      <Header 
-        onLogin={() => setShowAuth(true)} 
-        onSignup={() => setShowAuth(true)} 
-      />
-      
-      <main className="container mx-auto py-8 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-uganda-black mb-4">
-              DNA Testing for Ugandan Heritage
-            </h1>
-            <p className="text-lg text-gray-600">
-              Verify family relationships and discover your ancestral connections through DNA analysis.
-            </p>
-          </div>
-          
-          {/* Progress Steps */}
-          {formStep < 3 && (
-            <div className="mb-8">
-              <div className="flex items-center justify-center max-w-2xl mx-auto">
-                <div className={`step-item ${formStep >= 0 ? 'active' : ''} ${formStep > 0 ? 'complete' : ''}`}>
-                  <div className="step">
-                    {formStep > 0 ? <Check className="h-5 w-5" /> : 1}
+          {/* Order Form Section */}
+          <section id="order-form" className="scroll-mt-16">
+            <h2 className="text-3xl font-bold mb-8 text-center text-uganda-black">Order Your DNA Kit</h2>
+            <Card className="border-2 border-uganda-yellow">
+              <CardHeader>
+                <CardTitle>Complete Your Order</CardTitle>
+                <CardDescription>
+                  Fill out the form below to order your {getSelectedKitDetails()?.name} DNA test kit.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="bg-gray-50 p-4 rounded-md mb-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold text-lg">{kitDetails?.name}</h3>
+                        <p className="text-sm text-gray-600">{kitDetails?.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-xl">{kitDetails?.price.toLocaleString()} UGX</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-uganda-red hover:text-uganda-red/80"
+                          onClick={() => document.getElementById('dna-kits')?.scrollIntoView({ behavior: 'smooth' })}
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm mt-1">Select Package</p>
-                </div>
-                
-                <div className="flex-1 h-px bg-gray-300"></div>
-                
-                <div className={`step-item ${formStep >= 1 ? 'active' : ''} ${formStep > 1 ? 'complete' : ''}`}>
-                  <div className="step">
-                    {formStep > 1 ? <Check className="h-5 w-5" /> : 2}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input 
+                        id="fullName" 
+                        name="fullName" 
+                        value={formData.fullName}
+                        onChange={handleFormChange}
+                        placeholder="Enter your full name"
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input 
+                        id="email" 
+                        name="email" 
+                        type="email"
+                        value={formData.email}
+                        onChange={handleFormChange}
+                        placeholder="your@email.com"
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input 
+                        id="phone" 
+                        name="phone" 
+                        value={formData.phone}
+                        onChange={handleFormChange}
+                        placeholder="e.g., +256 770 123 456"
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Delivery Address</Label>
+                      <Input 
+                        id="address" 
+                        name="address" 
+                        value={formData.address}
+                        onChange={handleFormChange}
+                        placeholder="Street address for delivery"
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City/Town</Label>
+                      <Input 
+                        id="city" 
+                        name="city" 
+                        value={formData.city}
+                        onChange={handleFormChange}
+                        placeholder="Your city or town"
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <select
+                        id="country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleFormChange}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        required
+                      >
+                        <option value="Uganda">Uganda</option>
+                        <option value="Kenya">Kenya</option>
+                        <option value="Tanzania">Tanzania</option>
+                        <option value="Rwanda">Rwanda</option>
+                        <option value="Burundi">Burundi</option>
+                        <option value="Other">Other (Specify in Message)</option>
+                      </select>
+                    </div>
                   </div>
-                  <p className="text-sm mt-1">Order Kit</p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Additional Information (Optional)</Label>
+                    <Textarea 
+                      id="message" 
+                      name="message" 
+                      value={formData.message}
+                      onChange={handleFormChange}
+                      placeholder="Any special instructions or questions"
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Payment Method</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                      <div className="border rounded-md p-3 flex items-center space-x-3 cursor-pointer hover:border-uganda-yellow transition-colors">
+                        <input 
+                          type="radio" 
+                          id="mobileMoney" 
+                          name="paymentMethod"
+                          value="mobileMoney"
+                          checked={formData.paymentMethod === 'mobileMoney'}
+                          onChange={handleFormChange}
+                          className="h-4 w-4 text-uganda-red focus:ring-uganda-yellow" 
+                        />
+                        <Label htmlFor="mobileMoney" className="cursor-pointer flex-1">Mobile Money</Label>
+                      </div>
+                      <div className="border rounded-md p-3 flex items-center space-x-3 cursor-pointer hover:border-uganda-yellow transition-colors">
+                        <input 
+                          type="radio" 
+                          id="bankTransfer" 
+                          name="paymentMethod"
+                          value="bankTransfer"
+                          checked={formData.paymentMethod === 'bankTransfer'}
+                          onChange={handleFormChange}
+                          className="h-4 w-4 text-uganda-red focus:ring-uganda-yellow" 
+                        />
+                        <Label htmlFor="bankTransfer" className="cursor-pointer flex-1">Bank Transfer</Label>
+                      </div>
+                      <div className="border rounded-md p-3 flex items-center space-x-3 cursor-pointer hover:border-uganda-yellow transition-colors">
+                        <input 
+                          type="radio" 
+                          id="cardPayment" 
+                          name="paymentMethod"
+                          value="cardPayment"
+                          checked={formData.paymentMethod === 'cardPayment'}
+                          onChange={handleFormChange}
+                          className="h-4 w-4 text-uganda-red focus:ring-uganda-yellow" 
+                        />
+                        <Label htmlFor="cardPayment" className="cursor-pointer flex-1">Credit/Debit Card</Label>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </CardContent>
+              <CardFooter className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <div className="flex items-center">
+                  <CreditCard className="text-uganda-yellow mr-2 h-5 w-5" />
+                  <span className="text-sm text-gray-600">Secure payment processing</span>
                 </div>
-                
-                <div className="flex-1 h-px bg-gray-300"></div>
-                
-                <div className={`step-item ${formStep >= 2 ? 'active' : ''}`}>
-                  <div className="step">3</div>
-                  <p className="text-sm mt-1">Confirmation</p>
-                </div>
-              </div>
+                <Button 
+                  onClick={handleSubmit}
+                  type="submit" 
+                  className="bg-uganda-red text-white hover:bg-uganda-red/90 px-8"
+                >
+                  Complete Order ({kitDetails?.price.toLocaleString()} UGX)
+                </Button>
+              </CardFooter>
+            </Card>
+          </section>
+
+          {/* FAQ Section */}
+          <section className="mt-16">
+            <h2 className="text-3xl font-bold mb-8 text-center text-uganda-black">Frequently Asked Questions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">How accurate is the tribal identification?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Our specialized DNA database for Ugandan heritage provides up to 95% accuracy for tribal identification, connecting your DNA markers to specific Ugandan tribes and clans.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">How is the sample collected?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>The kit contains a simple, painless cheek swab that you rub inside your cheek for 30 seconds. No blood or needles required. Detailed instructions are included.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">How long do results take?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Processing time depends on the kit selected: Basic (4-6 weeks), Premium (2-3 weeks), or Ultimate (1-2 weeks). You'll receive an email notification when your results are ready.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Is my DNA information kept private?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Yes, your privacy is our priority. Your DNA data is stored securely and never shared without your explicit consent. You control who can see your information and connections.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Can I connect with relatives?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Yes, with the Premium and Ultimate kits, you can opt into our Family Finder database, allowing you to discover and connect with relatives who have also taken our DNA test.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Do you ship internationally?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Yes, we ship worldwide. Free delivery within Uganda, and international shipping is available for an additional fee depending on your location.</p>
+                </CardContent>
+              </Card>
             </div>
-          )}
-          
-          <Card className="border shadow-sm">
-            <CardContent className="pt-6">
-              {renderStepContent()}
-            </CardContent>
-          </Card>
-          
-          <div className="mt-12 grid gap-8 grid-cols-1 md:grid-cols-3">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-uganda-yellow/20 rounded-full flex items-center justify-center mb-4">
-                <UserSearch className="h-6 w-6 text-uganda-black" />
-              </div>
-              <h3 className="font-bold mb-2">Specialized for Uganda</h3>
-              <p className="text-sm text-gray-600">
-                Our DNA tests are specifically calibrated for Ugandan tribal and clan heritage analysis.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-uganda-yellow/20 rounded-full flex items-center justify-center mb-4">
-                <Truck className="h-6 w-6 text-uganda-black" />
-              </div>
-              <h3 className="font-bold mb-2">Nationwide Delivery</h3>
-              <p className="text-sm text-gray-600">
-                We deliver test kits across Uganda with easy-to-follow sample collection instructions.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-uganda-yellow/20 rounded-full flex items-center justify-center mb-4">
-                <ShieldCheck className="h-6 w-6 text-uganda-black" />
-              </div>
-              <h3 className="font-bold mb-2">Private & Secure</h3>
-              <p className="text-sm text-gray-600">
-                Your DNA data is protected with industry-leading privacy and security measures.
-              </p>
-            </div>
-          </div>
+          </section>
         </div>
       </main>
+      
+      <Footer />
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />
       )}
-      
-      <style jsx>{`
-        .step-item {
-          @apply relative flex flex-col justify-center items-center w-36;
-        }
-        .step-item:not(:first-child):before {
-          @apply content-[''] bg-slate-200 absolute w-full h-[3px] right-2/4 top-1/3 -translate-y-2/4;
-        }
-        .step {
-          @apply w-8 h-8 flex items-center justify-center z-10 relative bg-slate-200 rounded-full font-semibold text-slate-400;
-        }
-        .active .step {
-          @apply bg-uganda-yellow text-uganda-black;
-        }
-        .complete .step {
-          @apply bg-green-500 text-white;
-        }
-        .complete:not(:last-child):before,
-        .active:not(:last-child):before {
-          @apply bg-green-500;
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,306 +1,453 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
-import { Book, Calendar, HeartHandshake, Scroll } from "lucide-react";
-import Header from "@/components/Header";
-import AuthForm from "@/components/AuthForm";
 import { supabase } from "@/integrations/supabase/client";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import AuthForm from "@/components/AuthForm";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { ugandaTribesData } from "@/data/ugandaTribesClanData";
+import { Calendar, Book, Music, Users, Star, Search, Plus } from "lucide-react";
 
-interface Tradition {
+interface TraditionType {
   id: string;
-  title: string;
+  name: string;
   description: string;
+  category: string;
   tribe: string;
-  ceremony_type: string;
-  significance: string;
-  time_period: string;
-  image_url?: string;
+  image?: string;
 }
 
-const traditionTypes = [
-  "marriage", "naming", "harvest", "initiation", "funeral", "birth", "other"
+const traditionCategories = [
+  { id: "ceremonies", name: "Ceremonies", icon: <Calendar className="h-5 w-5" /> },
+  { id: "customs", name: "Customs & Practices", icon: <Book className="h-5 w-5" /> },
+  { id: "music", name: "Music & Dance", icon: <Music className="h-5 w-5" /> },
+  { id: "marriage", name: "Marriage Customs", icon: <Users className="h-5 w-5" /> },
+  { id: "rites", name: "Rites of Passage", icon: <Star className="h-5 w-5" /> },
 ];
 
-const defaultTraditions: Tradition[] = [
+// Sample traditions data - in a real app, this would come from the database
+const sampleTraditions: TraditionType[] = [
   {
-    id: "1",
-    title: "Kwanjula",
-    description: "The traditional Buganda marriage ceremony where the groom's family visits the bride's family to officially ask for her hand in marriage.",
+    id: "trad1",
+    name: "Kwanjula",
+    description: "Kwanjula is a traditional marriage ceremony in Buganda culture where the groom formally visits the bride's family to ask for her hand in marriage. The ceremony involves gift-giving, cultural performances, and negotiations between the two families.",
+    category: "ceremonies",
     tribe: "Baganda",
-    ceremony_type: "marriage",
-    significance: "Establishes a formal bond between two families and clans",
-    time_period: "Can be held any time throughout the year",
-    image_url: "https://placekitten.com/800/500"
+    image: "https://images.unsplash.com/photo-1638442425662-dac7917762d5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8a3dhbmp1bGF8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60"
   },
   {
-    id: "2",
-    title: "Okwanjula",
-    description: "The Banyankole traditional marriage ceremony where the bride price is negotiated and the bride is presented to the groom's family.",
+    id: "trad2",
+    name: "Ekitaguriro",
+    description: "Ekitaguriro is a traditional dance performed by the Banyankole tribe of Uganda. It is characterized by high jumps and is performed during ceremonies, especially weddings. The dancers raise their arms to display agility and strength.",
+    category: "music",
     tribe: "Banyankole",
-    ceremony_type: "marriage",
-    significance: "Formalizes the union between man and woman within the clan structure",
-    time_period: "Typically held during the dry season",
-    image_url: "https://placekitten.com/801/500"
+    image: "https://images.unsplash.com/photo-1613763051807-f35f8f9ded2f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YWZyaWNhbiUyMGRhbmNlfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
   },
   {
-    id: "3", 
-    title: "Okukyala",
-    description: "The pre-visit before the formal introduction ceremony where the groom and a few representatives visit the bride's home informally.",
-    tribe: "Baganda",
-    ceremony_type: "marriage",
-    significance: "Establishes initial contact between the two families",
-    time_period: "Usually a few months before Kwanjula",
-    image_url: "https://placekitten.com/802/500"
-  },
-  {
-    id: "4",
-    title: "Okuhingira",
-    description: "The final ceremony of the Banyankole marriage process where the bride is escorted to her new home.",
-    tribe: "Banyankole",
-    ceremony_type: "marriage",
-    significance: "Marks the bride's formal transition into her husband's family",
-    time_period: "Follows shortly after the bride price negotiations",
-    image_url: "https://placekitten.com/803/500"
-  },
-  {
-    id: "5",
-    title: "Okwabya Olumbe",
-    description: "The last funeral rite performed to mark the end of the mourning period after someone's death.",
-    tribe: "Baganda",
-    ceremony_type: "funeral",
-    significance: "Releases the family from the mourning period and installs heirs",
-    time_period: "Usually held one year after burial",
-    image_url: "https://placekitten.com/804/500"
-  },
-  {
-    id: "6",
-    title: "Embalu",
-    description: "Male circumcision ceremony that marks the transition from boyhood to manhood.",
+    id: "trad3",
+    name: "Imbalu",
+    description: "Imbalu is a traditional male circumcision ritual practiced by the Bagisu people of eastern Uganda. It marks the transition from boyhood to manhood and is performed during even-numbered years. The candidates dance and display courage during the ceremony.",
+    category: "rites",
     tribe: "Bagisu",
-    ceremony_type: "initiation",
-    significance: "Initiates young men into adulthood and clan membership",
-    time_period: "Typically performed in even-numbered years during August",
-    image_url: "https://placekitten.com/805/500"
+    image: "https://images.unsplash.com/photo-1518049362265-d5b2a6e911b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWZyaWNhbiUyMHJpdHVhbHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60"
   },
   {
-    id: "7",
-    title: "Empaako",
-    description: "The naming ceremony where a person is given one of the 12 praise names in addition to their given name.",
-    tribe: "Batooro",
-    ceremony_type: "naming",
-    significance: "Signifies belonging to the Tooro culture and establishes clan identity",
-    time_period: "Usually given a few days after birth",
-    image_url: "https://placekitten.com/806/500"
+    id: "trad4",
+    name: "Okwanjula",
+    description: "Okwanjula is an introduction ceremony in various Ugandan tribes where the bride introduces her fiancé to her family. This formal ceremony often involves negotiation of bride price and is a precursor to the traditional wedding.",
+    category: "marriage",
+    tribe: "Multiple tribes",
+    image: "https://images.unsplash.com/photo-1586105251261-72a756497a11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8YWZyaWNhbiUyMGNlcmVtb255fGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
   },
   {
-    id: "8",
-    title: "Amakula",
-    description: "Harvest thanksgiving ceremony to celebrate a good harvest and give thanks to ancestors.",
+    id: "trad5",
+    name: "Amakungula",
+    description: "Amakungula is a harvest festival celebrated by the Basoga people of Uganda. It's a time of thanksgiving for a successful harvest, featuring communal feasting, traditional music, and dancing to honor the ancestors and thank the gods for blessing the harvest.",
+    category: "ceremonies",
     tribe: "Basoga",
-    ceremony_type: "harvest",
-    significance: "Expresses gratitude for abundance and ensures continued prosperity",
-    time_period: "Held after the main harvest season",
-    image_url: "https://placekitten.com/807/500"
+    image: "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aGFydmVzdCUyMGZlc3RpdmFsfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
+  },
+  {
+    id: "trad6",
+    name: "Larakaraka Dance",
+    description: "Larakaraka is a courtship dance performed by the Acholi people of northern Uganda. Young men and women participate in this dance as a way to find suitable partners. The dance involves rhythmic movements and singing, showcasing the participants' vitality and coordination.",
+    category: "music",
+    tribe: "Acholi",
+    image: "https://images.unsplash.com/photo-1545315003-c5ad6226c272?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8YWZyaWNhbiUyMGRhbmNlfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
+  },
+  {
+    id: "trad7",
+    name: "Empaako",
+    description: "Empaako is a naming tradition practiced by the Batooro, Banyoro, and Batuku people. It involves giving a child one of the twelve praise names in addition to their given name. These names carry special meaning and are used to show respect and strengthen social bonds.",
+    category: "customs",
+    tribe: "Batooro, Banyoro",
+    image: "https://images.unsplash.com/photo-1601062138836-c90756d8dce9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8YWZyaWNhbiUyMG5hbWluZ3xlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60"
+  },
+  {
+    id: "trad8",
+    name: "Kuhingira",
+    description: "Kuhingira is a traditional wedding ceremony among the Bakiga and Banyankole people. It follows the payment of bride price and features cultural dances, gift exchanges, and feasting. The bride is symbolically handed over to the groom's family during this ceremony.",
+    category: "marriage",
+    tribe: "Bakiga, Banyankole",
+    image: "https://images.unsplash.com/photo-1519741347686-c1e0aadf4611?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWZyaWNhbiUyMHdlZGRpbmd8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60"
+  },
+  {
+    id: "trad9",
+    name: "Twin Ceremonies",
+    description: "Special ceremonies for twins are performed by many Ugandan tribes, particularly the Baganda. Twins are considered special and are given specific names like Waswa and Kato for boys or Babirye and Nakato for girls. These ceremonies are meant to bring blessings and ward off bad luck.",
+    category: "rites",
+    tribe: "Baganda",
+    image: "https://images.unsplash.com/photo-1531983412531-1f49a365ffed?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8YWZyaWNhbiUyMGNlcmVtb255fGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60"
+  },
+  {
+    id: "trad10",
+    name: "Entaango",
+    description: "Entaango is a naming ceremony for babies in Ankole culture. It is performed a few days after birth and involves the paternal aunt (ssenga) naming the child. The ceremony includes prayers, blessings, and communal feasting to welcome the new member of the family.",
+    category: "customs",
+    tribe: "Banyankole",
+    image: "https://images.unsplash.com/photo-1530097811984-a43d1c6d34ce?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGFmcmljYW4lMjBjZXJlbW9ueXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60"
   }
 ];
 
 const Traditions = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(!user);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [traditions, setTraditions] = useState<Tradition[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [showAuth, setShowAuth] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedTribe, setSelectedTribe] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [traditions, setTraditions] = useState<TraditionType[]>(sampleTraditions);
+  const [filteredTraditions, setFilteredTraditions] = useState<TraditionType[]>(traditions);
+  const [featuredTraditions, setFeaturedTraditions] = useState<TraditionType[]>([]);
 
   useEffect(() => {
-    fetchTraditions();
-  }, [user]);
+    // In a real app, we would fetch this data from the database
+    // For now, we're using the sample data
+    setTraditions(sampleTraditions);
+    
+    // Set featured traditions (random selection of 5)
+    const shuffled = [...sampleTraditions].sort(() => 0.5 - Math.random());
+    setFeaturedTraditions(shuffled.slice(0, 5));
+    
+    // Apply initial filtering
+    filterTraditions(selectedCategory, selectedTribe, searchQuery);
+  }, []);
 
-  const fetchTraditions = async () => {
-    setIsLoading(true);
-    try {
-      // In a production app, we would fetch from the database
-      // For now, using the default data
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setTraditions(defaultTraditions);
-    } catch (error) {
-      console.error("Error fetching traditions:", error);
-      toast.error("Failed to load cultural traditions");
-    } finally {
-      setIsLoading(false);
+  const filterTraditions = (category: string, tribe: string, query: string) => {
+    let filtered = [...traditions];
+    
+    // Filter by category
+    if (category !== "all") {
+      filtered = filtered.filter(trad => trad.category === category);
     }
+    
+    // Filter by tribe
+    if (tribe !== "all") {
+      filtered = filtered.filter(trad => trad.tribe === tribe || trad.tribe.includes(tribe));
+    }
+    
+    // Filter by search query
+    if (query) {
+      const lowercaseQuery = query.toLowerCase();
+      filtered = filtered.filter(trad => 
+        trad.name.toLowerCase().includes(lowercaseQuery) || 
+        trad.description.toLowerCase().includes(lowercaseQuery) ||
+        trad.tribe.toLowerCase().includes(lowercaseQuery)
+      );
+    }
+    
+    setFilteredTraditions(filtered);
   };
 
-  const filteredTraditions = traditions.filter(tradition => {
-    const matchesTab = activeTab === "all" || tradition.ceremony_type === activeTab;
-    const matchesSearch = searchQuery.trim() === "" || 
-      tradition.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tradition.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tradition.tribe.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    filterTraditions(category, selectedTribe, searchQuery);
   };
 
-  if (!user) {
-    return (
-      <>
-        <Header 
-          onLogin={() => setShowAuth(true)} 
-          onSignup={() => setShowAuth(true)} 
-        />
-        <div className="min-h-[80vh] flex items-center justify-center">
-          <div className="max-w-md mx-auto text-center p-6 bg-white rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-            <p className="mb-6">Please login or sign up to access cultural traditions.</p>
-            <div className="flex justify-center space-x-4">
-              <Button 
-                onClick={() => setShowAuth(true)}
-                className="bg-uganda-yellow text-uganda-black px-6 py-2 rounded-lg hover:bg-uganda-yellow/90 transition-colors"
-              >
-                Login / Sign Up
-              </Button>
-            </div>
-          </div>
-        </div>
-        {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
-      </>
-    );
-  }
+  const handleTribeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const tribe = event.target.value;
+    setSelectedTribe(tribe);
+    filterTraditions(selectedCategory, tribe, searchQuery);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const query = event.target.value;
+    setSearchQuery(query);
+    filterTraditions(selectedCategory, selectedTribe, query);
+  };
+
+  const handleAddTradition = () => {
+    if (!user) {
+      toast.error("Please login to add a tradition");
+      setShowAuth(true);
+      return;
+    }
+    
+    toast.info("Add Tradition feature will be available soon!");
+  };
 
   return (
-    <div className="min-h-screen bg-[#FAF6F1]">
+    <div className="min-h-screen flex flex-col bg-[#FAF6F1]">
       <Header 
         onLogin={() => setShowAuth(true)} 
         onSignup={() => setShowAuth(true)} 
       />
       
-      <main className="container mx-auto py-8 px-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-uganda-black">Cultural Traditions</h1>
-            <p className="text-lg text-gray-600 mt-2">
-              Explore the rich cultural practices and ceremonies of Ugandan tribes.
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <section className="mb-12 text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-uganda-black">
+              Ugandan Cultural <span className="text-uganda-red">Traditions</span>
+            </h1>
+            <p className="text-lg md:text-xl max-w-3xl mx-auto text-gray-600 mb-8">
+              Explore and preserve the rich cultural heritage of Ugandan tribes through their unique customs, ceremonies, and traditions.
             </p>
-          </div>
-          <div className="mt-4 md:mt-0 relative">
-            <input
-              type="text"
-              placeholder="Search traditions..."
-              className="py-2 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-uganda-yellow"
-              value={searchQuery}
-              onChange={handleSearch}
-            />
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 absolute top-3 right-3 text-gray-400"
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
-        
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full overflow-x-auto flex whitespace-nowrap mb-6 bg-white p-1 border border-gray-200 rounded-lg">
-            <TabsTrigger value="all" className="flex-1">All Traditions</TabsTrigger>
-            {traditionTypes.map(type => (
-              <TabsTrigger key={type} value={type} className="flex-1">
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          </section>
           
-          <TabsContent value={activeTab} className="mt-0">
-            {isLoading ? (
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {[...Array(6)].map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <div className="h-48 bg-gray-200 animate-pulse"></div>
-                    <CardHeader>
-                      <div className="h-6 w-3/4 bg-gray-200 animate-pulse mb-2"></div>
-                      <div className="h-4 w-1/2 bg-gray-200 animate-pulse"></div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 animate-pulse"></div>
-                        <div className="h-4 w-3/4 bg-gray-200 animate-pulse"></div>
+          {/* Featured Traditions Carousel */}
+          <section className="mb-16">
+            <h2 className="text-2xl font-bold mb-6 text-uganda-black">Featured Traditions</h2>
+            <Carousel>
+              <CarouselContent>
+                {featuredTraditions.map((tradition) => (
+                  <CarouselItem key={tradition.id} className="md:basis-1/2 lg:basis-1/3">
+                    <Card className="h-full overflow-hidden border-2 hover:border-uganda-yellow transition-all">
+                      <div className="relative h-48 overflow-hidden">
+                        {tradition.image ? (
+                          <img 
+                            src={tradition.image} 
+                            alt={tradition.name} 
+                            className="w-full h-full object-cover transition-transform hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-r from-uganda-yellow/20 to-uganda-red/20 flex items-center justify-center">
+                            <span className="text-uganda-black">{tradition.name}</span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2">
+                          <h3 className="font-bold">{tradition.name}</h3>
+                          <p className="text-sm">{tradition.tribe}</p>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <CardContent className="p-4">
+                        <Badge className="mb-2" variant="outline">{traditionCategories.find(cat => cat.id === tradition.category)?.name}</Badge>
+                        <p className="text-sm line-clamp-3">{tradition.description}</p>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
                 ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-1" />
+              <CarouselNext className="right-1" />
+            </Carousel>
+          </section>
+          
+          {/* Traditions Explorer */}
+          <section className="mb-12">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold text-uganda-black">Traditions Explorer</h2>
+              <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search traditions..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="pl-10"
+                  />
+                </div>
+                <select
+                  value={selectedTribe}
+                  onChange={handleTribeChange}
+                  className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-auto"
+                >
+                  <option value="all">All Tribes</option>
+                  {ugandaTribesData.map((tribe) => (
+                    <option key={tribe.name} value={tribe.name}>
+                      {tribe.name}
+                    </option>
+                  ))}
+                </select>
+                <Button 
+                  onClick={handleAddTradition} 
+                  className="bg-uganda-red text-white hover:bg-uganda-red/90"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Tradition
+                </Button>
               </div>
-            ) : filteredTraditions.length > 0 ? (
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTraditions.map((tradition) => (
-                  <Card key={tradition.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="relative h-48 overflow-hidden">
-                      <img 
-                        src={tradition.image_url || "https://placekitten.com/800/500"} 
-                        alt={tradition.title}
-                        className="object-cover w-full h-full" 
-                      />
-                      <div className="absolute top-2 right-2">
-                        <span className="inline-flex items-center rounded-full bg-uganda-yellow px-2.5 py-0.5 text-xs font-medium text-uganda-black">
-                          {tradition.tribe}
-                        </span>
-                      </div>
+            </div>
+            
+            <div className="mb-8">
+              <Tabs defaultValue="all" onValueChange={handleCategoryChange}>
+                <TabsList className="mb-6">
+                  <TabsTrigger value="all">All Categories</TabsTrigger>
+                  {traditionCategories.map((category) => (
+                    <TabsTrigger key={category.id} value={category.id} className="hidden sm:flex items-center gap-2">
+                      {category.icon}
+                      {category.name}
+                    </TabsTrigger>
+                  ))}
+                  <TabsTrigger value="mobile-dropdown" className="sm:hidden">
+                    Categories
+                  </TabsTrigger>
+                </TabsList>
+                
+                {traditionCategories.map((category) => (
+                  <TabsContent key={category.id} value={category.id}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {filteredTraditions
+                        .filter(trad => trad.category === category.id)
+                        .map((tradition) => (
+                          <TraditionCard key={tradition.id} tradition={tradition} />
+                        ))}
                     </div>
-                    <CardHeader>
-                      <CardTitle>{tradition.title}</CardTitle>
-                      <CardDescription>
-                        {tradition.ceremony_type.charAt(0).toUpperCase() + tradition.ceremony_type.slice(1)} Ceremony
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-600 text-sm mb-4">{tradition.description}</p>
-                      <div className="space-y-2 text-xs text-gray-500">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-uganda-red" />
-                          <span>{tradition.time_period}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <HeartHandshake className="h-4 w-4 mr-2 text-uganda-red" />
-                          <span>{tradition.significance}</span>
-                        </div>
+                    
+                    {filteredTraditions.filter(trad => trad.category === category.id).length === 0 && (
+                      <div className="text-center py-12">
+                        <p className="text-lg text-gray-500">No traditions found for this category and filter combination.</p>
+                        <Button 
+                          variant="link" 
+                          onClick={() => {
+                            setSelectedTribe("all");
+                            setSearchQuery("");
+                            filterTraditions(category.id, "all", "");
+                          }}
+                        >
+                          Clear filters
+                        </Button>
                       </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="outline" className="w-full border-uganda-yellow text-uganda-black hover:bg-uganda-yellow/10">
-                        <Scroll className="h-4 w-4 mr-2" />
-                        Learn More
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                    )}
+                  </TabsContent>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Book size={64} className="mx-auto text-gray-300" />
-                <h3 className="mt-6 text-2xl font-medium text-gray-600">No Traditions Found</h3>
-                <p className="mt-2 text-gray-500">
-                  No cultural traditions match your search criteria. Try adjusting your search.
-                </p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                
+                <TabsContent value="all">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredTraditions.map((tradition) => (
+                      <TraditionCard key={tradition.id} tradition={tradition} />
+                    ))}
+                  </div>
+                  
+                  {filteredTraditions.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-lg text-gray-500">No traditions found matching your filters.</p>
+                      <Button 
+                        variant="link" 
+                        onClick={() => {
+                          setSelectedTribe("all");
+                          setSearchQuery("");
+                          filterTraditions("all", "all", "");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="mobile-dropdown" className="sm:hidden">
+                  <div className="mb-6">
+                    <select
+                      onChange={(e) => handleCategoryChange(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="all">All Categories</option>
+                      {traditionCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-6">
+                    {filteredTraditions.map((tradition) => (
+                      <TraditionCard key={tradition.id} tradition={tradition} />
+                    ))}
+                  </div>
+                  
+                  {filteredTraditions.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-lg text-gray-500">No traditions found matching your filters.</p>
+                      <Button 
+                        variant="link" 
+                        onClick={() => {
+                          setSelectedTribe("all");
+                          setSearchQuery("");
+                          filterTraditions("all", "all", "");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </section>
+        </div>
       </main>
+      
+      <Footer />
       
       {showAuth && (
         <AuthForm onClose={() => setShowAuth(false)} />
       )}
     </div>
+  );
+};
+
+// Tradition Card Component
+const TraditionCard: React.FC<{tradition: TraditionType}> = ({ tradition }) => {
+  const categoryIcon = traditionCategories.find(cat => cat.id === tradition.category)?.icon;
+  
+  return (
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <div className="relative h-48 overflow-hidden">
+        {tradition.image ? (
+          <img 
+            src={tradition.image} 
+            alt={tradition.name} 
+            className="w-full h-full object-cover transition-transform hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-uganda-yellow/20 to-uganda-red/20 flex items-center justify-center">
+            <span className="text-uganda-black">{tradition.name}</span>
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
+          <Badge className={`${tradition.category === 'ceremonies' ? 'bg-blue-500' : 
+            tradition.category === 'customs' ? 'bg-green-500' : 
+            tradition.category === 'music' ? 'bg-purple-500' : 
+            tradition.category === 'marriage' ? 'bg-pink-500' : 
+            'bg-orange-500'} text-white`}>
+            <div className="flex items-center gap-1">
+              {categoryIcon}
+              {traditionCategories.find(cat => cat.id === tradition.category)?.name}
+            </div>
+          </Badge>
+        </div>
+      </div>
+      
+      <CardHeader className="pt-4 pb-2">
+        <CardTitle className="text-lg">{tradition.name}</CardTitle>
+        <CardDescription>Practiced by: {tradition.tribe}</CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <p className="text-sm line-clamp-3">{tradition.description}</p>
+      </CardContent>
+      
+      <div className="px-6 pb-4 flex justify-end">
+        <Button variant="link" className="text-uganda-red p-0">
+          Read more
+        </Button>
+      </div>
+    </Card>
   );
 };
 

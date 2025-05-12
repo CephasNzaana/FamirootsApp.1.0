@@ -1,155 +1,134 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { Navigation } from "@/components/Navigation"; 
-import { Menu, Home, Users, Book, User } from "lucide-react";
-import { Link } from "react-router-dom";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
-} from "@/components/ui/sheet";
+import { Menu, X, User } from "lucide-react";
+import Navigation from "@/components/Navigation";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 interface HeaderProps {
   onLogin: () => void;
   onSignup: () => void;
 }
 
-const Header = ({ onLogin, onSignup }: HeaderProps) => {
+const Header: React.FC<HeaderProps> = ({ onLogin, onSignup }) => {
   const { user, signOut } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
-    <header className="w-full bg-white bg-opacity-90 backdrop-blur-sm shadow-md py-4 px-6 md:px-10 sticky top-0 z-50">
-      <div className="flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center space-x-2">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="flex space-x-0.5">
-              <div className="w-4 h-8 bg-uganda-black"></div>
-              <div className="w-4 h-8 bg-uganda-yellow"></div>
-              <div className="w-4 h-8 bg-uganda-red"></div>
-            </div>
-            <h1 className="text-2xl font-bold text-uganda-black">
-              Fami<span className="text-uganda-red">Roots</span>
-            </h1>
-          </Link>
-        </div>
-        
-        {/* Navigation Menu (Desktop) */}
-        <div className="hidden md:block">
-          <Navigation />
-        </div>
+    <header className="bg-white shadow-sm">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center">
+              <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-uganda-yellow mr-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-uganda-black"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div>
+                <h1 className="font-bold text-xl text-uganda-black">
+                  FamiRoots
+                </h1>
+                <p className="text-xs text-gray-500">
+                  Ugandan Family Heritage
+                </p>
+              </div>
+            </Link>
+          </div>
 
-        {/* Desktop Auth Menu */}
-        <div className="hidden md:flex items-center space-x-4">
-          {user ? (
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Hello, {user.email?.split('@')[0]}
-              </span>
-              <Button 
-                variant="outline" 
-                onClick={() => signOut()}
-                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-              >
-                Logout
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                onClick={onLogin}
-                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-              >
-                Login
-              </Button>
-              <Button 
-                onClick={onSignup}
-                className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-              >
-                Sign Up
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Menu */}
-        <Sheet>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-            <SheetHeader>
-              <SheetTitle>FamiRoots</SheetTitle>
-            </SheetHeader>
-            <div className="py-6 flex flex-col space-y-4">
-              <Link to="/" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                <Home className="mr-2 h-4 w-4" />
-                Home
-              </Link>
-
-              {user && (
+          {isMobile ? (
+            <div className="flex items-center">
+              {!isMenuOpen ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMenuOpen(true)}
+                >
+                  <Menu className="h-6 w-6" />
+                </Button>
+              ) : (
                 <>
-                  <Link to="/family-trees" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                    <Users className="mr-2 h-4 w-4" />
-                    Family Trees
-                  </Link>
-                  <Link to="/tribes" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                    <Book className="mr-2 h-4 w-4" />
-                    Tribes & Clans
-                  </Link>
-                  <Link to="/elders" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                    <User className="mr-2 h-4 w-4" />
-                    Elder Database
-                  </Link>
-                  <Link to="/relationship-analyzer" className="flex items-center px-4 py-2 rounded-md hover:bg-gray-100">
-                    <Users className="mr-2 h-4 w-4" />
-                    Relationship Analyzer
-                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
+                  <div className="fixed inset-0 z-50 bg-white p-4 pt-20">
+                    <Navigation onClose={() => setIsMenuOpen(false)} />
+                  </div>
                 </>
               )}
-
-              <div className="mt-4 pt-4 border-t">
-                {user ? (
-                  <div className="flex flex-col gap-2">
-                    <span className="px-4 text-sm text-gray-600">
-                      Hello, {user.email?.split('@')[0]}
-                    </span>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => signOut()}
-                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                    >
-                      Logout
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={onLogin}
-                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                    >
-                      Login
-                    </Button>
-                    <Button 
-                      onClick={onSignup}
-                      className="w-full bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
-                    >
-                      Sign Up
-                    </Button>
-                  </div>
-                )}
-              </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          ) : (
+            <Navigation onClose={() => {}} />
+          )}
+
+          <div className="flex items-center space-x-2">
+            {user ? (
+              <div className="flex items-center space-x-2">
+                <Link to="/profile">
+                  <Button 
+                    variant="outline"
+                    className="flex items-center space-x-2 bg-white text-uganda-black border-uganda-yellow"
+                  >
+                    <User size={18} />
+                    <span>My Profile</span>
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  onClick={handleLogout}
+                  className="text-uganda-red hover:text-uganda-red/90"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  onClick={onLogin}
+                  className="text-uganda-black hover:text-uganda-black/90"
+                >
+                  Login
+                </Button>
+                <Button
+                  onClick={onSignup}
+                  className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90"
+                >
+                  Sign Up
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );

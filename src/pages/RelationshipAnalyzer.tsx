@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Dna, Bird, Clock } from "lucide-react";
+import { Users, Dna, Bird, Clock, User } from "lucide-react";
 import AuthForm from "@/components/AuthForm";
 import Header from "@/components/Header";
 import { FamilyTree, FamilyMember, ElderReference } from "@/types";
@@ -43,10 +43,12 @@ const RelationshipAnalyzer = () => {
   const [selectedTree, setSelectedTree] = useState<string>("");
   const [selectedPerson1, setSelectedPerson1] = useState<string>("");
   const [selectedPerson2, setSelectedPerson2] = useState<string>("");
-  const [selectedElder1, setSelectedElder1] = useState<string>("");
-  const [selectedElder2, setSelectedElder2] = useState<string>("");
+  const [selectedElders1, setSelectedElders1] = useState<string[]>([]);
+  const [selectedElders2, setSelectedElders2] = useState<string[]>([]);
   const [customPerson1, setCustomPerson1] = useState<string>("");
   const [customPerson2, setCustomPerson2] = useState<string>("");
+  const [customTribe2, setCustomTribe2] = useState<string>("");
+  const [customClan2, setCustomClan2] = useState<string>("");
   const [availableElders, setAvailableElders] = useState<ElderReference[]>([]);
   const [relationshipResult, setRelationshipResult] = useState<RelationshipResult | null>(null);
 
@@ -125,11 +127,11 @@ const RelationshipAnalyzer = () => {
       // In a production app, we would fetch this from the database
       // For now, creating some sample data
       setAvailableElders([
-        { id: "elder1", name: "Mzee Wakayima", approximateEra: "1850-1920", verificationScore: 0.95, verifiedBy: ["expert1", "expert2"], familyUnits: ["family1", "family2"] },
-        { id: "elder2", name: "Omukulu Kiwanuka", approximateEra: "1870-1950", verificationScore: 0.9, verifiedBy: ["expert1"], familyUnits: ["family3"] },
-        { id: "elder3", name: "Ssalongo Sserwadda", approximateEra: "1890-1975", verificationScore: 0.85, verifiedBy: ["expert3"], familyUnits: ["family4", "family5"] },
-        { id: "elder4", name: "Omukaaka Nalongo", approximateEra: "1900-1980", verificationScore: 0.8, verifiedBy: ["expert2", "expert3"], familyUnits: ["family6"] },
-        { id: "elder5", name: "Omumbejja Nkozi", approximateEra: "1910-1990", verificationScore: 0.75, verifiedBy: ["expert1", "expert4"], familyUnits: ["family7", "family8"] },
+        { id: "elder1", name: "Mzee Wakayima", approximateEra: "1850-1920", familyUnits: ["family1", "family2"] },
+        { id: "elder2", name: "Omukulu Kiwanuka", approximateEra: "1870-1950", familyUnits: ["family3"] },
+        { id: "elder3", name: "Ssalongo Sserwadda", approximateEra: "1890-1975", familyUnits: ["family4", "family5"] },
+        { id: "elder4", name: "Omukaaka Nalongo", approximateEra: "1900-1980", familyUnits: ["family6"] },
+        { id: "elder5", name: "Omumbejja Nkozi", approximateEra: "1910-1990", familyUnits: ["family7", "family8"] },
       ]);
     } catch (error) {
       console.error("Error fetching elders:", error);
@@ -155,8 +157,8 @@ const RelationshipAnalyzer = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       const tree = getCurrentlySelectedTree();
-      if (!tree) {
-        throw new Error("No family tree selected");
+      if (!tree && !customPerson2) {
+        throw new Error("No family tree selected and no second person specified");
       }
 
       // Get the selected members from the tree
@@ -169,25 +171,36 @@ const RelationshipAnalyzer = () => {
         { name: customPerson2, relationship: "custom" };
 
       // Get the selected elders
-      const elder1 = selectedElder1 ? 
-        availableElders.find(e => e.id === selectedElder1) : null;
-        
-      const elder2 = selectedElder2 ? 
-        availableElders.find(e => e.id === selectedElder2) : null;
+      const selectedElders1List = selectedElders1.map(id => 
+        availableElders.find(e => e.id === id)
+      ).filter(Boolean) as ElderReference[];
+      
+      const selectedElders2List = selectedElders2.map(id => 
+        availableElders.find(e => e.id === id)
+      ).filter(Boolean) as ElderReference[];
 
       // If either person is undefined, show an error
       if (!person1?.name || !person2?.name) {
         throw new Error("Please select or enter names for both individuals");
       }
 
-      // Generate a simulated relationship result
-      // In a real app, this would use AI and clan data for accurate analysis
+      // Call AI service to analyze relationship
+      // This is where a real app would call OpenAI or another AI service
+      // For demo purposes, we'll simulate different relationship scenarios
+      
       const probability = Math.random();
+      
+      // Determine if the two people are from the same tribe/clan
+      const isSameTribe = tree && (!customPerson2 || !customTribe2 || customTribe2 === tree.tribe);
+      const isSameClan = tree && (!customPerson2 || !customClan2 || customClan2 === tree.clan);
+      
+      // Higher chance of relation if from same clan
+      const relationProbability = isSameClan ? 0.8 : (isSameTribe ? 0.5 : 0.2);
       
       // Simulating different relationship scenarios for demo purposes
       let result: RelationshipResult;
       
-      if (probability > 0.3) {
+      if (probability < relationProbability) {
         // Related scenario
         const relationshipTypes = [
           "first cousins", "second cousins", "third cousins", 
@@ -195,12 +208,24 @@ const RelationshipAnalyzer = () => {
         ];
         const randomRelationship = relationshipTypes[Math.floor(Math.random() * relationshipTypes.length)];
         
+        const commonEldersCount = Math.min(
+          Math.floor(Math.random() * 3) + 1, 
+          Math.min(selectedElders1List.length || 1, selectedElders2List.length || 1)
+        );
+        
+        const commonEldersPool = [...selectedElders1List, ...selectedElders2List, ...availableElders.slice(0, 3)];
+        const commonElders = commonEldersPool
+          .slice(0, commonEldersCount)
+          .filter((e, i, arr) => arr.findIndex(el => el.id === e.id) === i);
+        
         result = {
           isRelated: true,
           relationshipType: randomRelationship,
-          commonElders: elder1 && elder2 ? [elder1, elder2] : (elder1 ? [elder1] : (elder2 ? [elder2] : undefined)),
+          commonElders: commonElders.length > 0 ? commonElders : undefined,
           generationalDistance: Math.floor(Math.random() * 4) + 1,
-          clanContext: `Both individuals belong to the ${tree.clan} clan of the ${tree.tribe} tribe.`,
+          clanContext: isSameClan 
+            ? `Both individuals belong to the ${tree?.clan} clan of the ${tree?.tribe} tribe.`
+            : `${person1.name} belongs to the ${tree?.clan} clan of the ${tree?.tribe} tribe, while ${person2.name} belongs to the ${customClan2 || "unknown"} clan of the ${customTribe2 || "unknown"} tribe.`,
           confidenceScore: 0.7 + (Math.random() * 0.25),
           verificationPath: [
             "Clan elder verification",
@@ -214,7 +239,9 @@ const RelationshipAnalyzer = () => {
         result = {
           isRelated: false,
           confidenceScore: 0.5 + (Math.random() * 0.3),
-          clanContext: `Analysis could not establish a connection within the ${tree.clan} clan of the ${tree.tribe} tribe.`
+          clanContext: isSameClan
+            ? `Analysis could not establish a connection within the ${tree?.clan} clan of the ${tree?.tribe} tribe.`
+            : `Analysis could not establish a connection between the ${tree?.clan} clan of the ${tree?.tribe} tribe and the ${customClan2 || "unknown"} clan of the ${customTribe2 || "unknown"} tribe.`
         };
       }
       
@@ -233,8 +260,10 @@ const RelationshipAnalyzer = () => {
     setSelectedPerson2("");
     setCustomPerson1("");
     setCustomPerson2("");
-    setSelectedElder1("");
-    setSelectedElder2("");
+    setCustomTribe2("");
+    setCustomClan2("");
+    setSelectedElders1([]);
+    setSelectedElders2([]);
   };
 
   if (!user) {
@@ -286,7 +315,7 @@ const RelationshipAnalyzer = () => {
               <CardHeader>
                 <CardTitle>Analyze Family Relationships</CardTitle>
                 <CardDescription>
-                  Select people from your family tree or enter custom names to analyze their relationship.
+                  Select a person from your family tree and compare with anyone from around the world.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -294,7 +323,7 @@ const RelationshipAnalyzer = () => {
                   {familyTrees.length > 0 ? (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="family-tree">Select Family Tree</Label>
+                        <Label htmlFor="family-tree">Select Your Family Tree</Label>
                         <Select 
                           value={selectedTree} 
                           onValueChange={setSelectedTree}
@@ -315,7 +344,7 @@ const RelationshipAnalyzer = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* First Person Selection */}
                         <div className="space-y-4 p-4 border rounded-lg">
-                          <h3 className="text-lg font-medium">First Person</h3>
+                          <h3 className="text-lg font-medium">First Person (From Your Family)</h3>
                           <div className="space-y-2">
                             <Label htmlFor="first-person">Select from Family Tree</Label>
                             <Select 
@@ -352,13 +381,19 @@ const RelationshipAnalyzer = () => {
                           )}
                           
                           <div className="space-y-2">
-                            <Label htmlFor="elder1">Known Elder Connection</Label>
+                            <Label htmlFor="elder1">Known Clan Elders</Label>
                             <Select 
-                              value={selectedElder1} 
-                              onValueChange={setSelectedElder1}
+                              value={selectedElders1.length > 0 ? selectedElders1[0] : ""}
+                              onValueChange={(value) => {
+                                if (value) {
+                                  setSelectedElders1([value]);
+                                } else {
+                                  setSelectedElders1([]);
+                                }
+                              }}
                             >
                               <SelectTrigger id="elder1">
-                                <SelectValue placeholder="Select an elder" />
+                                <SelectValue placeholder="Select clan elders" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="">None</SelectItem>
@@ -370,25 +405,55 @@ const RelationshipAnalyzer = () => {
                               </SelectContent>
                             </Select>
                           </div>
+                          
+                          {selectedElders1.length > 0 && (
+                            <div className="space-y-2">
+                              <Label htmlFor="additional-elder1">Additional Elder Connection</Label>
+                              <Select
+                                value={selectedElders1.length > 1 ? selectedElders1[1] : ""}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    setSelectedElders1(prev => [...prev, value]);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger id="additional-elder1">
+                                  <SelectValue placeholder="Select additional elder" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">None</SelectItem>
+                                  {availableElders
+                                    .filter(elder => !selectedElders1.includes(elder.id))
+                                    .map(elder => (
+                                      <SelectItem key={elder.id} value={elder.id}>
+                                        {elder.name} ({elder.approximateEra})
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
 
                         {/* Second Person Selection */}
                         <div className="space-y-4 p-4 border rounded-lg">
-                          <h3 className="text-lg font-medium">Second Person</h3>
+                          <h3 className="text-lg font-medium">Second Person (From Anywhere)</h3>
                           <div className="space-y-2">
-                            <Label htmlFor="second-person">Select from Family Tree</Label>
+                            <Label htmlFor="second-person">Select from Your Family Tree (Optional)</Label>
                             <Select 
                               value={selectedPerson2} 
                               onValueChange={val => {
                                 setSelectedPerson2(val);
                                 setCustomPerson2("");
+                                setCustomTribe2("");
+                                setCustomClan2("");
                               }}
                             >
                               <SelectTrigger id="second-person">
-                                <SelectValue placeholder="Select a person" />
+                                <SelectValue placeholder="Select a person or enter details below" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">-- Custom Name --</SelectItem>
+                                <SelectItem value="">-- Enter Custom Person --</SelectItem>
                                 {getAvailableMembers().map(member => (
                                   <SelectItem key={member.id} value={member.id}>
                                     {member.name} ({member.relationship})
@@ -399,25 +464,53 @@ const RelationshipAnalyzer = () => {
                           </div>
                           
                           {!selectedPerson2 && (
-                            <div className="space-y-2">
-                              <Label htmlFor="custom-person2">Enter Custom Name</Label>
-                              <Input
-                                id="custom-person2"
-                                placeholder="e.g., Sarah Namakula"
-                                value={customPerson2}
-                                onChange={e => setCustomPerson2(e.target.value)}
-                              />
-                            </div>
+                            <>
+                              <div className="space-y-2">
+                                <Label htmlFor="custom-person2">Enter Person's Name</Label>
+                                <Input
+                                  id="custom-person2"
+                                  placeholder="e.g., Sarah Namakula"
+                                  value={customPerson2}
+                                  onChange={e => setCustomPerson2(e.target.value)}
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="custom-tribe2">Tribe (if known)</Label>
+                                <Input
+                                  id="custom-tribe2"
+                                  placeholder="e.g., Baganda"
+                                  value={customTribe2}
+                                  onChange={e => setCustomTribe2(e.target.value)}
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor="custom-clan2">Clan (if known)</Label>
+                                <Input
+                                  id="custom-clan2"
+                                  placeholder="e.g., Mamba"
+                                  value={customClan2}
+                                  onChange={e => setCustomClan2(e.target.value)}
+                                />
+                              </div>
+                            </>
                           )}
                           
                           <div className="space-y-2">
-                            <Label htmlFor="elder2">Known Elder Connection</Label>
-                            <Select 
-                              value={selectedElder2} 
-                              onValueChange={setSelectedElder2}
+                            <Label htmlFor="elder2">Known Clan Elders</Label>
+                            <Select
+                              value={selectedElders2.length > 0 ? selectedElders2[0] : ""}
+                              onValueChange={(value) => {
+                                if (value) {
+                                  setSelectedElders2([value]);
+                                } else {
+                                  setSelectedElders2([]);
+                                }
+                              }}
                             >
                               <SelectTrigger id="elder2">
-                                <SelectValue placeholder="Select an elder" />
+                                <SelectValue placeholder="Select clan elders" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="">None</SelectItem>
@@ -429,13 +522,41 @@ const RelationshipAnalyzer = () => {
                               </SelectContent>
                             </Select>
                           </div>
+                          
+                          {selectedElders2.length > 0 && (
+                            <div className="space-y-2">
+                              <Label htmlFor="additional-elder2">Additional Elder Connection</Label>
+                              <Select
+                                value={selectedElders2.length > 1 ? selectedElders2[1] : ""}
+                                onValueChange={(value) => {
+                                  if (value) {
+                                    setSelectedElders2(prev => [...prev, value]);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger id="additional-elder2">
+                                  <SelectValue placeholder="Select additional elder" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">None</SelectItem>
+                                  {availableElders
+                                    .filter(elder => !selectedElders2.includes(elder.id))
+                                    .map(elder => (
+                                      <SelectItem key={elder.id} value={elder.id}>
+                                        {elder.name} ({elder.approximateEra})
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <div className="text-center pt-4">
                         <Button 
                           onClick={handleAnalyzeRelationship}
-                          className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90 px-8 py-2"
+                          className="bg-uganda-red text-white hover:bg-uganda-red/90 px-8 py-2"
                           disabled={isLoading || ((!selectedPerson1 && !customPerson1) || (!selectedPerson2 && !customPerson2))}
                         >
                           <Users className="mr-2 h-5 w-5" />
@@ -568,7 +689,7 @@ const RelationshipAnalyzer = () => {
                   <div className="text-center pt-4">
                     <Button 
                       onClick={() => window.location.href = '/dna-test'}
-                      className="text-black hover:text-black"
+                      className="bg-uganda-red text-white hover:bg-uganda-red/90"
                     >
                       <Dna className="mr-2 h-5 w-5" />
                       Order DNA Test for Verification

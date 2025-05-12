@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,10 +94,10 @@ const Footer = () => {
                   <strong>Email:</strong> info@famiroots.com
                 </li>
                 <li className="text-gray-300">
-                  <strong>Phone:</strong> +256 700 123 456
+                  <strong>Phone:</strong> +256 770 432556 / +256 700 864405
                 </li>
                 <li className="text-gray-300">
-                  <strong>Address:</strong> Plot 123, Kampala Road, Kampala, Uganda
+                  <strong>Address:</strong> Plot 7, Kigongi Road, Kabale, Uganda
                 </li>
               </ul>
               <div className="mt-6">

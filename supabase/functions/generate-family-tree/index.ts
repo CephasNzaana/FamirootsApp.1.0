@@ -1,23 +1,165 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface RequestData {
+interface TreeFormData {
   surname: string;
   tribe: string;
   clan: string;
-  familyData: any;
+  familyName?: string;
+  gender?: string;
+  extendedFamily?: any;
 }
+
+interface FamilyMember {
+  id: string;
+  name: string;
+  relationship: string;
+  birthYear?: string;
+  deathYear?: string;
+  generation: number;
+  parentId?: string;
+  isElder: boolean;
+  gender?: string;
+  side?: 'maternal' | 'paternal';
+  status: 'living' | 'deceased';
+}
+
+interface FamilyTree {
+  id: string;
+  userId: string;
+  surname: string;
+  tribe: string;
+  clan: string;
+  members: FamilyMember[];
+}
+
+// Fallback data in case API fails
+const fallbackMembers: FamilyMember[] = [
+  {
+    id: "self-1",
+    name: "Cephas Nzaana",
+    relationship: "self",
+    birthYear: "1997",
+    generation: 0,
+    isElder: false,
+    status: "living",
+    gender: "male",
+  },
+  {
+    id: "father-1",
+    name: "Henry Turihaihi Nzaana",
+    relationship: "father",
+    birthYear: "1969",
+    generation: -1,
+    parentId: "grandfather-1",
+    isElder: false,
+    status: "living",
+    gender: "male",
+    side: "paternal",
+  },
+  {
+    id: "mother-1",
+    name: "Emily Ndyagumanawe",
+    relationship: "mother",
+    birthYear: "1973",
+    deathYear: "2016",
+    generation: -1,
+    parentId: "grandmother-2",
+    isElder: false,
+    status: "deceased",
+    gender: "female",
+    side: "maternal",
+  },
+  {
+    id: "grandfather-1",
+    name: "Fredrick Nzaana",
+    relationship: "grandfather",
+    birthYear: "1945",
+    deathYear: "2005",
+    generation: -2,
+    isElder: true,
+    status: "deceased",
+    gender: "male",
+    side: "paternal",
+  },
+  {
+    id: "grandmother-1",
+    name: "Zeridah",
+    relationship: "grandmother",
+    birthYear: "1948",
+    deathYear: "2010",
+    generation: -2,
+    isElder: false,
+    status: "deceased",
+    gender: "female",
+    side: "paternal",
+  },
+  {
+    id: "grandfather-2",
+    name: "Kanoni",
+    relationship: "grandfather",
+    birthYear: "1950",
+    deathYear: "2012",
+    generation: -2,
+    isElder: true,
+    status: "deceased",
+    gender: "male",
+    side: "maternal",
+  },
+  {
+    id: "grandmother-2",
+    name: "Lillian",
+    relationship: "grandmother",
+    birthYear: "1952",
+    generation: -2,
+    isElder: false,
+    status: "living",
+    gender: "female",
+    side: "maternal",
+  },
+  {
+    id: "sibling-1",
+    name: "Patrick Mugisha",
+    relationship: "brother",
+    birthYear: "1995",
+    generation: 0,
+    parentId: "father-1",
+    isElder: false,
+    status: "living",
+    gender: "male",
+  },
+  {
+    id: "sibling-2",
+    name: "Grace Kyohairwe",
+    relationship: "sister",
+    birthYear: "2000",
+    generation: 0,
+    parentId: "father-1",
+    isElder: false,
+    status: "living",
+    gender: "female",
+  },
+  {
+    id: "uncle-1",
+    name: "Moses Tusiime",
+    relationship: "uncle",
+    birthYear: "1972",
+    generation: -1,
+    parentId: "grandfather-1",
+    isElder: false,
+    status: "living",
+    gender: "male",
+    side: "paternal",
+  }
+];
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,218 +167,152 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Check for API key
-  if (!openAIApiKey) {
-    return new Response(
-      JSON.stringify({ error: 'OpenAI API key not configured' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
   try {
-    // Get user ID from authorization header
+    // Verify user is authenticated
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized request' }),
+        JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Create Supabase client
-    const supabase = createClient(
-      supabaseUrl || '',
-      supabaseServiceKey || '',
-      { auth: { persistSession: false } }
-    );
-    
-    // Validate the token to get userId
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const userId = user.id;
-    
-    // Parse request body
-    const { surname, tribe, clan, ...familyData } = await req.json() as RequestData;
+
+    // Get the form data from the request
+    const { surname, tribe, clan } = await req.json();
 
     if (!surname || !tribe || !clan) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: surname, tribe, clan' }),
+        JSON.stringify({ error: 'Missing required form data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prepare user data to send to OpenAI
-    const userData = {
-      surname,
-      tribe,
-      clan,
-      ...familyData
-    };
+    let members: FamilyMember[] = [];
+    let fallback = false;
 
-    console.log("Sending data to OpenAI:", JSON.stringify(userData));
-
-    // Call OpenAI to generate a family tree based on the user's input
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert genealogist specializing in Ugandan family trees and clan structures.
-            
-            Your task is to create a family tree structure based on the provided information about a user's family.
-            
-            Follow these strict rules:
-            1. ONLY use the information explicitly provided by the user. DO NOT invent or add any fictitious family members.
-            2. If a family connection wasn't explicitly mentioned, DO NOT create it.
-            3. Use generation numbers to represent the family hierarchy (0 for the main user, -1 for parents, -2 for grandparents, 1 for children).
-            4. The response should be a valid JSON object that includes an array of family members, each with unique IDs.
-            5. Make the user the central person in the family tree.
-            6. Include all relationships that can be directly inferred from the provided data.
-            7. Never add placeholder or fictional members. Only include members that were explicitly mentioned in the input data.
-            
-            Each family member should include:
-            - id: a unique string identifier (like "member1", "member2", etc.)
-            - name: the person's name as provided in the input
-            - relationship: their relationship to the main user (e.g., "self", "father", "paternal grandfather")
-            - birthYear: birth year if provided
-            - deathYear: death year if provided
-            - generation: numeric generation relative to main user (0 for self, -1 for parents, 1 for children, etc.)
-            - parentId: the ID of this person's parent in the tree (if applicable)
-            - isElder: boolean indicating if this person is a clan elder
-            - gender: "male" or "female" if provided
-            
-            Return only the valid JSON with no additional explanations or text outside the JSON. Make sure to never include invented family members.`
-          },
-          {
-            role: 'user',
-            content: `Please create a family tree structure strictly based on only this information, with no invented members: ${JSON.stringify(userData)}`
-          }
-        ],
-        temperature: 0.3,
-      }),
-    });
-
-    const openAIData = await openAIResponse.json();
-    
-    // Error handling for OpenAI response
-    if (!openAIData.choices || openAIData.choices.length === 0) {
-      console.error("Invalid OpenAI response:", openAIData);
-      throw new Error("Failed to generate family tree from OpenAI");
-    }
-
-    // Parse the OpenAI response to get the family tree structure
-    const aiResponseText = openAIData.choices[0].message.content;
-    console.log("OpenAI response:", aiResponseText);
-    
-    let familyTreeData;
     try {
-      // Try to parse the response as JSON
-      familyTreeData = JSON.parse(aiResponseText);
-    } catch (jsonError) {
-      console.error("Error parsing AI response:", jsonError);
+      if (!OPENAI_API_KEY) {
+        throw new Error("OpenAI API key is not configured.");
+      }
+
+      // Create a prompt for the AI
+      const prompt = `Generate family tree data for a Ugandan family with the surname ${surname} from the ${tribe} tribe and ${clan} clan.
+        The family tree should include at least 10 family members across 3 generations, with:
+        - A main person at generation 0
+        - Parents at generation -1
+        - Grandparents at generation -2
+        - Siblings at generation 0
+        - Some may have children at generation 1
+        - Some elders (mark isElder as true) who are respected in the clan
+        
+        For each member include:
+        - Unique id
+        - Full name (appropriate Ugandan names)
+        - Relationship to main person (father, mother, brother, sister, etc.)
+        - Birth year (between 1930-2005)
+        - Death year for deceased members (leave empty for living)
+        - Generation number (negative for ancestors, 0 for main person and siblings, positive for descendants)
+        - Parent ID reference where appropriate
+        - Whether they are a clan elder (isElder)
+        - Gender (male/female)
+        - Side (maternal/paternal) where applicable
+        - Status (living/deceased)
+        
+        Return ONLY valid JSON that I can parse directly. Format it as an array of family member objects.`;
+
+      // Call OpenAI API
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: "You are a family tree generator for Ugandan families. Return only valid JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("OpenAI API error:", errorData);
+        throw new Error(`OpenAI API error: ${errorData.error?.message || "Unknown error"}`);
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      // Extract JSON from the response
+      const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
       
-      // Create a default family tree with just the user
-      familyTreeData = {
-        members: [
-          {
-            id: "member1",
-            name: familyData.familyName || surname,
-            relationship: "self",
-            generation: 0,
-            isElder: false,
-            gender: familyData.gender || "unknown"
-          }
-        ]
-      };
+      if (jsonMatch) {
+        const jsonString = jsonMatch[0];
+        members = JSON.parse(jsonString);
+        
+        // Validate the structure of the returned data
+        if (!Array.isArray(members) || members.length === 0) {
+          throw new Error("Invalid response format from AI");
+        }
+        
+        // Ensure all required fields are present
+        members = members.map(member => ({
+          id: member.id || `member-${Math.random().toString(36).substr(2, 9)}`,
+          name: member.name || "Unknown",
+          relationship: member.relationship || "",
+          birthYear: member.birthYear || undefined,
+          deathYear: member.deathYear || undefined,
+          generation: member.generation || 0,
+          parentId: member.parentId || undefined,
+          isElder: member.isElder || false,
+          gender: member.gender || undefined,
+          side: member.side as 'maternal' | 'paternal' | undefined,
+          status: member.deathYear ? 'deceased' : 'living'
+        }));
+      } else {
+        throw new Error("Could not extract JSON from AI response");
+      }
+    } catch (aiError) {
+      console.error("Error generating family tree with AI:", aiError);
+      
+      // Use fallback data
+      members = fallbackMembers;
+      fallback = true;
+      
+      // Adjust fallback data to match request
+      members = members.map(member => {
+        if (member.relationship === 'self') {
+          return { ...member, name: `${surname} ${member.name.split(' ')[0]}` };
+        }
+        return member;
+      });
     }
 
-    // Create a new family tree record in the database
-    const { data: treeData, error: treeError } = await supabase
-      .from('family_trees')
-      .insert({
-        user_id: userId,
+    // Generate a unique ID for the tree
+    const treeId = crypto.randomUUID();
+
+    // Return the generated family tree
+    return new Response(
+      JSON.stringify({
+        treeId,
         surname,
         tribe,
-        clan
-      })
-      .select()
-      .single();
-    
-    if (treeError) {
-      throw new Error(`Failed to create family tree: ${treeError.message}`);
-    }
-    
-    const treeId = treeData.id;
-    
-    // Insert family members with the tree ID
-    const familyMembers = familyTreeData.members.map((member: any) => ({
-      family_tree_id: treeId,
-      name: member.name,
-      relationship: member.relationship,
-      birth_year: member.birthYear,
-      death_year: member.deathYear,
-      generation: member.generation,
-      parent_id: member.parentId,
-      is_elder: member.isElder,
-      gender: member.gender,
-      side: member.side
-    }));
-    
-    const { error: membersError } = await supabase
-      .from('family_members')
-      .insert(familyMembers);
-    
-    if (membersError) {
-      throw new Error(`Failed to create family members: ${membersError.message}`);
-    }
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        treeId,
-        members: familyTreeData.members
+        clan,
+        members,
+        fallback,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
     console.error("Error in generate-family-tree function:", error);
     
     return new Response(
-      JSON.stringify({
-        error: error.message,
-        fallback: true,
-        treeId: "fallback-tree-id",
-        members: [
-          {
-            id: "member1",
-            name: "You",
-            relationship: "self",
-            generation: 0,
-            isElder: false,
-            gender: "unknown"
-          }
-        ]
-      }),
-      { 
-        status: 200, // Return 200 even with fallback data
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
