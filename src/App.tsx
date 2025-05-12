@@ -16,6 +16,7 @@ import DNATest from "./pages/DNATest";
 import ProfilePage from "./pages/ProfilePage";
 import UserProfilePage from "./pages/UserProfilePage";
 import Traditions from "./pages/Traditions";
+import CulturalResources from "./pages/CulturalResources";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/family-trees" element={<FamilyTrees />} />
             <Route path="/relationship-analyzer" element={<RelationshipAnalyzer />} />
+            <Route path="/cultural-resources" element={<CulturalResources />} />
             <Route path="/tribes" element={<Tribes />} />
             <Route path="/clans/:tribeId/:clanId" element={<ClanDetails />} />
             <Route path="/elders" element={<Elders />} />

@@ -71,7 +71,7 @@ const ClanFamilyTree: React.FC<ClanFamilyTreeProps> = ({ clan }) => {
                     
                     <div className="mt-3 text-sm">
                       <span className="text-gray-500 mr-2">Connected Families:</span>
-                      <span className="font-medium">{elder.familyConnections?.length || 0}</span>
+                      <span className="font-medium">{elder.familyUnits?.length || 0}</span>
                     </div>
                   </div>
                 ))}

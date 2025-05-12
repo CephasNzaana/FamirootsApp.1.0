@@ -14,6 +14,7 @@ export type Database = {
           birth_year: string | null
           created_at: string
           death_year: string | null
+          family_connections: string[] | null
           family_tree_id: string
           gender: string | null
           generation: number
@@ -29,6 +30,7 @@ export type Database = {
           birth_year?: string | null
           created_at?: string
           death_year?: string | null
+          family_connections?: string[] | null
           family_tree_id: string
           gender?: string | null
           generation: number
@@ -44,6 +46,7 @@ export type Database = {
           birth_year?: string | null
           created_at?: string
           death_year?: string | null
+          family_connections?: string[] | null
           family_tree_id?: string
           gender?: string | null
           generation?: number
@@ -113,26 +116,41 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          biography: string | null
+          birth_place: string | null
+          birth_year: string | null
+          clan: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
+          tribe: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          biography?: string | null
+          birth_place?: string | null
+          birth_year?: string | null
+          clan?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
+          tribe?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          biography?: string | null
+          birth_place?: string | null
+          birth_year?: string | null
+          clan?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
+          tribe?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -146,10 +164,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           avatar_url: string | null
+          biography: string | null
+          birth_place: string | null
+          birth_year: string | null
+          clan: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
+          tribe: string | null
           updated_at: string
         }
       }

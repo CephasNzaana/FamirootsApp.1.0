@@ -14,9 +14,9 @@ export const Navigation: React.FC<NavigationProps> = ({ onClose = () => {} }) =>
     { path: '/', label: 'Home' },
     { path: '/relationship-analyzer', label: 'Relationship Analyzer' },
     { path: '/cultural-resources', label: 'Cultural Resources' },
+    { path: '/traditions', label: 'Traditions' },
     { path: '/elders', label: 'Clan Elders' },
     { path: '/dna-test', label: 'DNA Test' },
-    { path: '/contact', label: 'Contact Us' },
   ];
 
   return (

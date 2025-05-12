@@ -1,4 +1,3 @@
-
 export interface FamilyMember {
   id: string;
   name: string;
@@ -135,6 +134,7 @@ export interface ClanElder {
   significance?: string;
   verificationScore: number;
   familyUnits: string[];
+  familyConnections?: string[];
   era?: string;
   notes?: string;
 }

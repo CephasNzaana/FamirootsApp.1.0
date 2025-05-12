@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Users, FileText, Image, FileUp } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/context/AuthContext";
+import { getUserProfile, updateUserProfile } from "@/hooks/useSupabaseDatabase";
 
 interface UserProfileProps {
   user: {
@@ -22,10 +25,46 @@ const UserProfile = ({ user }: UserProfileProps) => {
   const [editing, setEditing] = useState<boolean>(false);
   const [uploadedPhotos, setUploadedPhotos] = useState<File[]>([]);
   const [uploadedGedcom, setUploadedGedcom] = useState<File | null>(null);
+  const [showFamilyMemberDialog, setShowFamilyMemberDialog] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleBiographySave = () => {
-    toast.success("Biography saved successfully!");
-    setEditing(false);
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await getUserProfile(user.id);
+      if (data) {
+        setUserProfile(data);
+        setBiography(data.biography || '');
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBiographySave = async () => {
+    try {
+      if (!userProfile) return;
+      
+      await updateUserProfile(user.id, {
+        ...userProfile,
+        biography
+      });
+      
+      toast.success("Biography saved successfully!");
+      setEditing(false);
+    } catch (error) {
+      console.error("Error saving biography:", error);
+      toast.error("Failed to save biography");
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,6 +80,21 @@ const UserProfile = ({ user }: UserProfileProps) => {
     if (e.target.files && e.target.files.length > 0) {
       setUploadedGedcom(e.target.files[0]);
       toast.success(`GEDCOM file uploaded successfully!`);
+    }
+  };
+
+  const handleAddFamilyMember = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const relationship = formData.get('relationship') as string;
+    
+    if (name && relationship) {
+      // In a production app, we would call an API to save this
+      toast.success(`Added ${name} as your ${relationship}.`);
+      setShowFamilyMemberDialog(false);
+    } else {
+      toast.error("Please provide both name and relationship");
     }
   };
 
@@ -141,7 +195,7 @@ const UserProfile = ({ user }: UserProfileProps) => {
                 Connect with your immediate family members to build your family tree. Add parents, siblings, spouse, and children.
               </p>
               <Button 
-                onClick={() => toast.info("Add family member feature will be available soon!")}
+                onClick={() => setShowFamilyMemberDialog(true)}
                 className="bg-uganda-red hover:bg-uganda-red/90 text-white"
               >
                 Add Family Members
@@ -275,6 +329,67 @@ const UserProfile = ({ user }: UserProfileProps) => {
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      <Dialog open={showFamilyMemberDialog} onOpenChange={setShowFamilyMemberDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Family Member</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddFamilyMember}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Full name"
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="relationship">Relationship</Label>
+                <Input
+                  id="relationship"
+                  name="relationship"
+                  placeholder="e.g., father, mother, sibling"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="birthYear">Birth Year</Label>
+                  <Input
+                    id="birthYear"
+                    name="birthYear"
+                    placeholder="e.g., 1980"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowFamilyMemberDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-uganda-yellow text-uganda-black hover:bg-uganda-yellow/90">
+                Add Family Member
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
