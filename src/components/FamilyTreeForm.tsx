@@ -90,13 +90,13 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
       const selectedTribe = ugandaTribesData.find(tribe => tribe.name === formData.tribe);
       if (selectedTribe) {
         const selectedClan = selectedTribe.clans.find(clan => clan.name === formData.clan);
-        if (selectedClan) {
+        if (selectedClan && selectedClan.elders) {
           console.log("Found clan:", selectedClan.name, "with elders:", selectedClan.elders);
           // Map clan elders to ElderReference type
           const mappedElders = selectedClan.elders.map(elder => ({
             id: elder.id,
             name: elder.name,
-            approximateEra: elder.era || "Unknown era",
+            approximateEra: elder.approximateEra || "Unknown era",
             familyUnits: elder.familyConnections || []
           }));
           setAvailableElders(mappedElders);
@@ -180,14 +180,16 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   // Handle spouse changes
   const handleSpouseChange = (field: string, value: string) => {
     setFormData(prev => {
+      const updatedSpouse = {
+        ...(prev.extendedFamily?.spouse || { name: "", birthYear: "" }),
+        [field]: value
+      };
+      
       return {
         ...prev,
         extendedFamily: {
           ...prev.extendedFamily,
-          spouse: {
-            ...(prev.extendedFamily?.spouse || {}),
-            [field]: value
-          }
+          spouse: updatedSpouse
         }
       };
     });

@@ -23,7 +23,7 @@ const ClanDetails = () => {
         const foundTribe = ugandaTribesData.find(t => t.id === tribeId);
         
         if (foundTribe) {
-          setTribe(foundTribe);
+          setTribe(foundTribe as unknown as Tribe);
           
           // Find the clan within the tribe
           const foundClan = foundTribe.clans.find(c => c.id === clanId);
@@ -32,7 +32,7 @@ const ClanDetails = () => {
               ...foundClan,
               tribeName: foundTribe.name,
               tribeId: foundTribe.id
-            });
+            } as unknown as Clan);
           }
         }
       } catch (error) {
@@ -86,7 +86,7 @@ const ClanDetails = () => {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink isCurrentPage>{clan.name}</BreadcrumbLink>
+            <BreadcrumbLink href="">{clan.name}</BreadcrumbLink>
           </BreadcrumbItem>
         </Breadcrumb>
       </div>

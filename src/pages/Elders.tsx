@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { ClanElder } from '@/types';
 import { PageContainer } from '@/components/PageContainer';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent, Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,7 +11,6 @@ import { Separator } from '@/components/ui/separator';
 import { Award, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ClanElder } from '@/types';
 import { ugandaTribesData } from '@/data/ugandaTribesClanData';
 
 const Elders = () => {
@@ -32,7 +32,9 @@ const Elders = () => {
           const clanElders = clan.elders.map(elder => ({
             ...elder,
             clanName: clan.name,
-          }));
+            clanId: clan.id,
+            familyConnections: elder.familyConnections || []
+          } as ClanElder));
           allElders.push(...clanElders);
         }
       });
@@ -58,7 +60,7 @@ const Elders = () => {
       const tribe = ugandaTribesData.find(t => t.id === selectedTribe);
       if (tribe) {
         const clanIds = tribe.clans.map(clan => clan.id);
-        filtered = filtered.filter(elder => clanIds.includes(elder.clanId));
+        filtered = filtered.filter(elder => clanIds.includes(elder.clanId || ''));
       }
     }
     

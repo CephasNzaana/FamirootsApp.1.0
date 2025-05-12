@@ -28,29 +28,29 @@ export interface TreeFormData {
   surname: string;
   tribe: string;
   clan: string;
-  extendedFamily?: {
+  extendedFamily: {
     familyName?: string;
     gender?: string;
     birthYear?: string;
     birthPlace?: string;
-    siblings?: Array<{name: string, gender: string, birthYear: string}>;
-    spouse?: {name: string, birthYear: string};
+    siblings?: Array<{name: string; gender: string; birthYear: string}>;
+    spouse?: {name: string; birthYear: string};
     selectedElders?: ElderReference[];
     parents?: {
-      father?: {name: string, birthYear: string, deathYear?: string};
-      mother?: {name: string, birthYear: string, deathYear?: string};
+      father?: {name: string; birthYear: string; deathYear?: string};
+      mother?: {name: string; birthYear: string; deathYear?: string};
     };
     grandparents?: {
       paternal?: {
-        grandfather?: {name: string, birthYear: string, deathYear?: string};
-        grandmother?: {name: string, birthYear: string, deathYear?: string};
+        grandfather?: {name: string; birthYear: string; deathYear?: string};
+        grandmother?: {name: string; birthYear: string; deathYear?: string};
       };
       maternal?: {
-        grandfather?: {name: string, birthYear: string, deathYear?: string};
-        grandmother?: {name: string, birthYear: string, deathYear?: string};
+        grandfather?: {name: string; birthYear: string; deathYear?: string};
+        grandmother?: {name: string; birthYear: string; deathYear?: string};
       };
     };
-    children?: Array<{name: string, gender: string, birthYear: string}>;
+    children?: Array<{name: string; gender: string; birthYear: string}>;
   };
 }
 
@@ -103,7 +103,7 @@ export interface Tribe {
   id: string;
   name: string;
   region: string;
-  population: number;
+  population: string | number;
   description: string;
   clans: Clan[];
   traditions?: Tradition[];
@@ -114,24 +114,29 @@ export interface Clan {
   name: string;
   tribeId: string;
   tribeName?: string;
-  description?: string;
   totem?: string;
+  description?: string;
   elders?: ClanElder[];
+  origin?: string;
   families?: number;
   traditions?: Tradition[];
+  culturalPractices?: string[];
+  historicalNotes?: string[];
 }
 
 export interface ClanElder {
   id: string;
   name: string;
-  clanId: string;
+  clanId?: string;
   clanName?: string;
   approximateEra: string;
   birthYear?: string;
   deathYear?: string;
   significance?: string;
   verificationScore: number;
-  familyConnections: any[];
+  familyConnections?: any[];
+  era?: string;
+  notes?: string;
 }
 
 export interface Tradition {

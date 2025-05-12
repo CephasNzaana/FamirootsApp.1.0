@@ -19,7 +19,6 @@ export function useIsMobile() {
   return !!isMobile
 }
 
-// Add the missing useMediaQuery function that's being imported in Header.tsx
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = React.useState<boolean>(false)
 
