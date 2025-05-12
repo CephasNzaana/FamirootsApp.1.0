@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { TreeFormData, ElderReference } from "@/types";
+import { TreeFormData, ElderReference, ClanElder } from "@/types";
 import { toast } from "@/components/ui/sonner";
 import { 
   Select,
@@ -93,11 +92,11 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         if (selectedClan && selectedClan.elders) {
           console.log("Found clan:", selectedClan.name, "with elders:", selectedClan.elders);
           // Map clan elders to ElderReference type
-          const mappedElders = selectedClan.elders.map(elder => ({
+          const mappedElders = selectedClan.elders.map((elder: ClanElder) => ({
             id: elder.id,
             name: elder.name,
             approximateEra: elder.approximateEra || "Unknown era",
-            familyUnits: elder.familyConnections || []
+            familyUnits: elder.familyUnits || []
           }));
           setAvailableElders(mappedElders);
         } else {

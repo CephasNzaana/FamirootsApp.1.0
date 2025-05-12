@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -70,7 +69,7 @@ const UserProfilePage = () => {
         id: user?.id || '',
         fullName: profileData?.full_name || user?.email?.split('@')[0] || '',
         email: user?.email || '',
-        biography: profileData?.biography || '',  // These fields may not exist in the database yet
+        biography: profileData?.biography || '',
         birthYear: profileData?.birth_year || '',
         birthPlace: profileData?.birth_place || '',
         tribe: profileData?.tribe || '',
@@ -184,8 +183,8 @@ const UserProfilePage = () => {
       // Use our helper function to update the profile
       const { success, error } = await updateUserProfile(user.id, {
         fullName: profileForm.fullName,
-        email: user.email,
-        photoUrl: profile?.photoUrl,
+        email: user.email || '',
+        photoUrl: profile?.photoUrl || '',
         birthYear: profileForm.birthYear,
         birthPlace: profileForm.birthPlace,
         tribe: profileForm.tribe,

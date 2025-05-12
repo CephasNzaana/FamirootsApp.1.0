@@ -134,7 +134,7 @@ export interface ClanElder {
   deathYear?: string;
   significance?: string;
   verificationScore: number;
-  familyConnections?: any[];
+  familyUnits: string[];
   era?: string;
   notes?: string;
 }

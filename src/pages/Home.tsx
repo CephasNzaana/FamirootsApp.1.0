@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
@@ -120,7 +119,7 @@ const Home = () => {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="border-white hover:bg-white/10 text-white font-semibold px-6 py-3 rounded-lg"
+                    className="border-white hover:bg-white/10 text-uganda-black font-bold bg-white px-6 py-3 rounded-lg"
                     onClick={() => navigate('/dna-test')}
                   >
                     <Dna className="h-4 w-4 mr-2" />
@@ -140,6 +139,7 @@ const Home = () => {
                   />
                 </div>
               </div>
+              
               <div className="hidden lg:block">
                 <div className="relative">
                   <div className="w-full h-96 rounded-lg bg-gradient-to-br from-uganda-yellow/20 to-uganda-red/20 flex items-center justify-center">
