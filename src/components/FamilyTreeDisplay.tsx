@@ -178,4 +178,4 @@ const FamilyTreeDisplay = ({ tree }: FamilyTreeDisplayProps) => {
     return placeholders;
   };
 
-  const placeholders = createPlaceholders();
+  const placeholders = createPlaceholders();}
