@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
-import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Your LATEST persona-node version
+import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Ensure this is your LATEST version
 import Footer from "@/components/Footer";
 import { TreeFormData, FamilyTree, FamilyMember } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,7 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-  // Renamed to match your original function that FamilyTreeForm calls
+  // This is the function called by FamilyTreeForm onSubmit
   const generateFamilyTree = async (formData: TreeFormData) => {
     if (!user || !session?.access_token) {
       toast.error("Authentication required. Please log in to create a family tree.");
@@ -39,15 +39,15 @@ const Home = () => {
       return;
     }
 
-    setIsLoading(true); // Set loading true before the promise
+    setIsLoading(true);
     setFamilyTreeForPreview(null);
 
     toast.promise(
       async () => {
-        // This try/finally block is inside the function passed to toast.promise
         try {
           console.log("Home.tsx: Submitting TreeFormData to Edge Function:", JSON.stringify(formData, null, 2));
 
+          // Step 1: Call your Supabase Edge Function
           const edgeFunctionResponse = await supabase.functions.invoke("generate-family-tree", {
             body: formData, // Send the entire TreeFormData object
           });
@@ -64,7 +64,7 @@ const Home = () => {
             members: FamilyMember[]; source: 'ai' | 'fallback'; createdAt: string;
           } = edgeFunctionResponse.data;
 
-          if (!generatedData || !generatedData.id || !generatedData.members || !Array.isArray(generatedData.members)) {
+          if (!generatedData || typeof generatedData.id !== 'string' || !Array.isArray(generatedData.members)) {
             console.error("Home.tsx: Malformed or incomplete response from Edge Function. `generatedData`:", generatedData);
             throw new Error("Received incomplete or malformed data from AI generation service. Check Edge Function logs and its response content.");
           }
@@ -73,14 +73,14 @@ const Home = () => {
           if (generatedData.source === 'fallback') {
             toast.info("AI generation used fallback data. This will be saved.");
           } else {
-            // Only show AI success if not fallback, because fallback already has a message.
-            if (generatedData.members.length > 0) { // Check if AI actually produced members
+            if (generatedData.members.length > 0) {
                 toast.success("Family tree structure processed by AI!");
             } else {
                 toast.warning("AI processed the request but returned no family members. A tree entry will be created.");
             }
           }
 
+          // Step 2: Save the FamilyTree metadata
           const { data: savedTreeData, error: treeError } = await supabase
             .from('family_trees')
             .insert({
@@ -101,6 +101,7 @@ const Home = () => {
           if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
           console.log("Home.tsx: Family tree metadata saved:", savedTreeData);
 
+          // Step 3: Save the FamilyMember records
           if (generatedData.members && generatedData.members.length > 0) {
             const membersToInsert = generatedData.members.map(member => ({
               id: member.id, name: member.name, relationship: member.relationship,
@@ -133,26 +134,30 @@ const Home = () => {
           };
           setFamilyTreeForPreview(completeNewTreeForPreview);
           return completeNewTreeForPreview;
+        } catch(error) {
+            // This catch is for errors within the async function itself
+            // Errors thrown will be caught by toast.promise's error handler
+            console.error("Error during generateFamilyTree's async process:", error);
+            throw error; // Re-throw to be caught by toast.promise
         } finally {
-          setIsLoading(false); // Moved isLoading set into the async function's finally
+          setIsLoading(false); 
         }
       },
       { 
         loading: "Generating and saving your family tree...",
         success: (newTreeObject) => {
-          if (newTreeObject && newTreeObject.surname) { // Check if newTreeObject is valid
+          if (newTreeObject && newTreeObject.surname) { 
             return `Family tree "${newTreeObject.surname}" created! Preview below.`;
           }
-          return "Operation successful! Preview below."; // Fallback success message
+          return "Operation successful! Preview below."; 
         },
         error: (err: any) => {
-          // setIsLoading(false); // Already handled in the async function's finally block by toast.promise v1.x
+          // setIsLoading(false); // Already handled in the async function's finally by toast.promise
           const message = err?.details || err?.message || "Unknown error during tree creation process.";
           return `Operation failed: ${message}`;
         },
       }
     );
-    // The .finally(() => setIsLoading(false)) was removed from here.
   };
 
   const handleNavigateToTrees = () => {
@@ -160,10 +165,10 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground"> {/* Using theme variables */}
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section - YOUR EXISTING JSX */}
+        {/* Hero Section - As you provided */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -212,7 +217,6 @@ const Home = () => {
                         <p className="text-sm">At the center</p>
                       </div>
                     </div>
-                    {/* Decorative elements from your code */}
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(50%) rotate(45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(50%) rotate(-45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(-120%) rotate(45deg)' }}></div>
@@ -236,11 +240,11 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Features Section - YOUR EXISTING JSX */}
-        <section className="py-16 px-4 bg-card">
+        {/* Features Section - As you provided */}
+        <section className="py-16 px-4 bg-card text-card-foreground">
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-foreground">
+              <h2 className="text-3xl font-bold mb-4">
                 Discover Your Heritage with FamiRoots
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -252,7 +256,7 @@ const Home = () => {
                 <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
                   <Users className="h-8 w-8 text-uganda-black" />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-foreground">Family Tree Builder</h3>
+                <h3 className="text-xl font-bold mb-3">Family Tree Builder</h3>
                 <p className="text-muted-foreground mb-4">
                   Create your family tree centered around Ugandan clan structures, with AI assistance to build connections accurately.
                 </p>
@@ -267,7 +271,7 @@ const Home = () => {
                   <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
                       <Dna className="h-8 w-8 text-uganda-black" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-foreground">DNA Testing</h3>
+                  <h3 className="text-xl font-bold mb-3">DNA Testing</h3>
                   <p className="text-muted-foreground mb-4">
                       Discover your ethnic origins and connect with relatives through our advanced genetic testing services.
                   </p>
@@ -279,7 +283,7 @@ const Home = () => {
                   <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
                       <Search className="h-8 w-8 text-uganda-black" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3 text-foreground">Relationship Analyzer</h3>
+                  <h3 className="text-xl font-bold mb-3">Relationship Analyzer</h3>
                   <p className="text-muted-foreground mb-4">
                       Find out how you're connected to other people through our powerful relationship detection tool.
                   </p>
@@ -373,7 +377,7 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Testimonials/Cultural Section - YOUR EXISTING JSX */}
+        {/* Testimonials/Cultural Section - As you provided */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black to-uganda-black/90 text-white">
            <div className="container mx-auto max-w-5xl text-center">
              <h2 className="text-3xl font-bold mb-8">Preserving Uganda's Rich Heritage</h2>
