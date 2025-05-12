@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
-import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
+import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Your LATEST persona-node version
 import Footer from "@/components/Footer";
 import { TreeFormData, FamilyTree, FamilyMember } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,104 +31,128 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-  // Ensure this function is defined with the name you intend to use
-  const generateFamilyTree = async (formData: TreeFormData) => { // RENAMED from your original generateFamilyTree if you were using handleGenerateAndSaveTree
+  // Renamed to match your original function that FamilyTreeForm calls
+  const generateFamilyTree = async (formData: TreeFormData) => {
     if (!user || !session?.access_token) {
       toast.error("Authentication required. Please log in to create a family tree.");
       setShowAuth(true);
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(true); // Set loading true before the promise
     setFamilyTreeForPreview(null);
 
     toast.promise(
       async () => {
-        console.log("Submitting TreeFormData to Edge Function:", JSON.stringify(formData, null, 2));
+        // This try/finally block is inside the function passed to toast.promise
+        try {
+          console.log("Home.tsx: Submitting TreeFormData to Edge Function:", JSON.stringify(formData, null, 2));
 
-        const edgeFunctionResponse = await supabase.functions.invoke("generate-family-tree", {
-          body: formData, 
-        });
+          const edgeFunctionResponse = await supabase.functions.invoke("generate-family-tree", {
+            body: formData, // Send the entire TreeFormData object
+          });
 
-        if (edgeFunctionResponse.error) {
-          console.error("Edge Function invocation error:", edgeFunctionResponse.error);
-          throw new Error(edgeFunctionResponse.error.message || "Failed to invoke AI generation service.");
-        }
-        
-        const generatedData: {
-          id: string; surname: string; tribe: string; clan: string;
-          members: FamilyMember[]; source: 'ai' | 'fallback'; createdAt: string;
-        } = edgeFunctionResponse.data;
-
-        if (!generatedData || !generatedData.id || !generatedData.members) {
-            console.error("Malformed response from Edge Function:", generatedData);
-            throw new Error("Received incomplete or malformed data from AI generation service.");
-        }
-
-        console.log(`Data source from Edge Function: ${generatedData.source}`);
-        if (generatedData.source === 'fallback') {
-          toast.info("AI generation used fallback data. This will be saved.");
-        } else {
-          toast.success("Family tree structure processed by AI!");
-        }
-
-        const { data: savedTreeData, error: treeError } = await supabase
-          .from('family_trees')
-          .insert({
-            id: generatedData.id, 
-            user_id: user.id,
-            surname: generatedData.surname,
-            tribe: generatedData.tribe,
-            clan: generatedData.clan,
-            created_at: generatedData.createdAt,
-          })
-          .select()
-          .single();
-
-        if (treeError) throw treeError;
-        if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
-        console.log("Family tree metadata saved:", savedTreeData);
-
-        if (generatedData.members && generatedData.members.length > 0) {
-          const membersToInsert = generatedData.members.map(member => ({
-            id: member.id, name: member.name, relationship: member.relationship,
-            birth_year: member.birthYear, death_year: member.deathYear,
-            generation: member.generation, parent_id: member.parentId,
-            is_elder: member.isElder, gender: member.gender, side: member.side,
-            status: member.status, photo_url: member.photoUrl, notes: member.notes,
-            family_tree_id: savedTreeData.id, 
-            user_id: user.id,
-          }));
-
-          const { error: membersError } = await supabase
-            .from('family_members')
-            .insert(membersToInsert);
-
-          if (membersError) {
-            await supabase.from('family_trees').delete().eq('id', savedTreeData.id);
-            throw membersError;
+          if (edgeFunctionResponse.error) {
+            console.error("Home.tsx: Edge Function invocation error:", edgeFunctionResponse.error);
+            throw new Error(edgeFunctionResponse.error.message || "Failed to invoke AI generation service.");
           }
-          console.log(`${membersToInsert.length} family members saved.`);
-        } else {
-          console.warn("AI processed data but no members were returned/generated to save.");
-        }
+          
+          console.log("Home.tsx: RAW data received from Edge Function:", JSON.stringify(edgeFunctionResponse.data, null, 2));
 
-        const completeNewTreeForPreview: FamilyTree = {
-          id: savedTreeData.id, userId: user.id, surname: savedTreeData.surname,
-          tribe: savedTreeData.tribe, clan: savedTreeData.clan,
-          createdAt: savedTreeData.created_at, members: generatedData.members || [],
-        };
-        setFamilyTreeForPreview(completeNewTreeForPreview);
-        return completeNewTreeForPreview;
+          const generatedData: {
+            id: string; surname: string; tribe: string; clan: string;
+            members: FamilyMember[]; source: 'ai' | 'fallback'; createdAt: string;
+          } = edgeFunctionResponse.data;
+
+          if (!generatedData || !generatedData.id || !generatedData.members || !Array.isArray(generatedData.members)) {
+            console.error("Home.tsx: Malformed or incomplete response from Edge Function. `generatedData`:", generatedData);
+            throw new Error("Received incomplete or malformed data from AI generation service. Check Edge Function logs and its response content.");
+          }
+
+          console.log(`Home.tsx: Data source from Edge Function: ${generatedData.source}`);
+          if (generatedData.source === 'fallback') {
+            toast.info("AI generation used fallback data. This will be saved.");
+          } else {
+            // Only show AI success if not fallback, because fallback already has a message.
+            if (generatedData.members.length > 0) { // Check if AI actually produced members
+                toast.success("Family tree structure processed by AI!");
+            } else {
+                toast.warning("AI processed the request but returned no family members. A tree entry will be created.");
+            }
+          }
+
+          const { data: savedTreeData, error: treeError } = await supabase
+            .from('family_trees')
+            .insert({
+              id: generatedData.id, 
+              user_id: user.id,
+              surname: generatedData.surname,
+              tribe: generatedData.tribe,
+              clan: generatedData.clan,
+              created_at: generatedData.createdAt,
+            })
+            .select()
+            .single();
+
+          if (treeError) {
+            console.error("Home.tsx: Supabase tree insert error:", treeError);
+            throw treeError;
+          }
+          if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
+          console.log("Home.tsx: Family tree metadata saved:", savedTreeData);
+
+          if (generatedData.members && generatedData.members.length > 0) {
+            const membersToInsert = generatedData.members.map(member => ({
+              id: member.id, name: member.name, relationship: member.relationship,
+              birth_year: member.birthYear, death_year: member.deathYear,
+              generation: member.generation, parent_id: member.parentId,
+              is_elder: member.isElder, gender: member.gender, side: member.side,
+              status: member.status, photo_url: member.photoUrl, notes: member.notes,
+              family_tree_id: savedTreeData.id, 
+              user_id: user.id,
+            }));
+
+            const { error: membersError } = await supabase
+              .from('family_members')
+              .insert(membersToInsert);
+
+            if (membersError) {
+              console.error("Home.tsx: Supabase members insert error:", membersError);
+              await supabase.from('family_trees').delete().eq('id', savedTreeData.id);
+              throw membersError;
+            }
+            console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
+          } else {
+            console.warn("Home.tsx: AI processed data but no members were returned/generated to save to the members table.");
+          }
+
+          const completeNewTreeForPreview: FamilyTree = {
+            id: savedTreeData.id, userId: user.id, surname: savedTreeData.surname,
+            tribe: savedTreeData.tribe, clan: savedTreeData.clan,
+            createdAt: savedTreeData.created_at, members: generatedData.members || [],
+          };
+          setFamilyTreeForPreview(completeNewTreeForPreview);
+          return completeNewTreeForPreview;
+        } finally {
+          setIsLoading(false); // Moved isLoading set into the async function's finally
+        }
       },
       { 
         loading: "Generating and saving your family tree...",
-        success: (newTree) => `Family tree "${newTree?.surname}" created! Preview below.`,
-        error: (err: any) => `Operation failed: ${err.details || err.message || "Unknown error"}`,
+        success: (newTreeObject) => {
+          if (newTreeObject && newTreeObject.surname) { // Check if newTreeObject is valid
+            return `Family tree "${newTreeObject.surname}" created! Preview below.`;
+          }
+          return "Operation successful! Preview below."; // Fallback success message
+        },
+        error: (err: any) => {
+          // setIsLoading(false); // Already handled in the async function's finally block by toast.promise v1.x
+          const message = err?.details || err?.message || "Unknown error during tree creation process.";
+          return `Operation failed: ${message}`;
+        },
       }
-    ).finally(() => {
-        setIsLoading(false);
-    });
+    );
+    // The .finally(() => setIsLoading(false)) was removed from here.
   };
 
   const handleNavigateToTrees = () => {
@@ -139,9 +163,8 @@ const Home = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section - As per your original code */}
+        {/* Hero Section - YOUR EXISTING JSX */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
-          {/* ... Your full Hero section JSX ... */}
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div>
@@ -189,6 +212,7 @@ const Home = () => {
                         <p className="text-sm">At the center</p>
                       </div>
                     </div>
+                    {/* Decorative elements from your code */}
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(50%) rotate(45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(50%) rotate(-45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(-120%) rotate(45deg)' }}></div>
@@ -212,9 +236,8 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Features Section - As per your original code */}
+        {/* Features Section - YOUR EXISTING JSX */}
         <section className="py-16 px-4 bg-card">
-          {/* ... Your full Features section JSX ... */}
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4 text-foreground">
@@ -268,7 +291,7 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Form and Result Section - This is where FamilyTreeForm and FamilyTreeDisplay are used */}
+        {/* Form and Result Section */}
         <section id="start-your-tree" className="py-16 px-4 bg-background">
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12">
@@ -282,7 +305,6 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* Ensure the onSubmit prop matches the function name defined above */}
                 <FamilyTreeForm onSubmit={generateFamilyTree} isLoading={isLoading} />
               </div>
               
@@ -310,8 +332,7 @@ const Home = () => {
                       <div style={{transform: `scale(${previewZoomLevel})`, transformOrigin: 'top left', width: 'fit-content', height: 'fit-content'}}>
                         <FamilyTreeDisplay 
                           tree={familyTreeForPreview} 
-                          zoomLevel={1} // Wrapper is scaled by previewZoomLevel
-                          // onTreeUpdate is optional here if not editing preview directly
+                          zoomLevel={1} 
                         />
                       </div>
                     </div>
@@ -352,7 +373,7 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Testimonials/Cultural Section - As per your original code */}
+        {/* Testimonials/Cultural Section - YOUR EXISTING JSX */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black to-uganda-black/90 text-white">
            <div className="container mx-auto max-w-5xl text-center">
              <h2 className="text-3xl font-bold mb-8">Preserving Uganda's Rich Heritage</h2>
