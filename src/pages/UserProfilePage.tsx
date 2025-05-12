@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -5,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AuthForm from '@/components/AuthForm';
-import { UserProfile, FamilyTree, DNATestResult } from '@/types';
+import { FamilyTree, UserProfile, DNATestResult } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,11 +70,11 @@ const UserProfilePage = () => {
         id: user?.id || '',
         fullName: profileData?.full_name || user?.email?.split('@')[0] || '',
         email: user?.email || '',
-        biography: '',  // These fields may not exist in the database yet
-        birthYear: '',
-        birthPlace: '',
-        tribe: '',
-        clan: '',
+        biography: profileData?.biography || '',  // These fields may not exist in the database yet
+        birthYear: profileData?.birth_year || '',
+        birthPlace: profileData?.birth_place || '',
+        tribe: profileData?.tribe || '',
+        clan: profileData?.clan || '',
         photoUrl: profileData?.avatar_url || ''
       };
       
@@ -184,8 +185,12 @@ const UserProfilePage = () => {
       const { success, error } = await updateUserProfile(user.id, {
         fullName: profileForm.fullName,
         email: user.email,
-        photoUrl: profile?.photoUrl
-        // Other fields will be added once the database schema is updated
+        photoUrl: profile?.photoUrl,
+        birthYear: profileForm.birthYear,
+        birthPlace: profileForm.birthPlace,
+        tribe: profileForm.tribe,
+        clan: profileForm.clan,
+        biography: profileForm.biography
       });
       
       if (!success) throw error;

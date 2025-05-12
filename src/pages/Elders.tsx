@@ -1,221 +1,300 @@
 
-import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "@/components/ui/sonner";
-import Header from "@/components/Header";
-import AuthForm from "@/components/AuthForm";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ugandaTribesData } from "@/data/ugandaTribesClanData";
-import { type ClanElder } from "@/types";
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { PageContainer } from '@/components/PageContainer';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { TabsContent, Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Award, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClanElder } from '@/types';
+import { ugandaTribesData } from '@/data/ugandaTribesClanData';
 
 const Elders = () => {
-  const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(!user);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedTribe, setSelectedTribe] = useState<string>("");
-  const [selectedClan, setSelectedClan] = useState<string>("");
-
-  // Flatten all elders for searching
-  const allElders = ugandaTribesData.flatMap(tribe => 
-    tribe.clans.flatMap(clan => 
-      clan.elders.map(elder => ({
-        ...elder,
-        clanName: clan.name,
-        clanId: clan.id,
-        tribeName: tribe.name,
-        tribeId: tribe.id
-      }))
-    )
-  );
-
-  // Filter elders based on search and filters
-  const filteredElders = allElders.filter(elder => {
-    const matchesSearch = searchTerm === "" || 
-      elder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      elder.clanName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      elder.tribeName.toLowerCase().includes(searchTerm.toLowerCase());
-      
-    const matchesTribe = selectedTribe === "" || elder.tribeId === selectedTribe;
-    const matchesClan = selectedClan === "" || elder.clanId === selectedClan;
-    
-    return matchesSearch && matchesTribe && matchesClan;
-  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTribe, setSelectedTribe] = useState<string>('');
+  const [selectedClan, setSelectedClan] = useState<string>('');
+  const [elders, setElders] = useState<ClanElder[]>([]);
+  const [filteredElders, setFilteredElders] = useState<ClanElder[]>([]);
+  const [page, setPage] = useState(1);
+  const eldersPerPage = 8;
   
-  const availableClans = selectedTribe 
-    ? ugandaTribesData.find(tribe => tribe.id === selectedTribe)?.clans || []
-    : [];
-
-  if (!user) {
-    return (
-      <>
-        <Header 
-          onLogin={() => setShowAuth(true)} 
-          onSignup={() => setShowAuth(true)} 
-        />
-        <div className="min-h-[80vh] flex items-center justify-center">
-          <div className="max-w-md mx-auto text-center p-6 bg-white rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-            <p className="mb-6">Please login or sign up to access the Elder Database.</p>
-            <div className="flex justify-center space-x-4">
-              <button 
-                onClick={() => setShowAuth(true)}
-                className="bg-uganda-yellow text-uganda-black px-6 py-2 rounded-lg hover:bg-uganda-yellow/90 transition-colors"
-              >
-                Login / Sign Up
-              </button>
-            </div>
-          </div>
-        </div>
-        {showAuth && <AuthForm onClose={() => setShowAuth(false)} />}
-      </>
-    );
-  }
-
+  // Extract all elders from the Uganda tribes data
+  useEffect(() => {
+    const allElders: ClanElder[] = [];
+    
+    ugandaTribesData.forEach(tribe => {
+      tribe.clans.forEach(clan => {
+        if (clan.elders) {
+          const clanElders = clan.elders.map(elder => ({
+            ...elder,
+            clanName: clan.name,
+          }));
+          allElders.push(...clanElders);
+        }
+      });
+    });
+    
+    setElders(allElders);
+    setFilteredElders(allElders);
+  }, []);
+  
+  // Filter elders based on search query and selected tribe/clan
+  useEffect(() => {
+    let filtered = [...elders];
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(elder => 
+        elder.name.toLowerCase().includes(query) || 
+        (elder.significance && elder.significance.toLowerCase().includes(query))
+      );
+    }
+    
+    if (selectedTribe) {
+      const tribe = ugandaTribesData.find(t => t.id === selectedTribe);
+      if (tribe) {
+        const clanIds = tribe.clans.map(clan => clan.id);
+        filtered = filtered.filter(elder => clanIds.includes(elder.clanId));
+      }
+    }
+    
+    if (selectedClan) {
+      filtered = filtered.filter(elder => elder.clanId === selectedClan);
+    }
+    
+    setFilteredElders(filtered);
+    setPage(1); // Reset to first page when filters change
+  }, [searchQuery, selectedTribe, selectedClan, elders]);
+  
+  // Get available clans based on selected tribe
+  const getAvailableClans = () => {
+    if (!selectedTribe) return [];
+    const tribe = ugandaTribesData.find(t => t.id === selectedTribe);
+    return tribe ? tribe.clans : [];
+  };
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredElders.length / eldersPerPage);
+  const currentElders = filteredElders.slice(
+    (page - 1) * eldersPerPage,
+    page * eldersPerPage
+  );
+  
   return (
-    <div className="min-h-screen bg-[#FAF6F1]">
-      <Header 
-        onLogin={() => setShowAuth(true)} 
-        onSignup={() => setShowAuth(true)} 
-      />
+    <PageContainer>
+      <h1 className="text-3xl font-bold mb-2">Clan Elders</h1>
+      <p className="text-gray-600 mb-6">
+        Explore clan elders from across Ugandan tribes and learn about their historical significance.
+      </p>
       
-      <main className="container mx-auto py-8 px-4">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6 text-uganda-black">Elder Database</h1>
-          <p className="text-lg mb-8">
-            Access verified information about clan elders across Uganda's tribal systems. This database preserves 
-            ancestral knowledge and helps establish familial connections through elder verification.
-          </p>
-          
-          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 className="text-xl font-semibold mb-4">Search Elders</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Search by Name</label>
-                <Input
-                  type="text"
-                  placeholder="Search elders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Filter by Tribe</label>
-                <Select
-                  value={selectedTribe}
-                  onValueChange={(value) => {
-                    setSelectedTribe(value || "");
-                    setSelectedClan("");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Tribes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-tribes">All Tribes</SelectItem>
-                    {ugandaTribesData.map(tribe => (
-                      <SelectItem key={tribe.id} value={tribe.id}>
-                        {tribe.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Filter by Clan</label>
-                <Select
-                  value={selectedClan}
-                  onValueChange={(value) => setSelectedClan(value || "")}
-                  disabled={!selectedTribe}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Clans" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-clans">All Clans</SelectItem>
-                    {availableClans.map(clan => (
-                      <SelectItem key={clan.id} value={clan.id}>
-                        {clan.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Input
+              placeholder="Search elders by name..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
           
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 bg-uganda-yellow/20 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Elder Records</h2>
-              <span className="text-sm">{filteredElders.length} records found</span>
-            </div>
-            
-            {filteredElders.length > 0 ? (
-              <div className="divide-y divide-gray-200">
-                {filteredElders.map(elder => (
-                  <div key={`${elder.id}-${elder.clanId}-${elder.tribeId}`} className="p-4 hover:bg-gray-50">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <h3 className="font-medium text-lg">{elder.name}</h3>
-                        <div className="text-sm text-gray-600 mt-1">
-                          <span>Tribe: {elder.tribeName}</span>
-                          <span className="mx-2">•</span>
-                          <span>Clan: {elder.clanName}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center mt-2 md:mt-0 space-x-2">
-                        <Badge className="bg-uganda-yellow text-uganda-black">
-                          {elder.approximateEra}
-                        </Badge>
-                        
-                        <div className="border px-2 py-1 rounded-lg text-xs flex items-center">
-                          <span className="font-semibold">Verification Score:</span>
-                          <span className={`ml-1 ${
-                            elder.verificationScore >= 90 ? 'text-green-600' : 
-                            elder.verificationScore >= 80 ? 'text-yellow-600' : 
-                            'text-red-600'
-                          }`}>
-                            {elder.verificationScore}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {elder.notes && (
-                      <div className="mt-2 text-sm italic text-gray-600 bg-gray-50 p-2 rounded">
-                        "{elder.notes}"
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium mb-1">No elders found</h3>
-                <p className="text-gray-500">Try adjusting your search or filters</p>
-              </div>
-            )}
+          <Select value={selectedTribe} onValueChange={setSelectedTribe}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a tribe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Tribes</SelectItem>
+              {ugandaTribesData.map(tribe => (
+                <SelectItem key={tribe.id} value={tribe.id}>
+                  {tribe.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select 
+            value={selectedClan} 
+            onValueChange={setSelectedClan}
+            disabled={!selectedTribe}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={selectedTribe ? "Select a clan" : "Select a tribe first"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Clans</SelectItem>
+              {getAvailableClans().map(clan => (
+                <SelectItem key={clan.id} value={clan.id}>
+                  {clan.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <Tabs defaultValue="grid">
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="grid">Grid View</TabsTrigger>
+            <TabsTrigger value="list">List View</TabsTrigger>
+          </TabsList>
+          
+          <div className="flex items-center text-sm">
+            <span className="text-gray-500">
+              Showing {currentElders.length} of {filteredElders.length} elders
+            </span>
           </div>
         </div>
-      </main>
-    </div>
+        
+        <TabsContent value="grid">
+          {currentElders.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {currentElders.map(elder => (
+                <Card key={elder.id} className="overflow-hidden">
+                  <CardHeader className="bg-uganda-yellow/10 pb-2">
+                    <div className="flex justify-between items-start">
+                      <Badge variant="outline" className="mb-2">
+                        {elder.clanName || "Unknown Clan"}
+                      </Badge>
+                      <Badge 
+                        className={`${
+                          elder.verificationScore > 80 ? 'bg-green-600' : 
+                          elder.verificationScore > 50 ? 'bg-amber-500' : 
+                          'bg-red-500'
+                        }`}
+                      >
+                        {elder.verificationScore}% Verified
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg">{elder.name}</CardTitle>
+                    <CardDescription>{elder.approximateEra}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <p className="text-sm text-gray-600 line-clamp-3">
+                      {elder.significance || "No additional information available about this elder."}
+                    </p>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <Button variant="outline" className="w-full text-uganda-red border-uganda-red hover:bg-uganda-red/5">
+                      View Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <Award className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+              <h3 className="text-lg font-medium text-gray-900">No Elders Found</h3>
+              <p className="mt-1 text-gray-500">
+                No elders match your current search criteria. Try adjusting your filters.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="list">
+          {currentElders.length > 0 ? (
+            <div className="overflow-hidden bg-white border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Elder
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Clan
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Era
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Verification
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentElders.map(elder => (
+                    <tr key={elder.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{elder.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{elder.clanName || "Unknown Clan"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{elder.approximateEra}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge 
+                          className={`${
+                            elder.verificationScore > 80 ? 'bg-green-600' : 
+                            elder.verificationScore > 50 ? 'bg-amber-500' : 
+                            'bg-red-500'
+                          }`}
+                        >
+                          {elder.verificationScore}%
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button variant="ghost" size="sm" className="text-uganda-red hover:bg-uganda-red/5">
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <Award className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+              <h3 className="text-lg font-medium text-gray-900">No Elders Found</h3>
+              <p className="mt-1 text-gray-500">
+                No elders match your current search criteria. Try adjusting your filters.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" /> Prev
+            </Button>
+            
+            <div className="text-sm text-gray-600 mx-4">
+              Page {page} of {totalPages}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </PageContainer>
   );
 };
 

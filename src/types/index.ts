@@ -31,18 +31,24 @@ export interface TreeFormData {
   extendedFamily?: {
     familyName?: string;
     gender?: string;
+    birthYear?: string;
+    birthPlace?: string;
     siblings?: Array<{name: string, gender: string, birthYear: string}>;
     spouse?: {name: string, birthYear: string};
     selectedElders?: ElderReference[];
     parents?: {
-      father?: {name: string, birthYear: string};
-      mother?: {name: string, birthYear: string};
+      father?: {name: string, birthYear: string, deathYear?: string};
+      mother?: {name: string, birthYear: string, deathYear?: string};
     };
     grandparents?: {
-      paternalGrandfather?: {name: string, birthYear: string};
-      paternalGrandmother?: {name: string, birthYear: string};
-      maternalGrandfather?: {name: string, birthYear: string};
-      maternalGrandmother?: {name: string, birthYear: string};
+      paternal?: {
+        grandfather?: {name: string, birthYear: string, deathYear?: string};
+        grandmother?: {name: string, birthYear: string, deathYear?: string};
+      };
+      maternal?: {
+        grandfather?: {name: string, birthYear: string, deathYear?: string};
+        grandmother?: {name: string, birthYear: string, deathYear?: string};
+      };
     };
     children?: Array<{name: string, gender: string, birthYear: string}>;
   };
@@ -58,6 +64,7 @@ export interface ElderReference {
 export interface User {
   id: string;
   email: string;
+  created_at?: string;
 }
 
 export interface Profile {
@@ -70,4 +77,71 @@ export interface Profile {
   birthYear?: string;
   birthPlace?: string;
   biography?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  photoUrl?: string;
+  biography?: string;
+  birthYear?: string;
+  birthPlace?: string;
+  tribe?: string;
+  clan?: string;
+}
+
+export interface DNATestResult {
+  id: string;
+  userId: string;
+  dateSubmitted: string;
+  status: 'ordered' | 'received' | 'processing' | 'completed';
+  ethnicityBreakdown?: Record<string, number>;
+}
+
+export interface Tribe {
+  id: string;
+  name: string;
+  region: string;
+  population: number;
+  description: string;
+  clans: Clan[];
+  traditions?: Tradition[];
+}
+
+export interface Clan {
+  id: string;
+  name: string;
+  tribeId: string;
+  tribeName?: string;
+  description?: string;
+  totem?: string;
+  elders?: ClanElder[];
+  families?: number;
+  traditions?: Tradition[];
+}
+
+export interface ClanElder {
+  id: string;
+  name: string;
+  clanId: string;
+  clanName?: string;
+  approximateEra: string;
+  birthYear?: string;
+  deathYear?: string;
+  significance?: string;
+  verificationScore: number;
+  familyConnections: any[];
+}
+
+export interface Tradition {
+  id: string;
+  name: string;
+  description: string;
+  associatedWith: 'tribe' | 'clan' | 'both';
+  tribeId?: string;
+  clanId?: string;
+  category: 'ceremony' | 'ritual' | 'practice' | 'story' | 'other';
+  importance: 'critical' | 'major' | 'significant' | 'minor';
+  stillPracticed: boolean;
 }

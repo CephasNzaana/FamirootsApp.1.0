@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Menu, X, User } from "lucide-react";
-import Navigation from "@/components/Navigation";
+import { Navigation } from "@/components/Navigation";
 import { useMediaQuery } from "@/hooks/use-mobile";
 
 interface HeaderProps {

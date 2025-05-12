@@ -1,173 +1,100 @@
 
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Tribe, Clan } from "@/types";
-import { toast } from "@/components/ui/sonner";
-import Header from "@/components/Header";
-import { ugandaTribesData } from "@/data/ugandaTribesClanData";
-import ClanFamilyTree from "@/components/ClanFamilyTree";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ChevronRight, Users } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import AuthForm from "@/components/AuthForm";
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { Tribe, Clan } from '@/types';
+import { PageContainer } from '@/components/PageContainer';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import ClanFamilyTree from '@/components/ClanFamilyTree';
+import { ugandaTribesData } from '@/data/ugandaTribesClanData';
 
 const ClanDetails = () => {
   const { tribeId, clanId } = useParams();
-  const navigate = useNavigate();
-  const [clan, setClan] = useState<Clan | null>(null);
   const [tribe, setTribe] = useState<Tribe | null>(null);
-  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-  const [signupDialogOpen, setSignupDialogOpen] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const { user } = useAuth();
-  
-  useEffect(() => {
-    // Find the tribe and clan from the data
-    const foundTribe = ugandaTribesData.find(t => t.id === tribeId);
-    
-    if (!foundTribe) {
-      toast.error("Tribe not found");
-      navigate("/tribes");
-      return;
-    }
-    
-    const foundClan = foundTribe.clans.find(c => c.id === clanId);
-    
-    if (!foundClan) {
-      toast.error("Clan not found");
-      navigate(`/tribes`);
-      return;
-    }
-    
-    setTribe(foundTribe);
-    setClan(foundClan);
-  }, [tribeId, clanId, navigate]);
-  
-  const handleLogin = () => {
-    setShowAuth(true);
-  };
+  const [clan, setClan] = useState<Clan | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSignup = () => {
-    setShowAuth(true);
-  };
-  
-  if (!clan || !tribe) {
+  useEffect(() => {
+    // In a production app, this would be a database call
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        // Find the tribe in our data
+        const foundTribe = ugandaTribesData.find(t => t.id === tribeId);
+        
+        if (foundTribe) {
+          setTribe(foundTribe);
+          
+          // Find the clan within the tribe
+          const foundClan = foundTribe.clans.find(c => c.id === clanId);
+          if (foundClan) {
+            setClan({
+              ...foundClan,
+              tribeName: foundTribe.name,
+              tribeId: foundTribe.id
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error loading clan data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [tribeId, clanId]);
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF6F1]">
-        <Header onLogin={handleLogin} onSignup={handleSignup} />
-        <div className="container mx-auto py-8 px-4">
-          <div className="h-64 flex items-center justify-center">
-            <p>Loading clan information...</p>
-          </div>
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[300px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-uganda-yellow"></div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
-  
-  return (
-    <div className="min-h-screen bg-[#FAF6F1]">
-      <Header onLogin={handleLogin} onSignup={handleSignup} />
-      <main className="container mx-auto py-8 px-4">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate("/tribes")}
-          className="mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Tribes
-        </Button>
-        
-        <div className="grid gap-8">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">{clan.name} Clan</CardTitle>
-                  <CardDescription>
-                    {tribe.name} Tribe | {clan.totem && `Totem: ${clan.totem}`}
-                  </CardDescription>
-                </div>
-                <Badge className="bg-uganda-yellow text-uganda-black">{tribe.region}</Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent>
-              {clan.origin && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Origin</h3>
-                  <p className="text-gray-700">{clan.origin}</p>
-                </div>
-              )}
-              
-              {clan.culturalPractices && clan.culturalPractices.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-2">Cultural Practices</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                    {clan.culturalPractices.map((practice, i) => (
-                      <li key={i}>{practice}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Elder Family Connections</h2>
-              <Button 
-                onClick={() => user ? navigate("/family-trees") : setShowAuth(true)}
-                className="bg-uganda-red text-white hover:bg-uganda-red/90"
-              >
-                Create Your Family Tree
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="bg-uganda-yellow/10 p-4 rounded-lg border border-uganda-yellow mb-6">
-              <div className="flex items-start gap-3">
-                <Users className="text-uganda-black mt-1" />
-                <div>
-                  <h3 className="font-medium text-lg">Explore Clan Relationships</h3>
-                  <p className="text-gray-700">
-                    Below you can see how the elders of the {clan.name} clan are connected to each other. 
-                    Understanding these relationships is crucial for comprehending your own family heritage.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <ClanFamilyTree clan={clan} />
-          </div>
-        </div>
-      </main>
 
-      <footer className="bg-uganda-black text-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center space-x-2 mb-4">
-            <div className="w-4 h-4 bg-uganda-black"></div>
-            <div className="w-4 h-4 bg-uganda-yellow"></div>
-            <div className="w-4 h-4 bg-uganda-red"></div>
-          </div>
-          <p className="text-sm">
-            &copy; {new Date().getFullYear()} FamiRoots - Preserving Ugandan Family Heritage
+  if (!tribe || !clan) {
+    return (
+      <PageContainer>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold mb-2">Clan Not Found</h2>
+          <p className="text-gray-600 mb-4">
+            We couldn't find information about this clan. It may not exist or has been removed.
           </p>
+          <BreadcrumbLink href="/cultural-resources">Return to Cultural Resources</BreadcrumbLink>
         </div>
-      </footer>
+      </PageContainer>
+    );
+  }
 
-      {showAuth && (
-        <AuthForm onClose={() => setShowAuth(false)} />
-      )}
-    </div>
+  return (
+    <PageContainer>
+      <div className="mb-6">
+        <Breadcrumb>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/cultural-resources">Cultural Resources</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href={`/tribes/${tribe.id}`}>{tribe.name}</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink isCurrentPage>{clan.name}</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
+      </div>
+
+      <div className="space-y-8">
+        <ClanFamilyTree clan={clan} />
+      </div>
+    </PageContainer>
   );
 };
 

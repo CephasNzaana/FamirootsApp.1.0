@@ -119,11 +119,79 @@ export function useSupabaseDatabase() {
       setIsLoading(false);
     }
   };
+  
+  // Add the missing updateUserProfile function that was referenced in UserProfilePage
+  const updateUserProfile = async (userId: string, profileData: any) => {
+    try {
+      setIsLoading(true);
+      
+      // Transform user-friendly field names to database field names
+      const dbProfileData = {
+        full_name: profileData.fullName,
+        email: profileData.email,
+        avatar_url: profileData.photoUrl,
+        birth_year: profileData.birthYear,
+        birth_place: profileData.birthPlace,
+        tribe: profileData.tribe,
+        clan: profileData.clan,
+        biography: profileData.biography,
+      };
+      
+      // Check if profile exists first
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found" error
+        console.error("Error fetching profile:", fetchError);
+        return { success: false, error: fetchError };
+      }
+      
+      let result;
+      
+      if (existingProfile) {
+        // Update existing profile
+        result = await supabase
+          .from('profiles')
+          .update(dbProfileData)
+          .eq('id', userId);
+      } else {
+        // Create new profile
+        result = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            ...dbProfileData
+          });
+      }
+      
+      if (result.error) {
+        console.error("Error updating profile:", result.error);
+        return { success: false, error: result.error };
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error in updateUserProfile:", error);
+      return { success: false, error };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return {
     isLoading,
     fetchProfileData,
     fetchFamilyMembers,
-    updateProfile
+    updateProfile,
+    updateUserProfile // Export the new function
   };
 }
+
+// Also export the updateUserProfile function directly for easier imports
+export const updateUserProfile = async (userId: string, profileData: any) => {
+  const { updateUserProfile: updateFn } = useSupabaseDatabase();
+  return updateFn(userId, profileData);
+};
