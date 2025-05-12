@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
-import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Ensure this is your LATEST version
+import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // YOUR LATEST VERSION HERE
 import Footer from "@/components/Footer";
 import { TreeFormData, FamilyTree, FamilyMember } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,10 +32,12 @@ const Home = () => {
   const handleSignup = () => setShowAuth(true);
 
   // This is the function called by FamilyTreeForm onSubmit
+  // It calls the Edge Function, then saves to DB, then sets for local preview
   const generateFamilyTree = async (formData: TreeFormData) => {
     if (!user || !session?.access_token) {
       toast.error("Authentication required. Please log in to create a family tree.");
       setShowAuth(true);
+      setIsLoading(false); // Also set isLoading to false here
       return;
     }
 
@@ -59,15 +61,35 @@ const Home = () => {
           
           console.log("Home.tsx: RAW data received from Edge Function:", JSON.stringify(edgeFunctionResponse.data, null, 2));
 
+          // Expecting payload: { id: string, surname: string, ..., members: FamilyMember[], source: string, createdAt: string }
+          // And each member in members should have id: string, parentId?: string
           const generatedData: {
-            id: string; surname: string; tribe: string; clan: string;
+            id: string; 
+            surname: string; tribe: string; clan: string;
             members: FamilyMember[]; source: 'ai' | 'fallback'; createdAt: string;
           } = edgeFunctionResponse.data;
 
-          if (!generatedData || typeof generatedData.id !== 'string' || !Array.isArray(generatedData.members)) {
-            console.error("Home.tsx: Malformed or incomplete response from Edge Function. `generatedData`:", generatedData);
-            throw new Error("Received incomplete or malformed data from AI generation service. Check Edge Function logs and its response content.");
+          // Critical Check for the structure Home.tsx expects from the Edge Function
+          if (!generatedData || 
+              typeof generatedData.id !== 'string' || // Tree ID must be a string
+              !generatedData.surname || // Basic check
+              !Array.isArray(generatedData.members) || // Members must be an array
+              !generatedData.source || // Source field must exist
+              !generatedData.createdAt   // createdAt must exist
+             ) {
+            console.error("Home.tsx: Malformed or incomplete response structure from Edge Function. `generatedData`:", generatedData);
+            throw new Error("Received incomplete or improperly structured data from AI service. Key fields missing at the top level (e.g. tree 'id', 'members' array, 'source', 'createdAt'). Check Edge Function logs.");
           }
+
+          // Additional check for member ID types if problem persists
+          const membersAreValid = generatedData.members.every(
+            member => typeof member.id === 'string' && (member.parentId === undefined || member.parentId === null || typeof member.parentId === 'string')
+          );
+          if (!membersAreValid) {
+            console.error("Home.tsx: Some members from Edge Function have non-string id or parentId.", generatedData.members.filter(m => typeof m.id !== 'string' || (m.parentId && typeof m.parentId !== 'string')));
+            throw new Error("Received members with invalid ID types from AI service. IDs must be strings.");
+          }
+
 
           console.log(`Home.tsx: Data source from Edge Function: ${generatedData.source}`);
           if (generatedData.source === 'fallback') {
@@ -104,14 +126,24 @@ const Home = () => {
           // Step 3: Save the FamilyMember records
           if (generatedData.members && generatedData.members.length > 0) {
             const membersToInsert = generatedData.members.map(member => ({
-              id: member.id, name: member.name, relationship: member.relationship,
-              birth_year: member.birthYear, death_year: member.deathYear,
-              generation: member.generation, parent_id: member.parentId,
-              is_elder: member.isElder, gender: member.gender, side: member.side,
-              status: member.status, photo_url: member.photoUrl, notes: member.notes,
+              id: String(member.id), // Ensure string
+              name: String(member.name || "Unnamed"), // Ensure string
+              relationship: String(member.relationship || "Relative"),
+              birth_year: member.birthYear || null, // DB expects string | null
+              death_year: member.deathYear || null,
+              generation: typeof member.generation === 'number' ? member.generation : 0, // DB expects number
+              parent_id: member.parentId ? String(member.parentId) : null, // Ensure string or null
+              is_elder: Boolean(member.isElder || false), // DB expects boolean
+              gender: member.gender || null,
+              side: member.side || null,
+              status: member.status || 'unknown', // DB expects string, ensure your enum matches
+              photo_url: member.photoUrl || null,
+              notes: member.notes || null,
               family_tree_id: savedTreeData.id, 
               user_id: user.id,
             }));
+
+            console.log("Home.tsx: Attempting to insert members into DB:", JSON.stringify(membersToInsert.slice(0,2), null, 2) + "..."); // Log first few members
 
             const { error: membersError } = await supabase
               .from('family_members')
@@ -119,8 +151,9 @@ const Home = () => {
 
             if (membersError) {
               console.error("Home.tsx: Supabase members insert error:", membersError);
+              // Attempt basic rollback of the tree metadata
               await supabase.from('family_trees').delete().eq('id', savedTreeData.id);
-              throw membersError;
+              throw membersError; // This will be caught by toast.promise
             }
             console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
           } else {
@@ -133,26 +166,25 @@ const Home = () => {
             createdAt: savedTreeData.created_at, members: generatedData.members || [],
           };
           setFamilyTreeForPreview(completeNewTreeForPreview);
-          return completeNewTreeForPreview;
+          return completeNewTreeForPreview; // For toast.promise success
         } catch(error) {
-            // This catch is for errors within the async function itself
-            // Errors thrown will be caught by toast.promise's error handler
             console.error("Error during generateFamilyTree's async process:", error);
-            throw error; // Re-throw to be caught by toast.promise
+            throw error; // Re-throw for toast.promise
         } finally {
-          setIsLoading(false); 
+          // setIsLoading(false); // toast.promise v1+ handles this implicitly in its resolution
         }
       },
       { 
         loading: "Generating and saving your family tree...",
         success: (newTreeObject) => {
+          setIsLoading(false); // Set loading false on success
           if (newTreeObject && newTreeObject.surname) { 
             return `Family tree "${newTreeObject.surname}" created! Preview below.`;
           }
           return "Operation successful! Preview below."; 
         },
         error: (err: any) => {
-          // setIsLoading(false); // Already handled in the async function's finally by toast.promise
+          setIsLoading(false); // Set loading false on error
           const message = err?.details || err?.message || "Unknown error during tree creation process.";
           return `Operation failed: ${message}`;
         },
@@ -165,10 +197,10 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground"> {/* Using theme variables */}
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section - As you provided */}
+        {/* Hero Section - Your exact JSX from previous version */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -221,18 +253,10 @@ const Home = () => {
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(50%) rotate(-45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(-120%) rotate(45deg)' }}></div>
                     <div className="absolute w-24 h-1 bg-white/20 top-1/2 left-1/2 -translate-y-1/2" style={{ transform: 'translateX(-120%) rotate(-45deg)' }}></div>
-                    <div className="absolute top-1/4 right-1/4 bg-white/10 p-2 rounded-lg border border-white/20">
-                      <p className="text-sm font-medium">Grandparents</p>
-                    </div>
-                    <div className="absolute bottom-1/4 right-1/4 bg-white/10 p-2 rounded-lg border border-white/20">
-                      <p className="text-sm font-medium">Parents</p>
-                    </div>
-                    <div className="absolute top-1/4 left-1/4 bg-white/10 p-2 rounded-lg border border-white/20">
-                      <p className="text-sm font-medium">Clan Elders</p>
-                    </div>
-                    <div className="absolute bottom-1/4 left-1/4 bg-white/10 p-2 rounded-lg border border-white/20">
-                      <p className="text-sm font-medium">Children</p>
-                    </div>
+                    <div className="absolute top-1/4 right-1/4 bg-white/10 p-2 rounded-lg border border-white/20"><p className="text-sm font-medium">Grandparents</p></div>
+                    <div className="absolute bottom-1/4 right-1/4 bg-white/10 p-2 rounded-lg border border-white/20"><p className="text-sm font-medium">Parents</p></div>
+                    <div className="absolute top-1/4 left-1/4 bg-white/10 p-2 rounded-lg border border-white/20"><p className="text-sm font-medium">Clan Elders</p></div>
+                    <div className="absolute bottom-1/4 left-1/4 bg-white/10 p-2 rounded-lg border border-white/20"><p className="text-sm font-medium">Children</p></div>
                   </div>
                 </div>
               </div>
@@ -240,56 +264,31 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Features Section - As you provided */}
+        {/* Features Section - Your exact JSX from previous version */}
         <section className="py-16 px-4 bg-card text-card-foreground">
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">
-                Discover Your Heritage with FamiRoots
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Our powerful tools help you build, explore, and share your Ugandan family heritage
-              </p>
+              <h2 className="text-3xl font-bold mb-4">Discover Your Heritage with FamiRoots</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Our powerful tools help you build, explore, and share your Ugandan family heritage</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-background p-6 rounded-lg shadow-md border-2 border-border hover:shadow-lg transition-shadow">
-                <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
-                  <Users className="h-8 w-8 text-uganda-black" />
-                </div>
+                <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6"><Users className="h-8 w-8 text-uganda-black" /></div>
                 <h3 className="text-xl font-bold mb-3">Family Tree Builder</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your family tree centered around Ugandan clan structures, with AI assistance to build connections accurately.
-                </p>
-                <Button 
-                  className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full"
-                  onClick={() => document.getElementById('start-your-tree')?.scrollIntoView({ behavior: 'smooth' })}
-                >
-                  Start Building
-                </Button>
+                <p className="text-muted-foreground mb-4">Create your family tree centered around Ugandan clan structures, with AI assistance to build connections accurately.</p>
+                <Button className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full" onClick={() => document.getElementById('start-your-tree')?.scrollIntoView({ behavior: 'smooth' })}>Start Building</Button>
               </div>
               <div className="bg-background p-6 rounded-lg shadow-md border-2 border-border hover:shadow-lg transition-shadow">
-                  <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
-                      <Dna className="h-8 w-8 text-uganda-black" />
-                  </div>
+                  <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6"><Dna className="h-8 w-8 text-uganda-black" /></div>
                   <h3 className="text-xl font-bold mb-3">DNA Testing</h3>
-                  <p className="text-muted-foreground mb-4">
-                      Discover your ethnic origins and connect with relatives through our advanced genetic testing services.
-                  </p>
-                  <Button className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full" onClick={() => navigate('/dna-test')}>
-                      Explore DNA Testing
-                  </Button>
+                  <p className="text-muted-foreground mb-4">Discover your ethnic origins and connect with relatives through our advanced genetic testing services.</p>
+                  <Button className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full" onClick={() => navigate('/dna-test')}>Explore DNA Testing</Button>
               </div>
               <div className="bg-background p-6 rounded-lg shadow-md border-2 border-border hover:shadow-lg transition-shadow">
-                  <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6">
-                      <Search className="h-8 w-8 text-uganda-black" />
-                  </div>
+                  <div className="w-16 h-16 bg-uganda-yellow rounded-full flex items-center justify-center mb-6"><Search className="h-8 w-8 text-uganda-black" /></div>
                   <h3 className="text-xl font-bold mb-3">Relationship Analyzer</h3>
-                  <p className="text-muted-foreground mb-4">
-                      Find out how you're connected to other people through our powerful relationship detection tool.
-                  </p>
-                  <Button className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full" onClick={() => navigate('/relationship-analyzer')}>
-                      Analyze Relationships
-                  </Button>
+                  <p className="text-muted-foreground mb-4">Find out how you're connected to other people through our powerful relationship detection tool.</p>
+                  <Button className="bg-uganda-red hover:bg-uganda-red/90 text-white w-full" onClick={() => navigate('/relationship-analyzer')}>Analyze Relationships</Button>
               </div>
             </div>
           </div>
@@ -299,77 +298,44 @@ const Home = () => {
         <section id="start-your-tree" className="py-16 px-4 bg-background">
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-foreground">
-                Start Your Family Tree Journey
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Enter your family information. Our AI will assist in structuring and generating your tree.
-              </p>
+              <h2 className="text-3xl font-bold mb-4 text-foreground">Start Your Family Tree Journey</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Enter your family information. Our AI will assist in structuring and generating your tree.</p>
             </div>
-            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
                 <FamilyTreeForm onSubmit={generateFamilyTree} isLoading={isLoading} />
               </div>
-              
               <div className="sticky top-24 self-start"> 
                 <h3 className="text-2xl font-semibold mb-4 text-foreground text-center">
                   {familyTreeForPreview ? "Generated Tree Preview" : "Your Tree Will Appear Here"}
                 </h3>
                 {isLoading && !familyTreeForPreview && (
                     <div className="bg-card rounded-lg p-6 border-2 border-dashed border-border shadow-lg min-h-[550px] flex flex-col justify-center items-center">
-                        <div className="animate-pulse flex flex-col items-center">
-                            <Users className="h-16 w-16 text-uganda-yellow mb-4" />
-                            <p className="text-muted-foreground">AI is building and saving your tree...</p>
-                        </div>
+                        <div className="animate-pulse flex flex-col items-center"><Users className="h-16 w-16 text-uganda-yellow mb-4" /><p className="text-muted-foreground">AI is building and saving your tree...</p></div>
                     </div>
                 )}
                 {!isLoading && familyTreeForPreview && (
                   <div className="bg-card rounded-lg shadow-xl border border-border overflow-hidden">
                     <div className="p-3 border-b border-border flex justify-between items-center bg-muted/30">
                         <p className="font-medium text-foreground text-sm">{familyTreeForPreview.surname} Family Tree</p>
-                        <Button variant="outline" size="sm" onClick={handleNavigateToTrees} title="View all your saved trees">
-                            <Eye className="mr-1.5 h-4 w-4"/> My Saved Trees
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleNavigateToTrees} title="View all your saved trees"><Eye className="mr-1.5 h-4 w-4"/> My Saved Trees</Button>
                     </div>
                     <div className="h-[60vh] min-h-[500px] overflow-auto p-2 bg-background relative"> 
                       <div style={{transform: `scale(${previewZoomLevel})`, transformOrigin: 'top left', width: 'fit-content', height: 'fit-content'}}>
-                        <FamilyTreeDisplay 
-                          tree={familyTreeForPreview} 
-                          zoomLevel={1} 
-                        />
+                        <FamilyTreeDisplay tree={familyTreeForPreview} zoomLevel={1} />
                       </div>
                     </div>
                     <div className="p-2 border-t border-border flex justify-center gap-2 bg-muted/30">
                         <Button variant="outline" size="xs" onClick={() => setPreviewZoomLevel(z => Math.max(0.3, z - 0.1))} aria-label="Zoom Out Preview"><ZoomOut className="h-4 w-4"/></Button>
                         <Button variant="outline" size="xs" onClick={() => setPreviewZoomLevel(z => Math.min(1.5, z + 0.1))} aria-label="Zoom In Preview"><ZoomIn className="h-4 w-4"/></Button>
-                         <Button variant="default" size="xs" className="bg-uganda-red text-white" onClick={handleNavigateToTrees}>
-                            <Save className="mr-1.5 h-4 w-4"/> View My Saved Trees
-                        </Button>
+                         <Button variant="default" size="xs" className="bg-uganda-red text-white" onClick={handleNavigateToTrees}><Save className="mr-1.5 h-4 w-4"/> View My Saved Trees</Button>
                     </div>
                   </div>
                 )}
                 {!isLoading && !familyTreeForPreview && ( 
                   <div className="bg-card rounded-lg p-6 text-center border-2 border-dashed border-border shadow-lg min-h-[550px] flex flex-col justify-center items-center">
-                    <div className="mb-4">
-                        <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center rounded-full bg-uganda-yellow/20">
-                            <FileText className="h-10 w-10 text-uganda-yellow" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-2 text-foreground">Your Family Tree</h2>
-                        <p className="text-muted-foreground mb-6">
-                            Fill out the form to generate and save your clan-based family tree.
-                        </p>
-                    </div>
-                    {!user && ( 
-                        <div className="mt-6 p-4 bg-uganda-yellow/10 rounded-lg border border-uganda-yellow/30">
-                            <p className="text-sm text-foreground">
-                                <button onClick={handleLogin} className="text-uganda-red hover:underline font-medium">Login</button>
-                                {" or "}
-                                <button onClick={handleSignup} className="text-uganda-red hover:underline font-medium">Sign up</button>
-                                {" to save your family tree."}
-                            </p>
-                        </div>
-                    )}
+                    <div className="mb-4"><div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center rounded-full bg-uganda-yellow/20"><FileText className="h-10 w-10 text-uganda-yellow" /></div><h2 className="text-2xl font-bold mb-2 text-foreground">Your Family Tree</h2><p className="text-muted-foreground mb-6">Fill out the form to generate and save your clan-based family tree.</p></div>
+                    {!user && ( <div className="mt-6 p-4 bg-uganda-yellow/10 rounded-lg border border-uganda-yellow/30"><p className="text-sm text-foreground"><button onClick={handleLogin} className="text-uganda-red hover:underline font-medium">Login</button>{" or "}<button onClick={handleSignup} className="text-uganda-red hover:underline font-medium">Sign up</button>{" to save your family tree."}</p></div>)}
                   </div>
                 )}
               </div>
@@ -377,39 +343,17 @@ const Home = () => {
           </div>
         </section>
         
-        {/* Testimonials/Cultural Section - As you provided */}
+        {/* Testimonials/Cultural Section - Your exact JSX from previous version */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black to-uganda-black/90 text-white">
            <div className="container mx-auto max-w-5xl text-center">
              <h2 className="text-3xl font-bold mb-8">Preserving Uganda's Rich Heritage</h2>
-             <p className="text-xl mb-12 max-w-3xl mx-auto">
-               FamiRoots helps preserve the cultural connections and family histories of Ugandan communities for generations to come.
-             </p>
+             <p className="text-xl mb-12 max-w-3xl mx-auto">FamiRoots helps preserve the cultural connections and family histories of Ugandan communities for generations to come.</p>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <div className="p-6 bg-white/10 rounded-lg">
-                 <h3 className="text-xl font-bold mb-3 text-uganda-yellow">40+ Tribes</h3>
-                 <p className="text-gray-300">
-                   Comprehensive database of Uganda's diverse tribal heritage
-                 </p>
-               </div>
-               <div className="p-6 bg-white/10 rounded-lg">
-                 <h3 className="text-xl font-bold mb-3 text-uganda-yellow">200+ Clans</h3>
-                 <p className="text-gray-300">
-                   Detailed clan information with cultural context and historical significance
-                 </p>
-               </div>
-               <div className="p-6 bg-white/10 rounded-lg">
-                 <h3 className="text-xl font-bold mb-3 text-uganda-yellow">AI-Powered</h3>
-                 <p className="text-gray-300">
-                   Advanced technology that helps verify and connect family relationships
-                 </p>
-               </div>
+               <div className="p-6 bg-white/10 rounded-lg"><h3 className="text-xl font-bold mb-3 text-uganda-yellow">40+ Tribes</h3><p className="text-gray-300">Comprehensive database of Uganda's diverse tribal heritage</p></div>
+               <div className="p-6 bg-white/10 rounded-lg"><h3 className="text-xl font-bold mb-3 text-uganda-yellow">200+ Clans</h3><p className="text-gray-300">Detailed clan information with cultural context and historical significance</p></div>
+               <div className="p-6 bg-white/10 rounded-lg"><h3 className="text-xl font-bold mb-3 text-uganda-yellow">AI-Powered</h3><p className="text-gray-300">Advanced technology that helps verify and connect family relationships</p></div>
              </div>
-             <Button 
-               className="mt-12 bg-uganda-yellow hover:bg-uganda-yellow/90 text-uganda-black font-semibold px-8 py-3 rounded-lg"
-               onClick={() => navigate('/tribes')}
-             >
-               Explore Ugandan Tribes
-             </Button>
+             <Button className="mt-12 bg-uganda-yellow hover:bg-uganda-yellow/90 text-uganda-black font-semibold px-8 py-3 rounded-lg" onClick={() => navigate('/tribes')}>Explore Ugandan Tribes</Button>
            </div>
         </section>
       </main>
