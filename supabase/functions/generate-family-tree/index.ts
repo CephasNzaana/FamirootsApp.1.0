@@ -6,7 +6,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const FUNCTION_TIMEOUT_SECONDS_CONFIG = Deno.env.get("FUNCTION_TIMEOUT_SECONDS");
 const FUNCTION_TIMEOUT_GRACE_PERIOD_MS = 5000;
-
+// --- TEMPORARY BYPASS FOR TESTING ---
+const BYPASS_AI_FOR_TESTING = true; // Set to true to bypass AI and test structuring logic
+// --- END TEMPORARY BYPASS ---
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
