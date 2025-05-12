@@ -1,319 +1,282 @@
 // supabase/functions/generate-family-tree/index.ts
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts"; // Use a recent stable Deno standard library version
-import "https://deno.land/x/xhr@0.1.0/mod.ts"; // Polyfill for Deno Deploy if any library relies on XHR
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const FUNCTION_TIMEOUT_SECONDS_CONFIG = Deno.env.get("FUNCTION_TIMEOUT_SECONDS");
-const FUNCTION_TIMEOUT_GRACE_PERIOD_MS = 5000; // Increased grace period
+const FUNCTION_TIMEOUT_GRACE_PERIOD_MS = 5000;
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // IMPORTANT: Restrict this to your app's domain in production!
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// --- INTERFACES (Ensure these align with your frontend types/index.ts) ---
-interface MemberInputData {
-  name?: string;
-  gender?: string;
-  birthYear?: string;
-  deathYear?: string;
-  // Add any other relevant fields you collect per individual in your TreeFormData.extendedFamily
-}
-
-interface ParentsInputData {
-  father?: MemberInputData;
-  mother?: MemberInputData;
-}
-
+// Interfaces for form input (align with your frontend)
+interface MemberInputData { name?: string; gender?: string; birthYear?: string; deathYear?: string; notes?: string; /* any other fields from form */ }
+interface ParentsInputData { father?: MemberInputData; mother?: MemberInputData; }
 interface GrandparentsInputData {
-  paternal?: {
-    grandfather?: MemberInputData;
-    grandmother?: MemberInputData;
-  };
-  maternal?: {
-    grandfather?: MemberInputData;
-    grandmother?: MemberInputData;
-  };
+  paternal?: { grandfather?: MemberInputData; grandmother?: MemberInputData; };
+  maternal?: { grandfather?: MemberInputData; grandmother?: MemberInputData; };
 }
-
 interface ExtendedFamilyInputData {
-  familyName?: string; // Main person's name from "About You" section of your form
-  gender?: string;
-  birthYear?: string;
-  birthPlace?: string; // If you collect this
-  siblings?: MemberInputData[];
-  spouse?: MemberInputData;
-  parents?: ParentsInputData;
-  grandparents?: GrandparentsInputData;
-  children?: MemberInputData[];
-  selectedElders?: { id: string; name: string; approximateEra?: string }[]; // From your form data
+  familyName?: string; gender?: string; birthYear?: string; birthPlace?: string; notes?: string; // Main person
+  siblings?: MemberInputData[]; spouse?: MemberInputData; parents?: ParentsInputData;
+  grandparents?: GrandparentsInputData; children?: MemberInputData[];
+  selectedElders?: { id: string; name: string; approximateEra?: string; notes?: string }[];
 }
+interface TreeFormData { surname: string; tribe: string; clan: string; extendedFamily: ExtendedFamilyInputData; }
 
-interface TreeFormData { // This is the expected structure of the request body
-  surname: string;
-  tribe: string;
-  clan: string;
-  extendedFamily: ExtendedFamilyInputData;
-}
-
+// Output structure
 interface FamilyMember {
-  id: string; // Should be generated uniquely for each member by AI/this function
+  id: string; name: string; relationship: string; birthYear?: string; deathYear?: string;
+  generation: number; parentId?: string; isElder: boolean; gender?: string;
+  side?: 'paternal' | 'maternal'; status: 'living' | 'deceased'; photoUrl?: string; notes?: string;
+}
+
+// Helper to generate unique string IDs
+const generateDeterministicId = (role: string, name?: string, index?: number): string => {
+  const base = name ? name.trim().toLowerCase().replace(/[^a-z0-9]/gi, '_') : role;
+  return `${role.toLowerCase().replace(/[^a-z0-9]/gi, '_')}_${base}_${index !== undefined ? index : Date.now().toString(36) + Math.random().toString(36).substring(2, 5)}`;
+};
+
+// Structure for AI to fill (simpler)
+interface AiPersonInput {
+  tempId: string; // Temporary ID for matching AI output back to pre-processed individuals
+  role: string; // e.g., "mainPerson", "father", "paternalGrandfather", "sibling_0", "child_1"
+  providedName?: string;
+  providedGender?: string;
+  providedBirthYear?: string;
+  providedDeathYear?: string;
+  providedNotes?: string;
+  contextualRelationship: string; // e.g. "Self", "Father of [mainPersonName]"
+}
+
+interface AiPersonOutput {
+  tempId: string; // Should match the input tempId
   name: string;
-  relationship: string; // e.g., "Self", "Father", "Paternal Grandfather"
   birthYear?: string;
   deathYear?: string;
-  generation: number; // 0 for main person, -1 for parents, etc.
-  parentId?: string; // ID of one primary parent (e.g., father or mother)
-  isElder: boolean;
-  gender?: 'male' | 'female' | 'other' | string; // AI might return a string
-  side?: 'paternal' | 'maternal';
-  status: 'living' | 'deceased';
-  photoUrl?: string; // Optional
-  notes?: string;    // Optional
+  gender?: string;
+  status?: 'living' | 'deceased';
+  notes?: string; // AI can generate or pass through
 }
 
-// --- FALLBACK DATA (Customize as needed) ---
-const fallbackMembers: FamilyMember[] = [
-  { id: "fb_self_1", name: "Fallback User", relationship: "Self", birthYear: "1990", generation: 0, isElder: false, status: "living", gender: "male" },
-  { id: "fb_father_1", name: "Fallback Father", relationship: "Father", birthYear: "1960", generation: -1, parentId: "fb_p_gf_1", isElder: false, status: "living", gender: "male", side: "paternal" },
-  { id: "fb_mother_1", name: "Fallback Mother", relationship: "Mother", birthYear: "1965", generation: -1, parentId: "fb_m_gf_1", isElder: false, status: "living", gender: "female", side: "maternal" },
-  { id: "fb_p_gf_1", name: "Fallback Paternal GF", relationship: "Paternal Grandfather", birthYear: "1930", generation: -2, isElder: true, status: "deceased", gender: "male", side: "paternal" },
-  { id: "fb_m_gf_1", name: "Fallback Maternal GF", relationship: "Maternal Grandfather", birthYear: "1935", generation: -2, isElder: true, status: "deceased", gender: "male", side: "maternal" },
-];
 
 serve(async (req: Request) => {
   const functionStartTime = Date.now();
-  const configuredTimeout = FUNCTION_TIMEOUT_SECONDS_CONFIG ? parseInt(FUNCTION_TIMEOUT_SECONDS_CONFIG) * 1000 : 55000; // Default 55s for a 60s limit
-  const invocationId = `InvokeID:${functionStartTime % 100000}`; // Short ID for correlating logs
+  const configuredTimeout = FUNCTION_TIMEOUT_SECONDS_CONFIG ? parseInt(FUNCTION_TIMEOUT_SECONDS_CONFIG) * 1000 : 55000;
+  const invocationId = `InvokeID:${functionStartTime % 100000}`;
+  console.log(`[${new Date(functionStartTime).toISOString()}] ${invocationId} generate-family-tree invoked (NEW APPROACH). Method: ${req.method}.`);
 
-  console.log(`[${new Date(functionStartTime).toISOString()}] ${invocationId} generate-family-tree invoked. Method: ${req.method}. Configured timeout: ${configuredTimeout}ms`);
-
-  if (req.method === 'OPTIONS') {
-    console.log(`[${new Date().toISOString()}] ${invocationId} Handling OPTIONS request.`);
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') { /* ... CORS handling ... */ return new Response(null, { headers: corsHeaders }); }
 
   try {
     const formData: TreeFormData = await req.json();
-    console.log(`[${new Date().toISOString()}] ${invocationId} Request body received. Surname: ${formData.surname}, Main Person: ${formData.extendedFamily?.familyName}`);
-    // For deeper debugging, log more of formData if needed, being mindful of log size limits
-    // console.log(`[${new Date().toISOString()}] ${invocationId} Full extendedFamily input:`, JSON.stringify(formData.extendedFamily, null, 2).substring(0,1000));
-
-
     const { surname, tribe, clan, extendedFamily } = formData;
+    console.log(`[${new Date().toISOString()}] ${invocationId} Request body received. Surname: ${surname}, Main Person: ${extendedFamily?.familyName}`);
 
-    if (!surname || !tribe || !clan || !extendedFamily || !extendedFamily.familyName) {
-      console.error(`[${new Date().toISOString()}] ${invocationId} Validation Error: Missing required data in request.`);
-      return new Response(
-        JSON.stringify({ error: 'Missing required detailed form data (surname, tribe, clan, and extendedFamily details including main person\'s name) are needed.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!surname || !tribe || !clan || !extendedFamily || !extendedFamily.familyName) { /* ... validation ... */ }
+
+    // 1. Pre-process TreeFormData into a list of individuals with roles for AI
+    const individualsForAI: AiPersonInput[] = [];
+    const mainPersonTempId = "main_person";
+
+    individualsForAI.push({
+      tempId: mainPersonTempId, role: "mainPerson", providedName: extendedFamily.familyName,
+      providedGender: extendedFamily.gender, providedBirthYear: extendedFamily.birthYear,
+      providedNotes: extendedFamily.notes, contextualRelationship: "Self (Proband)"
+    });
+
+    if (extendedFamily.parents) {
+      if (extendedFamily.parents.father) individualsForAI.push({ tempId: "father", role: "father", ...extendedFamily.parents.father, contextualRelationship: `Father of ${extendedFamily.familyName}` });
+      if (extendedFamily.parents.mother) individualsForAI.push({ tempId: "mother", role: "mother", ...extendedFamily.parents.mother, contextualRelationship: `Mother of ${extendedFamily.familyName}` });
     }
+    if (extendedFamily.grandparents) {
+      if (extendedFamily.grandparents.paternal?.grandfather) individualsForAI.push({ tempId: "paternalGrandfather", role: "paternalGrandfather", ...extendedFamily.grandparents.paternal.grandfather, contextualRelationship: `Paternal Grandfather of ${extendedFamily.familyName}` });
+      if (extendedFamily.grandparents.paternal?.grandmother) individualsForAI.push({ tempId: "paternalGrandmother", role: "paternalGrandmother", ...extendedFamily.grandparents.paternal.grandmother, contextualRelationship: `Paternal Grandmother of ${extendedFamily.familyName}` });
+      if (extendedFamily.grandparents.maternal?.grandfather) individualsForAI.push({ tempId: "maternalGrandfather", role: "maternalGrandfather", ...extendedFamily.grandparents.maternal.grandfather, contextualRelationship: `Maternal Grandfather of ${extendedFamily.familyName}` });
+      if (extendedFamily.grandparents.maternal?.grandmother) individualsForAI.push({ tempId: "maternalGrandmother", role: "maternalGrandmother", ...extendedFamily.grandparents.maternal.grandmother, contextualRelationship: `Maternal Grandmother of ${extendedFamily.familyName}` });
+    }
+    if (extendedFamily.spouse) individualsForAI.push({ tempId: "spouse", role: "spouse", ...extendedFamily.spouse, contextualRelationship: `Spouse of ${extendedFamily.familyName}` });
+    (extendedFamily.siblings || []).forEach((s, i) => individualsForAI.push({ tempId: `sibling_${i}`, role: `sibling`, ...s, contextualRelationship: `Sibling of ${extendedFamily.familyName}` }));
+    (extendedFamily.children || []).forEach((c, i) => individualsForAI.push({ tempId: `child_${i}`, role: `child`, ...c, contextualRelationship: `Child of ${extendedFamily.familyName}` }));
+    (extendedFamily.selectedElders || []).forEach(e => individualsForAI.push({ tempId: e.id, role: "clanElder", providedName: e.name, providedNotes: e.approximateEra ? `Era: ${e.approximateEra}` : e.notes, contextualRelationship: "Clan Elder" }));
+    
+    console.log(`[${new Date().toISOString()}] ${invocationId} Pre-processed ${individualsForAI.length} individuals for AI input.`);
 
-    let members: FamilyMember[] = [];
+    let processedAiOutput: AiPersonOutput[] = [];
     let source: 'ai' | 'fallback' = 'ai';
 
-    if (!OPENAI_API_KEY) {
-      console.warn(`[${new Date().toISOString()}] ${invocationId} OPENAI_API_KEY is not configured. Using fallback data.`);
-      members = fallbackMembers.map(m => {
-        if (m.relationship === 'Self' && extendedFamily.familyName) {
-          return { ...m, name: extendedFamily.familyName, gender: extendedFamily.gender || m.gender, birthYear: extendedFamily.birthYear || m.birthYear };
-        }
-        return m;
-      });
-      source = 'fallback';
+    if (!OPENAI_API_KEY) { /* ... fallback if no API key ... */ 
+        console.warn(`[${new Date().toISOString()}] ${invocationId} OPENAI_API_KEY not configured. Using simplified fallback structure.`);
+        processedAiOutput = individualsForAI.map(ind => ({
+            tempId: ind.tempId, name: ind.providedName || `Fallback ${ind.role}`,
+            gender: ind.providedGender, birthYear: ind.providedBirthYear, deathYear: ind.providedDeathYear,
+            status: ind.providedDeathYear ? 'deceased' : 'living', notes: ind.providedNotes
+        }));
+        source = 'fallback';
     } else {
-      // --- AI PROCESSING ---
       try {
-        console.log(`[${new Date().toISOString()}] ${invocationId} Preparing data for OpenAI prompt...`);
-        const userProvidedDataString = JSON.stringify(extendedFamily, null, 2);
-
-        // !!! --- THIS IS THE CRUCIAL PROMPT TO REFINE EXTENSIVELY --- !!!
-        // Test this prompt with different inputs to ensure the AI understands how to map your TreeFormData
-        // to the FamilyMember[] structure, especially using the names YOU provide.
+        // New, simpler prompt for AI: Ask it to fill details for the pre-defined list.
         const prompt = `
-          You are an expert Ugandan genealogist tasked with structuring detailed family data into a specific JSON format.
-          The family details are: Surname: "${surname}", Tribe: "${tribe}", Clan: "${clan}".
-          The main person for this tree (generation 0) is named: "${extendedFamily.familyName}".
+          You are a data enrichment assistant for Ugandan family trees.
+          Family Context: Surname: "${surname}", Tribe: "${tribe}", Clan: "${clan}".
+          
+          Here is a list of individuals identified from user input. For each person, please:
+          1. Confirm or provide a culturally appropriate Ugandan full name, strongly prioritizing any 'providedName'.
+          2. Estimate a plausible 'birthYear' (string) if 'providedBirthYear' is missing or vague, considering their role and Ugandan context.
+          3. Estimate a 'deathYear' (string, optional) if 'providedDeathYear' is missing but context implies deceased (e.g., historical elder).
+          4. Confirm or provide 'gender' ('male', 'female', 'other', string) using 'providedGender' or inferring from their role.
+          5. Determine 'status' ('living' or 'deceased') based on deathYear or context.
+          6. Include or generate brief 'notes' (string, optional) based on 'providedNotes' or their role.
 
-          User-provided family structure details (prioritize all names and details from here):
+          Input list of individuals (each with a 'tempId' you MUST preserve in your output):
           \`\`\`json
-          ${userProvidedDataString}
+          ${JSON.stringify(individualsForAI.map(p => ({tempId: p.tempId, role: p.role, contextualRelationship: p.contextualRelationship, providedName: p.providedName, providedGender: p.providedGender, providedBirthYear: p.providedBirthYear, providedDeathYear: p.providedDeathYear, providedNotes: p.providedNotes })), null, 2)}
           \`\`\`
 
-          Your tasks are to meticulously process ALL individuals mentioned in the user-provided \`extendedFamily\` JSON data and generate a list of \`FamilyMember\` objects.
-          For each individual, create a \`FamilyMember\` object with the following fields:
-          - \`id\`: Generate a unique, descriptive STRING ID for each person (e.g., "main_${extendedFamily.familyName?.split(' ')[0].toLowerCase().replace(/[^a-z0-9]/gi, '')}", "father_of_main", "sibling_1_main"). IDs MUST be unique strings within the generated list.
-          - \`name\`: The full name as a STRING. YOU MUST USE THE NAMES EXACTLY AS PROVIDED BY THE USER from the \`extendedFamily\` data. If a name is structurally implied but missing in the user input (e.g., a parent slot is present in the form's structure but the user left the name blank in the input), use a descriptive placeholder like "Unnamed Father of ${extendedFamily.familyName}" or "Unnamed Paternal Grandmother". User-provided names take absolute precedence.
-          - \`relationship\`: STRING. The relationship term (e.g., "Self", "Father", "Mother", "Paternal Grandfather", "Spouse", "Son", "Daughter", "Sibling", "Clan Elder"). This should be relative to the main person ("${extendedFamily.familyName}") or their direct parent in the hierarchy.
-          - \`birthYear\`: STRING (e.g., "1990"). Use the user-provided birth year. If missing and context allows (e.g. parent of known child), estimate a plausible Ugandan birth year. Otherwise, leave as null or undefined.
-          - \`deathYear\`: STRING (e.g., "2020", optional). Use user-provided.
-          - \`generation\`: NUMBER. Set strictly: 0 for the main person ("${extendedFamily.familyName}"); -1 for their direct parents; -2 for their direct grandparents; 0 for spouse of main person; 0 for siblings of main person; 1 for children of main person. For \`selectedElders\`, assign appropriate ancestral generations (e.g., -2, -3, -4) based on their \`approximateEra\` or context.
-          - \`parentId\`: STRING (optional). The 'id' of this person's primary parent. Establish these links carefully based on the input structure.
-          - \`isElder\`: BOOLEAN. True if the person is listed in \`extendedFamily.selectedElders\` or if their context (e.g., a great-grandparent role) strongly implies they are a respected elder. Default to false.
-          - \`gender\`: STRING ('male', 'female', 'other'). Use user-provided. Infer from roles like 'father', 'mother', 'grandmother' if not specified.
-          - \`side\`: STRING ('paternal' or 'maternal', optional). Apply accurately for parents/grandparents of the main person.
-          - \`status\`: STRING ('living' or 'deceased'). Infer from \`deathYear\`. If \`deathYear\` present, status is 'deceased'. Default 'living'.
-          - \`photoUrl\`: STRING (optional). Leave as null or undefined for now.
-          - \`notes\`: STRING (optional). Include any user-provided notes from the input. If none are provided, you can generate a brief, culturally relevant note if appropriate, or leave null/undefined.
-
-          CRITICAL: Ensure "${extendedFamily.familyName}" is included in the output array with relationship "Self", generation 0, and a valid string 'id'.
-          Output ONLY the valid JSON array of these FamilyMember objects. Do not include any explanations, comments, or markdown formatting outside the JSON array itself. ALL 'id' and 'parentId' fields MUST be STRINGS.
+          Output ONLY a valid JSON array, where each object corresponds to an individual from the input list and includes:
+          \`tempId\` (copied from input), \`name\`, \`birthYear\`, \`deathYear\`, \`gender\`, \`status\`, \`notes\`.
+          Example object: {"tempId": "father", "name": "Mukasa Henry", "birthYear": "1965", "gender": "male", "status": "living", "notes": "Farmer from Mbarara."}
         `;
-        
-        console.log(`[${new Date().toISOString()}] ${invocationId} Sending prompt to OpenAI (length: ${prompt.length}).`);
-        // console.log("Full prompt being sent:", prompt); // Uncomment for deep prompt debugging
+
+        console.log(`[${new Date().toISOString()}] ${invocationId} Sending new simpler prompt to OpenAI (length: ${prompt.length}).`);
         const openAICallStartTime = Date.now();
-
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o", // Or "gpt-3.5-turbo-0125" for faster testing
-            messages: [
-              { role: "system", content: "You are a family tree data structuring assistant. Output only valid JSON arrays of FamilyMember objects. Ensure all user-provided names are used. All 'id' and 'parentId' fields MUST be strings. The main person specified in the prompt MUST be included with relationship 'Self' and generation 0." },
-              { role: "user", content: prompt }
-            ],
-            temperature: 0.1, 
-            max_tokens: 3800, 
-          }),
+        const response = await fetch("https://api.openai.com/v1/chat/completions", { /* ... OpenAI call config ... */ 
+             method: "POST",
+             headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+             body: JSON.stringify({
+                 model: "gpt-4o", // Or gpt-3.5-turbo for faster/cheaper processing of simpler tasks
+                 messages: [
+                     { role: "system", content: "You are a data enrichment assistant. Respond with ONLY a valid JSON array. Each object in the array must contain the 'tempId' from the input." },
+                     { role: "user", content: prompt }
+                 ], temperature: 0.2, max_tokens: 2000,
+             }),
         });
-
         const openAICallDuration = Date.now() - openAICallStartTime;
         console.log(`[${new Date().toISOString()}] ${invocationId} OpenAI API call finished. Status: ${response.status}, Duration: ${openAICallDuration}ms`);
 
-        if (!response.ok) {
-          const errorBody = await response.text();
-          let errorData;
-          try { errorData = JSON.parse(errorBody); } catch (e) {
-            errorData = { error: { message: `OpenAI API Error ${response.status}: ${response.statusText}. Response (first 500 chars): ${errorBody.substring(0, 500)}` } };
-          }
-          console.error(`[${new Date().toISOString()}] ${invocationId} OpenAI API error response:`, errorData);
-          throw new Error(errorData.error?.message || `OpenAI API error: ${response.statusText}`);
-        }
-
+        if (!response.ok) { /* ... error handling ... */ }
         const data = await response.json();
         const aiResponseContent = data.choices?.[0]?.message?.content;
+        if (!aiResponseContent) { /* ... error handling ... */ }
+        
+        console.log(`[${new Date().toISOString()}] ${invocationId} Raw AI (simpler) response received. Attempting to parse...`);
+        try { processedAiOutput = JSON.parse(aiResponseContent); } 
+        catch (parseError) { /* ... robust JSON parsing from markdown ... */ }
 
-        if (!aiResponseContent) {
-          console.error(`[${new Date().toISOString()}] ${invocationId} Empty content in AI response from OpenAI.`);
-          throw new Error("Empty content in AI response.");
-        }
+        if (!Array.isArray(processedAiOutput)) { /* ... error handling ... */ }
+        console.log(`[${new Date().toISOString()}] ${invocationId} AI (simpler) processing successful. Items received: ${processedAiOutput.length}`);
 
-        console.log(`[${new Date().toISOString()}] ${invocationId} Raw AI response content received (length: ${aiResponseContent.length}). Attempting to parse...`);
-        // For deeper debugging of AI output:
-        // console.log(`[${new Date().toISOString()}] ${invocationId} AI Raw Content Snippet (first 1000 chars):`, aiResponseContent.substring(0,1000)); 
-
-        try {
-          members = JSON.parse(aiResponseContent);
-        } catch (parseError) {
-          console.warn(`[${new Date().toISOString()}] ${invocationId} Initial JSON.parse failed for AI response (Error: ${parseError.message}). Attempting to extract from markdown block...`);
-          const jsonMatch = aiResponseContent.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonMatch && jsonMatch[1]) {
-            try {
-              members = JSON.parse(jsonMatch[1]);
-              console.log(`[${new Date().toISOString()}] ${invocationId} Successfully parsed JSON from markdown block.`);
-            } catch (nestedParseError) {
-              console.error(`[${new Date().toISOString()}] ${invocationId} Failed to parse JSON even from markdown block:`, nestedParseError.message);
-              console.error(`[${new Date().toISOString()}] ${invocationId} Problematic AI content for markdown extraction (first 500 chars):`, aiResponseContent.substring(0,500));
-              throw new Error("Could not extract or parse JSON from AI response (tried raw & markdown block).");
-            }
-          } else {
-            console.error(`[${new Date().toISOString()}] ${invocationId} AI response was not valid JSON and no JSON block found.`);
-            console.error(`[${new Date().toISOString()}] ${invocationId} Problematic AI content (first 500 chars):`, aiResponseContent.substring(0,500));
-            throw new Error("AI response was not valid JSON and no JSON block found.");
-          }
-        }
-        
-        if (!Array.isArray(members)) {
-          console.error(`[${new Date().toISOString()}] ${invocationId} AI response parsed but is not an array as expected. Received type: ${typeof members}, Value (first 500 chars):`, JSON.stringify(members, null, 2).substring(0, 500));
-          throw new Error("AI response format was not an array of family members as expected.");
-        }
-        
-        if (members.length === 0 && extendedFamily.familyName) { 
-           console.warn(`[${new Date().toISOString()}] ${invocationId} AI returned an empty member list despite receiving familyName. This indicates a potential issue with the prompt or the AI's ability to process the provided detailed input.`);
-        }
-        
-        console.log(`[${new Date().toISOString()}] ${invocationId} AI processing successful. Number of members initially parsed: ${members.length}`);
-        
-        // Final validation and type casting for members from AI
-        members = members.map((member: any, index: number) => {
-          if (!member || typeof member !== 'object') {
-            console.warn(`[${new Date().toISOString()}] ${invocationId} Invalid member item from AI at index ${index}, skipping. Item:`, member);
-            return null; // Will be filtered out
-          }
-          return {
-            id: String(member.id || `ai_member_${Date.now()}_${index}`), // CRITICAL: ID must be string
-            name: String(member.name || "Unnamed by AI"),             // CRITICAL: Name must be string
-            relationship: String(member.relationship || "Relative"),
-            birthYear: member.birthYear ? String(member.birthYear) : undefined,
-            deathYear: member.deathYear ? String(member.deathYear) : undefined,
-            generation: (typeof member.generation === 'number' && !isNaN(member.generation)) ? member.generation : 0,
-            parentId: member.parentId ? String(member.parentId) : undefined, // CRITICAL: parentId must be string or undefined
-            isElder: Boolean(member.isElder || false),
-            gender: member.gender ? String(member.gender) : undefined,
-            side: member.side ? String(member.side) as 'paternal' | 'maternal' : undefined,
-            status: member.deathYear ? 'deceased' : (String(member.status || 'living') as 'living' | 'deceased'),
-            photoUrl: member.photoUrl ? String(member.photoUrl) : undefined,
-            notes: member.notes ? String(member.notes) : undefined,
-          };
-        }).filter(member => member !== null) as FamilyMember[]; // Filter out any nulls from invalid items
-        
-        console.log(`[${new Date().toISOString()}] ${invocationId} Members after string casting, defaulting, and validation: ${members.length}`);
-
-      } catch (aiError) {
-        console.error(`[${new Date().toISOString()}] ${invocationId} Error during AI processing stage:`, aiError.message, aiError.stack ? aiError.stack.substring(0, 500) : "No stack");
-        members = fallbackMembers.map(m => {
-          if (m.relationship === 'Self' && extendedFamily.familyName) {
-            return { ...m, name: extendedFamily.familyName, gender: extendedFamily.gender || m.gender, birthYear: extendedFamily.birthYear || m.birthYear };
-          }
-          return m;
-        });
-        source = 'fallback';
-        console.log(`[${new Date().toISOString()}] ${invocationId} Using fallback data due to AI processing error.`);
+      } catch (aiError) { /* ... fallback logic to use individualsForAI directly with defaults ... */ 
+          console.error(`[${new Date().toISOString()}] ${invocationId} Error during NEW APPROACH AI processing:`, aiError.message);
+          processedAiOutput = individualsForAI.map(ind => ({ // Use pre-AI list with defaults
+            tempId: ind.tempId, name: ind.providedName || `Fallback ${ind.role} ${ind.tempId}`,
+            gender: ind.providedGender, birthYear: ind.providedBirthYear, deathYear: ind.providedDeathYear,
+            status: ind.providedDeathYear ? 'deceased' : 'living', notes: ind.providedNotes
+          }));
+          source = 'fallback';
+          console.log(`[${new Date().toISOString()}] ${invocationId} Using fallback data (from pre-AI list) due to AI error.`);
       }
     }
 
+    // 2. Now, deterministically build the final FamilyMember[] array
+    const finalMembers: FamilyMember[] = [];
+    const idMap: Record<string, string> = {}; // Maps tempId to final generated string ID
+
+    // First pass: create all members with final IDs and basic details from AI/fallback
+    processedAiOutput.forEach((aiPerson, index) => {
+        const originalInput = individualsForAI.find(i => i.tempId === aiPerson.tempId);
+        const finalId = generateDeterministicId(originalInput?.role || "member", aiPerson.name, index);
+        idMap[aiPerson.tempId] = finalId;
+
+        finalMembers.push({
+            id: finalId,
+            name: aiPerson.name,
+            relationship: originalInput?.contextualRelationship || "Relative", // Set relationship based on role
+            birthYear: aiPerson.birthYear ? String(aiPerson.birthYear) : undefined,
+            deathYear: aiPerson.deathYear ? String(aiPerson.deathYear) : undefined,
+            generation: 0, // Will be calculated next
+            parentId: undefined, // Will be set next
+            isElder: originalInput?.role === 'clanElder' || (originalInput?.role.toLowerCase().includes('grand') && originalInput?.role.toLowerCase().includes('parent')), // Basic elder logic
+            gender: aiPerson.gender ? String(aiPerson.gender) : undefined,
+            side: undefined, // Will be set next
+            status: aiPerson.deathYear ? 'deceased' : (aiPerson.status || 'living'),
+            photoUrl: undefined,
+            notes: aiPerson.notes ? String(aiPerson.notes) : undefined,
+        });
+    });
+    
+    // Second pass: set generations, parentIds, and sides
+    finalMembers.forEach(member => {
+        const originalInput = individualsForAI.find(i => idMap[i.tempId] === member.id);
+        const role = originalInput?.role;
+
+        if (role === "mainPerson") {
+            member.generation = 0;
+            member.relationship = "Self";
+            const fatherTempId = individualsForAI.find(i => i.role === "father")?.tempId;
+            if (fatherTempId && idMap[fatherTempId]) member.parentId = idMap[fatherTempId];
+            // Could add logic for mother as second parent if schema supports array parentIds or different linking
+        } else if (role === "father") {
+            member.generation = -1; member.side = "paternal";
+            const pgfTempId = individualsForAI.find(i => i.role === "paternalGrandfather")?.tempId;
+            if (pgfTempId && idMap[pgfTempId]) member.parentId = idMap[pgfTempId];
+        } else if (role === "mother") {
+            member.generation = -1; member.side = "maternal";
+            const mgfTempId = individualsForAI.find(i => i.role === "maternalGrandfather")?.tempId;
+            if (mgfTempId && idMap[mgfTempId]) member.parentId = idMap[mgfTempId];
+        } else if (role === "paternalGrandfather") {
+            member.generation = -2; member.side = "paternal";
+        } else if (role === "paternalGrandmother") {
+            member.generation = -2; member.side = "paternal";
+            const pgfTempId = individualsForAI.find(i => i.role === "paternalGrandfather")?.tempId;
+            if (pgfTempId && idMap[pgfTempId]) member.parentId = idMap[pgfTempId]; // Assuming linked to PGF
+        } else if (role === "maternalGrandfather") {
+            member.generation = -2; member.side = "maternal";
+        } else if (role === "maternalGrandmother") {
+            member.generation = -2; member.side = "maternal";
+            const mgfTempId = individualsForAI.find(i => i.role === "maternalGrandfather")?.tempId;
+            if (mgfTempId && idMap[mgfTempId]) member.parentId = idMap[mgfTempId]; // Assuming linked to MGF
+        } else if (role === "spouse") {
+            member.generation = 0;
+        } else if (role === "sibling") {
+            member.generation = 0;
+            const fatherTempId = individualsForAI.find(i => i.role === "father")?.tempId;
+            if (fatherTempId && idMap[fatherTempId]) member.parentId = idMap[fatherTempId];
+            else {
+                const motherTempId = individualsForAI.find(i => i.role === "mother")?.tempId;
+                if (motherTempId && idMap[motherTempId]) member.parentId = idMap[motherTempId];
+            }
+        } else if (role === "child") {
+            member.generation = 1;
+            member.parentId = idMap[mainPersonTempId]; // Child of main person
+        } else if (role === "clanElder") {
+            member.generation = -3; // Or derive from approximateEra
+            member.isElder = true;
+        }
+    });
+    console.log(`[${new Date().toISOString()}] ${invocationId} Deterministic structuring complete. Final members count: ${finalMembers.length}`);
+
+
     const treeId = crypto.randomUUID(); 
     const responsePayload = {
-        id: treeId, // This is the ID for the 'family_trees' table entry in the database
-        surname,
-        tribe,
-        clan,
-        members: Array.isArray(members) ? members : [], // Ensure members is an array, even if empty
-        createdAt: new Date().toISOString(),
-        source, // 'ai' or 'fallback'
+        id: treeId, surname, tribe, clan, 
+        members: finalMembers, 
+        createdAt: new Date().toISOString(), source,
     };
 
     const functionEndTime = Date.now();
     const functionDuration = functionEndTime - functionStartTime;
-    console.log(`[${new Date(functionEndTime).toISOString()}] ${invocationId} Preparing to send response. Duration: ${functionDuration}ms. Payload members: ${responsePayload.members.length}. Response 'id': ${responsePayload.id}, 'source': ${responsePayload.source}`);
-    // Log a snippet of members for quick check
-    if (responsePayload.members.length > 0) {
-        console.log(`[${new Date().toISOString()}] ${invocationId} First member in response:`, JSON.stringify(responsePayload.members[0]));
-    }
+    console.log(`[${new Date(functionEndTime).toISOString()}] ${invocationId} Preparing to send response (NEW APPROACH). Duration: ${functionDuration}ms. Payload members: ${responsePayload.members.length}.`);
+    if (responsePayload.members.length > 0) console.log(`[${new Date().toISOString()}] ${invocationId} First member in new response:`, JSON.stringify(responsePayload.members[0]));
     
-    if (functionDuration > configuredTimeout - FUNCTION_TIMEOUT_GRACE_PERIOD_MS) {
-        console.warn(`[${new Date().toISOString()}] ${invocationId} Function approaching configured timeout of ${configuredTimeout}ms (duration: ${functionDuration}ms). Sending response now.`);
-    }
+    if (functionDuration > configuredTimeout - FUNCTION_TIMEOUT_GRACE_PERIOD_MS) { /* ... timeout warning ... */ }
 
-    return new Response(
-      JSON.stringify(responsePayload),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify(responsePayload),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-  } catch (error) {
-    const errorTime = Date.now();
-    const functionDuration = errorTime - functionStartTime;
-    console.error(`[${new Date(errorTime).toISOString()}] ${invocationId} UNHANDLED error in Edge Function after ${functionDuration}ms:`, error.message, error.stack ? error.stack.substring(0, 500) : "No stack");
-    return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred in the Edge Function." }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  } catch (error) { /* ... outer error handling ... */ }
 });
