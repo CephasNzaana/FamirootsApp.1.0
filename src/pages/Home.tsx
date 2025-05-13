@@ -158,7 +158,8 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-  const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
+
+const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
       setShowAuth(true);
@@ -174,6 +175,7 @@ const Home = () => {
         try {
           console.log("Home.tsx: Processing TreeFormData directly on client (first 500 chars):", JSON.stringify(formData, null, 2).substring(0, 500) + "...");
 
+        
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
@@ -186,21 +188,31 @@ const Home = () => {
              throw new Error("Main person's name is missing from the form.");
           }
 
+
           const treeId = crypto.randomUUID();
           const createdAt = new Date().toISOString();
 
           const { data: savedTreeData, error: treeError } = await supabase
             .from('family_trees')
             .insert({
-              id: treeId, user_id: user.id, surname: formData.surname,
-              tribe: formData.tribe, clan: formData.clan, created_at: createdAt,
+              id: treeId, 
+              user_id: user.id,
+              surname: formData.surname,
+              tribe: formData.tribe,
+              clan: formData.clan,
+              created_at: createdAt,
             })
-            .select().single();
+            .select()
+            .single();
 
-          if (treeError) throw treeError; 
-          if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
+          if (treeError) {
+            console.error("Home.tsx: Supabase 'family_trees' table insert error:", treeError);
+            throw treeError;
+          }
+          if (!savedTreeData) throw new Error("Failed to save family tree metadata to database.");
           console.log("Home.tsx: Family tree metadata saved:", savedTreeData);
 
+          
           if (members && members.length > 0) {
             const membersToInsert = members.map(member => ({
               id: member.id, 
@@ -213,9 +225,9 @@ const Home = () => {
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
-              status: member.status, 
-              // photo_url: member.photoUrl || null, // OMITTED - ensure 'photo_url' column does NOT exist or is nullable with default in DB 'family_members' table
-              // notes: member.notes || null,       // OMITTED - ensure 'notes' column does NOT exist or is nullable with default in DB 'family_members' table
+              // status: member.status, // <<<<<< REMOVED THIS LINE
+              // photo_url: member.photoUrl || null, // Already correctly omitted
+              // notes: member.notes || null, // Already correctly omitted (unless you added this column)
               family_tree_id: savedTreeData.id, 
               user_id: user.id,
             }));
@@ -223,18 +235,20 @@ const Home = () => {
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
             const { error: membersError } = await supabase.from('family_members').insert(membersToInsert);
             if (membersError) {
+              console.error("Home.tsx: Supabase 'family_members' table insert error (FULL OBJECT):", JSON.stringify(membersError, null, 2));
               await supabase.from('family_trees').delete().eq('id', savedTreeData.id); 
               throw membersError; 
             }
-            console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
+            console.log(`Home.tsx: ${membersToInsert.length} family members successfully saved to DB.`);
           } else {
-            console.warn("Home.tsx: No members to save (members array was empty after client-side transformation).");
+            console.warn("Home.tsx: No members to save to the 'family_members' table (members array was empty after client-side transformation).");
           }
 
           const completeNewTreeForPreview: FamilyTree = {
             id: savedTreeData.id, userId: user.id, surname: savedTreeData.surname,
             tribe: savedTreeData.tribe, clan: savedTreeData.clan,
-            createdAt: savedTreeData.created_at, members: members || [], 
+            createdAt: savedTreeData.created_at, 
+            members: members || [], 
           };
           setFamilyTreeForPreview(completeNewTreeForPreview);
           return completeNewTreeForPreview;
@@ -252,10 +266,10 @@ const Home = () => {
         },
         error: (err: any) => {
           setIsLoading(false);
-          console.error("Home.tsx: Toast caught error from promise:", JSON.stringify(err, Object.getOwnPropertyNames(err))); 
+          console.error("Home.tsx: Toast caught error from promise (FULL OBJECT):", JSON.stringify(err, Object.getOwnPropertyNames(err))); 
           let displayMessage = "Unknown error during tree creation.";
           if (err && typeof err === 'object') {
-            displayMessage = err.message || "Database operation failed.";
+            displayMessage = err.message || "Database operation failed."; // Main Supabase/Postgres message
             if (err.details) displayMessage += ` Details: ${err.details}`;
             if (err.hint) displayMessage += ` Hint: ${err.hint}`;
             if (err.code) displayMessage += ` (Code: ${err.code})`;
@@ -272,7 +286,7 @@ const Home = () => {
     navigate('/family-trees');
   };
 
-  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
+  
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
