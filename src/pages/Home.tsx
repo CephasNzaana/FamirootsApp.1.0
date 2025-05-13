@@ -25,7 +25,6 @@ const generateClientMemberId = (): string => { // No longer needs roleHint or na
   return crypto.randomUUID(); // Generates a proper UUID string (e.g., "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
 };
 
-// Client-side transformation function
 const transformTreeFormDataToMembers = (
     extendedFamily: ExtendedFamilyInputData,
     _mainPersonSurname: string 
@@ -35,83 +34,78 @@ const transformTreeFormDataToMembers = (
     const members: FamilyMember[] = [];
     const idMap: Record<string, string> = {}; 
 
-    const addPerson = (
-        roleKey: string, 
-        inputData: MemberInputData | ExtendedFamilyInputData | undefined,
-        relationshipToProband: string, 
-        generation: number, 
-        isElderFlag?: boolean,
+    const addPerson = ( /* ... (same addPerson function as in the last Home.tsx I provided) ... */ 
+        roleKey: string, inputData: MemberInputData | ExtendedFamilyInputData | undefined,
+        relationshipToProband: string, generation: number, isElderFlag?: boolean,
         familySide?: 'paternal' | 'maternal'
-    ): string | undefined => { 
-        
-        const personName = (roleKey === "mainPerson" 
-            ? (inputData as ExtendedFamilyInputData)?.familyName 
-            : (inputData as MemberInputData)?.name)?.trim();
-
+    ): string | undefined => {
+        const personName = (roleKey === "mainPerson" ? (inputData as ExtendedFamilyInputData)?.familyName : (inputData as MemberInputData)?.name)?.trim();
         if (!personName) {
-            const isTrulyOptionalAndEmpty = 
-                (roleKey.includes("grandparent") || roleKey === "spouse" || roleKey.includes("sibling") || roleKey.includes("child")) &&
-                !(inputData?.birthYear || inputData?.deathYear || inputData?.gender || (inputData as MemberInputData)?.notes);
-            
-            if (isTrulyOptionalAndEmpty && roleKey !== "mainPerson") {
-                console.warn(`[transform] Skipping empty optional member: ${roleKey}`);
-                return undefined; 
-            }
-            if (roleKey === "mainPerson") {
-                 console.error("[transform] Main person's name (familyName) is missing but required.");
-                 throw new Error("Main person's name (familyName) is required in the form.");
-            }
-            console.warn(`[transform] Name missing for ${roleKey}. Using placeholder 'Unnamed ${relationshipToProband}'.`);
+            const isTrulyOptionalAndEmpty = (roleKey.includes("grandparent") || roleKey === "spouse" || roleKey.includes("sibling") || roleKey.includes("child")) &&
+                                     !(inputData?.birthYear || inputData?.deathYear || inputData?.gender || (inputData as MemberInputData)?.notes);
+            if (isTrulyOptionalAndEmpty && roleKey !== "mainPerson") { return undefined; }
+            if (roleKey === "mainPerson") { throw new Error("Main person's name is required."); }
         }
-
-        const finalId = generateClientMemberId(); // Generate a UUID
-        idMap[roleKey] = finalId; // Map the conceptual role (father, mainPerson etc.) to this UUID
-
+        const finalId = generateClientMemberId();
+        idMap[roleKey] = finalId;
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
-
         const member: FamilyMember = {
-            id: finalId, // Now a UUID string
-            name: personName || `Unnamed ${relationshipToProband}`, 
-            relationship: relationshipToProband,
-            birthYear: inputData?.birthYear || undefined,
-            deathYear: inputData?.deathYear || undefined,
-            generation: generation,
-            parentId: undefined, 
-            isElder: isElderFlag || false,
-            gender: inputData?.gender || undefined,
-            side: familySide,
+            id: finalId, name: personName || `Unnamed ${relationshipToProband}`, relationship: relationshipToProband,
+            birthYear: inputData?.birthYear || undefined, deathYear: inputData?.deathYear || undefined,
+            generation: generation, parentId: undefined, isElder: isElderFlag || false,
+            gender: inputData?.gender || undefined, side: familySide,
             status: inputData?.deathYear ? 'deceased' : 'living',
-            notes: memberNotes, 
-            photoUrl: undefined, 
+            notes: memberNotes, photoUrl: undefined,
         };
         members.push(member);
-        console.log(`[transform] Added: ${member.name} (ID: ${member.id} - UUID, RoleKey: ${roleKey}, Gen: ${member.generation})`);
+        console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey})`);
         return finalId;
     };
 
-    const mainPersonKey = "mainPerson"; // Conceptual key for idMap
-    const fatherKey = "form_father"; 
-    const motherKey = "form_mother";
-    const pgfKey = "form_pgf"; 
-    const pgmKey = "form_pgm"; 
-    const mgfKey = "form_mgf"; 
-    const mgmKey = "form_mgm"; 
+    const mainPersonKey = "mainPerson";
+    const fatherKey = "form_father"; const motherKey = "form_mother";
+    const pgfKey = "form_pgf"; const pgmKey = "form_pgm"; 
+    const mgfKey = "form_mgf"; const mgmKey = "form_mgm"; 
 
     const mainPersonId = addPerson(mainPersonKey, extendedFamily, "Self", 0, false);
-    if (!mainPersonId) throw new Error("Critical error: Main person could not be processed.");
+    if (!mainPersonId) throw new Error("Main person processing failed.");
 
-    // The rest of this transformTreeFormDataToMembers function remains the same as the last version
-    // ... (parents, grandparents, spouse, siblings, children, selectedElders processing using addPerson) ...
-    // ... (second pass to link parentId using idMap values which are now UUIDs) ...
-    if (extendedFamily.parents) {
-        if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) idMap[fatherKey] = addPerson(fatherKey, extendedFamily.parents.father, "Father", -1, false, "paternal")!;
-        if (extendedFamily.parents.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) idMap[motherKey] = addPerson(motherKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal")!;
+    // Parents - and link them as spouses if both exist
+    let fatherId: string | undefined; let motherId: string | undefined;
+    const fatherData = extendedFamily.parents?.father;
+    const motherData = extendedFamily.parents?.mother;
+
+    if (fatherData && (fatherData.name?.trim() || fatherData.birthYear)) {
+        fatherId = addPerson(fatherKey, fatherData, "Father", -1, false, "paternal");
     }
+    if (motherData && (motherData.name?.trim() || motherData.birthYear)) {
+        motherId = addPerson(motherKey, motherData, "Mother", -1, false, "maternal");
+    }
+
+    // If both father and mother were added, link them as spouses
+    if (fatherId && motherId) {
+        const fatherNode = members.find(m => m.id === fatherId);
+        const motherNode = members.find(m => m.id === motherId);
+        if (fatherNode) (fatherNode as any).spouseId = motherId; // Add spouseId to FamilyMember type if not there
+        if (motherNode) (motherNode as any).spouseId = fatherId;
+        console.log(`[transform] Linked Father (ID: ${fatherId}) and Mother (ID: ${motherId}) as spouses.`);
+    }
+    
+    // Grandparents (linking remains the same)
     if (extendedFamily.grandparents?.paternal?.grandfather && (extendedFamily.grandparents.paternal.grandfather.name?.trim() || extendedFamily.grandparents.paternal.grandfather.birthYear)) idMap[pgfKey] = addPerson(pgfKey, extendedFamily.grandparents.paternal.grandfather, "Paternal Grandfather", -2, false, "paternal")!;
     if (extendedFamily.grandparents?.paternal?.grandmother && (extendedFamily.grandparents.paternal.grandmother.name?.trim() || extendedFamily.grandparents.paternal.grandmother.birthYear)) idMap[pgmKey] = addPerson(pgmKey, extendedFamily.grandparents.paternal.grandmother, "Paternal Grandmother", -2, false, "paternal")!;
     if (extendedFamily.grandparents?.maternal?.grandfather && (extendedFamily.grandparents.maternal.grandfather.name?.trim() || extendedFamily.grandparents.maternal.grandfather.birthYear)) idMap[mgfKey] = addPerson(mgfKey, extendedFamily.grandparents.maternal.grandfather, "Maternal Grandfather", -2, false, "maternal")!;
     if (extendedFamily.grandparents?.maternal?.grandmother && (extendedFamily.grandparents.maternal.grandmother.name?.trim() || extendedFamily.grandparents.maternal.grandmother.birthYear)) idMap[mgmKey] = addPerson(mgmKey, extendedFamily.grandparents.maternal.grandmother, "Maternal Grandmother", -2, false, "maternal")!;
-    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) addPerson("form_spouse", extendedFamily.spouse, "Spouse", 0);
+    
+    // Spouse of main person
+    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) {
+        const spouseId = addPerson("form_spouse", extendedFamily.spouse, "Spouse", 0);
+        if (spouseId) {
+            const mainPNode = members.find(m => m.id === mainPersonId);
+            if (mainPNode) (mainPNode as any).spouseId = spouseId;
+        }
+    }
+
     (extendedFamily.siblings || []).forEach((s, i) => { if (s.name?.trim() || s.birthYear) addPerson(`form_sibling_${i}`, s, s.gender === 'male' ? 'Brother' : s.gender === 'female' ? 'Sister' : 'Sibling', 0); });
     (extendedFamily.children || []).forEach((c, i) => { if (c.name?.trim() || c.birthYear) addPerson(`form_child_${i}`, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1); });
     (extendedFamily.selectedElders || []).forEach((e, i) => {
