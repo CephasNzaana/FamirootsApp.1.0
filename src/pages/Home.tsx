@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
-import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Ensure this is your LATEST version
+import FamilyTreeDisplay from "@/components/FamilyTreeDisplay"; // Ensure this is your LATEST visual version
 import Footer from "@/components/Footer";
 import { 
     TreeFormData, 
@@ -13,7 +13,8 @@ import {
     FamilyMember,
     ExtendedFamilyInputData, 
     MemberInputData 
-} from "@/types";
+    // ParentsInputData and GrandparentsInputData are implicitly part of ExtendedFamilyInputData
+} from "@/types"; // Ensure your FamilyMember type in @/types includes spouseId?: string;
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 
 // Helper to generate unique STRING UUIDs client-side
 const generateClientMemberId = (): string => {
-  return crypto.randomUUID(); // Generates a proper UUID string (e.g., "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
+  return crypto.randomUUID(); 
 };
 
 // Client-side transformation function
@@ -31,9 +32,21 @@ const transformTreeFormDataToMembers = (
     _mainPersonSurname: string 
 ): { members: FamilyMember[], idMap: Record<string, string> } => {
     
-    console.log("[transformTreeFormDataToMembers] Starting transformation for main person:", extendedFamily.familyName);
+    console.log("[transformTreeFormDataToMembers] Starting for main person:", extendedFamily.familyName);
     const members: FamilyMember[] = [];
+    // idMap: maps a conceptual role key (e.g., "mainPersonRKey", "fatherRKey") to the generated member.id (UUID)
     const idMap: Record<string, string> = {}; 
+
+    // !!! DEFINE ROLE KEYS HERE, AT THE TOP OF THIS FUNCTION'S SCOPE !!!
+    const mainPersonRKey = "mainPerson"; 
+    const fatherRKey = "father"; 
+    const motherRKey = "mother";
+    const pgfRKey = "paternalGrandfather"; 
+    const pgmRKey = "paternalGrandmother";
+    const mgfRKey = "maternalGrandfather"; 
+    const mgmRKey = "maternalGrandmother"; 
+    const spouseRKey = "spouse";
+    // For siblings and children, dynamic keys like "form_sibling_0" will be used directly when populating idMap
 
     const addPerson = (
         roleKey: string, 
@@ -44,28 +57,28 @@ const transformTreeFormDataToMembers = (
         familySide?: 'paternal' | 'maternal'
     ): string | undefined => { 
         
-        const personName = (roleKey === "mainPerson" 
+        const personName = (roleKey === mainPersonRKey 
             ? (inputData as ExtendedFamilyInputData)?.familyName 
             : (inputData as MemberInputData)?.name)?.trim();
 
         if (!personName) {
             const isTrulyOptionalAndEmpty = 
-                (roleKey.includes("grandparent") || roleKey === "spouse" || roleKey.includes("sibling") || roleKey.includes("child")) &&
+                (roleKey.includes("grandparent") || roleKey === spouseRKey || roleKey.includes("sibling") || roleKey.includes("child")) &&
                 !(inputData?.birthYear || inputData?.deathYear || inputData?.gender || (inputData as MemberInputData)?.notes);
             
-            if (isTrulyOptionalAndEmpty && roleKey !== "mainPerson") {
+            if (isTrulyOptionalAndEmpty && roleKey !== mainPersonRKey) {
                 console.warn(`[transform] Skipping empty optional member: ${roleKey}`);
                 return undefined; 
             }
-            if (roleKey === "mainPerson") {
+            if (roleKey === mainPersonRKey) {
                  console.error("[transform] Main person's name (familyName) is missing but required.");
                  throw new Error("Main person's name (familyName) is required in the form.");
             }
             console.warn(`[transform] Name missing for ${roleKey}. Using placeholder 'Unnamed ${relationshipToProband}'.`);
         }
 
-        const finalId = generateClientMemberId(); // Uses crypto.randomUUID()
-        idMap[roleKey] = finalId;
+        const finalId = generateClientMemberId(); 
+        idMap[roleKey] = finalId; 
 
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
 
@@ -77,63 +90,105 @@ const transformTreeFormDataToMembers = (
             deathYear: inputData?.deathYear || undefined,
             generation: generation,
             parentId: undefined, 
+            spouseId: undefined, 
             isElder: isElderFlag || false,
             gender: inputData?.gender || undefined,
             side: familySide,
-            status: inputData?.deathYear ? 'deceased' : 'living',
-            notes: memberNotes, 
-            photoUrl: undefined, 
+            status: inputData?.deathYear ? 'deceased' : 'living', // This is for client-side FamilyMember type
+            notes: memberNotes, // For client-side FamilyMember type
+            photoUrl: undefined, // For client-side FamilyMember type
         };
         members.push(member);
-        console.log(`[transform] Added: ${member.name} (ID: ${member.id} - UUID, RoleKey: ${roleKey}, Gen: ${member.generation})`);
+        console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey}, Gen: ${member.generation})`);
         return finalId;
     };
 
-    const mainPersonKey = "mainPerson";
-    const fatherKey = "form_father"; const motherKey = "form_mother";
-    const pgfKey = "form_pgf"; const pgmKey = "form_pgm"; 
-    const mgfKey = "form_mgf"; const mgmKey = "form_mgm"; 
-
-    const mainPersonId = addPerson(mainPersonKey, extendedFamily, "Self", 0, false);
-    if (!mainPersonId) throw new Error("Critical error: Main person (familyName) could not be processed from form.");
+    // --- Create Members (First Pass) & Store their Generated IDs via idMap ---
+    addPerson(mainPersonRKey, extendedFamily, "Self", 0, false);
 
     if (extendedFamily.parents) {
-        if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) idMap[fatherKey] = addPerson(fatherKey, extendedFamily.parents.father, "Father", -1, false, "paternal")!;
-        if (extendedFamily.parents.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) idMap[motherKey] = addPerson(motherKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal")!;
+        if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) {
+            addPerson(fatherRKey, extendedFamily.parents.father, "Father", -1, false, "paternal");
+        }
+        if (extendedFamily.parents.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) {
+            addPerson(motherRKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal");
+        }
     }
-    if (extendedFamily.grandparents?.paternal?.grandfather && (extendedFamily.grandparents.paternal.grandfather.name?.trim() || extendedFamily.grandparents.paternal.grandfather.birthYear)) idMap[pgfKey] = addPerson(pgfKey, extendedFamily.grandparents.paternal.grandfather, "Paternal Grandfather", -2, false, "paternal")!;
-    if (extendedFamily.grandparents?.paternal?.grandmother && (extendedFamily.grandparents.paternal.grandmother.name?.trim() || extendedFamily.grandparents.paternal.grandmother.birthYear)) idMap[pgmKey] = addPerson(pgmKey, extendedFamily.grandparents.paternal.grandmother, "Paternal Grandmother", -2, false, "paternal")!;
-    if (extendedFamily.grandparents?.maternal?.grandfather && (extendedFamily.grandparents.maternal.grandfather.name?.trim() || extendedFamily.grandparents.maternal.grandfather.birthYear)) idMap[mgfKey] = addPerson(mgfKey, extendedFamily.grandparents.maternal.grandfather, "Maternal Grandfather", -2, false, "maternal")!;
-    if (extendedFamily.grandparents?.maternal?.grandmother && (extendedFamily.grandparents.maternal.grandmother.name?.trim() || extendedFamily.grandparents.maternal.grandmother.birthYear)) idMap[mgmKey] = addPerson(mgmKey, extendedFamily.grandparents.maternal.grandmother, "Maternal Grandmother", -2, false, "maternal")!;
-    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) addPerson("form_spouse", extendedFamily.spouse, "Spouse", 0);
-    (extendedFamily.siblings || []).forEach((s, i) => { if (s.name?.trim() || s.birthYear) addPerson(`form_sibling_${i}`, s, s.gender === 'male' ? 'Brother' : s.gender === 'female' ? 'Sister' : 'Sibling', 0); });
-    (extendedFamily.children || []).forEach((c, i) => { if (c.name?.trim() || c.birthYear) addPerson(`form_child_${i}`, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1); });
+    if (extendedFamily.grandparents?.paternal?.grandfather && (extendedFamily.grandparents.paternal.grandfather.name?.trim() || extendedFamily.grandparents.paternal.grandfather.birthYear)) addPerson(pgfRKey, extendedFamily.grandparents.paternal.grandfather, "Paternal Grandfather", -2, false, "paternal");
+    if (extendedFamily.grandparents?.paternal?.grandmother && (extendedFamily.grandparents.paternal.grandmother.name?.trim() || extendedFamily.grandparents.paternal.grandmother.birthYear)) addPerson(pgmRKey, extendedFamily.grandparents.paternal.grandmother, "Paternal Grandmother", -2, false, "paternal");
+    if (extendedFamily.grandparents?.maternal?.grandfather && (extendedFamily.grandparents.maternal.grandfather.name?.trim() || extendedFamily.grandparents.maternal.grandfather.birthYear)) addPerson(mgfRKey, extendedFamily.grandparents.maternal.grandfather, "Maternal Grandfather", -2, false, "maternal");
+    if (extendedFamily.grandparents?.maternal?.grandmother && (extendedFamily.grandparents.maternal.grandmother.name?.trim() || extendedFamily.grandparents.maternal.grandmother.birthYear)) addPerson(mgmRKey, extendedFamily.grandparents.maternal.grandmother, "Maternal Grandmother", -2, false, "maternal");
+    
+    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) {
+        addPerson(spouseRKey, extendedFamily.spouse, "Spouse", 0);
+    }
+
+    (extendedFamily.siblings || []).forEach((s, i) => { 
+        if (s.name?.trim() || s.birthYear) {
+            const siblingRoleKey = `form_sibling_${i}`;
+            addPerson(siblingRoleKey, s, s.gender === 'male' ? 'Brother' : s.gender === 'female' ? 'Sister' : 'Sibling', 0);
+        }
+    });
+    (extendedFamily.children || []).forEach((c, i) => { 
+        if (c.name?.trim() || c.birthYear) {
+            const childRoleKey = `form_child_${i}`;
+            addPerson(childRoleKey, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1);
+        }
+    });
     (extendedFamily.selectedElders || []).forEach((e, i) => {
         if (e.name) {
-            const elderRoleKey = e.id ? `form_selectedElder_${e.id}` : `form_selectedElder_${i}`; 
+            const elderRoleKey = e.id ? `form_selectedElder_${e.id}` : `form_selectedElder_${i}`; // Use predefined ID if available for key
             const notesContent = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes;
-            if (!members.some(m => m.name === e.name && m.isElder)) {
+            // Check if an elder with this name and role already exists to avoid duplicates from multiple selections
+            if (!members.some(m => m.name === e.name && m.relationship === "Clan Elder")) {
                  addPerson(elderRoleKey, {name: e.name, notes: notesContent} as MemberInputData, "Clan Elder", -3, true); 
             }
         }
     });
 
+    // --- Second pass: Link ParentIDs AND SpouseIDs using the actual generated IDs from idMap ---
     members.forEach(member => {
-        const memberRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id);
-        if (!memberRoleKey) return;
-        if (memberRoleKey === mainPersonKey) { if (idMap[fatherKey]) member.parentId = idMap[fatherKey]; else if (idMap[motherKey]) member.parentId = idMap[motherKey]; }
-        else if (memberRoleKey === fatherKey) { if (idMap[pgfKey]) member.parentId = idMap[pgfKey]; }
-        else if (memberRoleKey === motherKey) { if (idMap[mgfKey]) member.parentId = idMap[mgfKey]; }
-        else if (memberRoleKey === pgmKey) { if (idMap[pgfKey]) member.parentId = idMap[pgfKey]; }
-        else if (memberRoleKey === mgmKey) { if (idMap[mgfKey]) member.parentId = idMap[mgfKey]; }
-        else if (memberRoleKey.startsWith("form_sibling_")) { if (idMap[fatherKey]) member.parentId = idMap[fatherKey]; else if (idMap[motherKey]) member.parentId = idMap[motherKey]; }
-        else if (memberRoleKey.startsWith("form_child_")) { member.parentId = mainPersonId; }
+        // Find the original roleKey that corresponds to this member's actual generated ID
+        const memberOriginalRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id); 
+        if (!memberOriginalRoleKey) {
+            console.warn(`[transform] Could not find original role key for member ID: ${member.id}, Name: ${member.name}. Skipping linking for this member.`);
+            return;
+        }
+
+        // Parent Linking (using the role keys defined at the top of this function)
+        if (memberOriginalRoleKey === mainPersonRKey) { 
+            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
+            else if (idMap[motherRKey] && !idMap[fatherRKey]) member.parentId = idMap[motherRKey]; 
+        } else if (memberOriginalRoleKey === fatherRKey) { 
+            if (idMap[pgfRKey]) member.parentId = idMap[pgfRKey];
+        } else if (memberOriginalRoleKey === motherRKey) { 
+            if (idMap[mgfRKey]) member.parentId = idMap[mgfRKey];
+        } 
+        // Grandmothers are children of their respective fathers (Great-Grandfathers if data existed)
+        // For this form, their link to Grandfathers is primarily spousal. No parentId set here unless GGF/GGM are entered.
+        else if (memberOriginalRoleKey.startsWith("form_sibling_")) { 
+            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
+            else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
+        } else if (memberOriginalRoleKey.startsWith("form_child_")) { 
+            if (idMap[mainPersonRKey]) member.parentId = idMap[mainPersonRKey];
+        }
+
+        // Spouse Linking (Reciprocal) using role keys defined at the top
+        if (memberOriginalRoleKey === mainPersonRKey && idMap[spouseRKey]) member.spouseId = idMap[spouseRKey];
+        else if (memberOriginalRoleKey === spouseRKey && idMap[mainPersonRKey]) member.spouseId = idMap[mainPersonRKey];
+        else if (memberOriginalRoleKey === fatherRKey && idMap[motherRKey]) member.spouseId = idMap[motherRKey];
+        else if (memberOriginalRoleKey === motherRKey && idMap[fatherRKey]) member.spouseId = idMap[fatherRKey];
+        else if (memberOriginalRoleKey === pgfRKey && idMap[pgmRKey]) member.spouseId = idMap[pgmRKey];
+        else if (memberOriginalRoleKey === pgmRKey && idMap[pgfRKey]) member.spouseId = idMap[pgfRKey];
+        else if (memberOriginalRoleKey === mgfRKey && idMap[mgmRKey]) member.spouseId = idMap[mgmRKey];
+        else if (memberOriginalRoleKey === mgmRKey && idMap[mgfRKey]) member.spouseId = idMap[mgfRKey];
     });
     
-    console.log("Home.tsx: Client-side transformation complete. Final members generated:", members.length);
-    if (members.length > 0) console.log("Home.tsx: First processed member for saving (client-side object with UUID):", JSON.stringify(members[0], null, 2));
+    console.log("Home.tsx: Client-side transformation complete. Final members array count:", members.length);
+    if (members.length > 0) console.log("Home.tsx: First member object after linking:", JSON.stringify(members[0], null, 2));
     return { members, idMap };
 };
+
 
 const Home = () => {
   const { user, session } = useAuth();
@@ -152,6 +207,7 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
+  // This function is called by FamilyTreeForm onSubmit
   const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
@@ -168,11 +224,12 @@ const Home = () => {
         try {
           console.log("Home.tsx: Processing TreeFormData directly on client (formData surname):", formData.surname);
 
+          // Step 1: Client-side transformation
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
-             console.warn("Home.tsx: Client-side transformation resulted in zero members.");
-             toast.warning("Tree metadata will be created. Ensure form details are filled for members.");
+             console.warn("Home.tsx: Client-side transformation resulted in zero members beyond possibly the main person.");
+             toast.warning("Tree metadata will be created. Please ensure all relevant family member details are filled in the form if you expect more members.");
           } else if (members.length > 0) {
              console.log(`Home.tsx: Client-side transformation resulted in ${members.length} members.`);
              toast.info("Data transformed locally. Saving to database...");
@@ -180,7 +237,7 @@ const Home = () => {
              throw new Error("Main person's name is missing from the form.");
           }
 
-          const treeId = crypto.randomUUID(); // Tree ID is a UUID
+          const treeId = crypto.randomUUID();
           const createdAt = new Date().toISOString();
 
           const { data: savedTreeData, error: treeError } = await supabase
@@ -197,20 +254,20 @@ const Home = () => {
 
           if (members && members.length > 0) {
             const membersToInsert = members.map(member => ({
-              id: member.id, // This is now a UUID string from generateClientMemberId
+              id: member.id, 
               name: member.name, 
               relationship: member.relationship,
               birth_year: member.birthYear || null, 
               death_year: member.deathYear || null,
               generation: member.generation, 
-              parent_id: member.parentId || null, // This is now a UUID string or null
+              parent_id: member.parentId || null, 
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
-              // status: member.status, // OMITTED - Column 'status' does not exist in your DB schema for family_members
-              // notes: member.notes || null, // OMITTED - Column 'notes' does not exist
+              // status: member.status, // OMITTED - ensure 'status' column does NOT exist in your DB family_members table
+              // notes: member.notes || null, // OMITTED - ensure 'notes' column does NOT exist, or add it if desired
               family_tree_id: savedTreeData.id, 
-              // user_id is not in your family_members schema based on types.ts
+              // user_id for individual members is omitted as it's not in your family_members schema
             }));
 
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
@@ -221,7 +278,7 @@ const Home = () => {
             }
             console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
           } else {
-            console.warn("Home.tsx: No members to save after client-side transformation.");
+            console.warn("Home.tsx: No members to save (members array was empty after client-side transformation).");
           }
 
           const completeNewTreeForPreview: FamilyTree = {
@@ -376,7 +433,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* onSubmit now calls createAndSaveTreeFromFormData */}
+                {/* Ensure this onSubmit matches the function name defined above */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
