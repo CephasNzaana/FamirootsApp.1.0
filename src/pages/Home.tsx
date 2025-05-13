@@ -72,7 +72,6 @@ const transformTreeFormDataToMembers = (
         const finalId = generateClientMemberId(roleKey, personName || roleKey, members.length);
         idMap[roleKey] = finalId;
 
-        // Extract notes if present on inputData - these will exist on the client-side FamilyMember object
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
 
         const member: FamilyMember = {
@@ -86,9 +85,9 @@ const transformTreeFormDataToMembers = (
             isElder: isElderFlag || false,
             gender: inputData?.gender || undefined,
             side: familySide,
-            status: inputData?.deathYear ? 'deceased' : 'living',
-            notes: memberNotes, // Notes ARE part of the client-side FamilyMember object
-            photoUrl: undefined, // PhotoUrl is part of client-side FamilyMember (not saved to DB in this version)
+            status: inputData?.deathYear ? 'deceased' : 'living', // This is for client-side FamilyMember
+            notes: memberNotes, // This is for client-side FamilyMember
+            photoUrl: undefined, // This is for client-side FamilyMember
         };
         members.push(member);
         console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey}, Gen: ${member.generation})`);
@@ -117,10 +116,8 @@ const transformTreeFormDataToMembers = (
     (extendedFamily.selectedElders || []).forEach((e, i) => {
         if (e.name) {
             const elderRoleKey = `form_selectedElder_${e.id || i}`;
-            const notesContent = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes; // Cast to any if notes isn't on ElderReference
-            if (!members.some(m => m.name === e.name && m.isElder)) {
-                 addPerson(elderRoleKey, {name: e.name, notes: notesContent} as MemberInputData, "Clan Elder", -3, true); 
-            }
+            const notesContent = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes;
+            if (!members.some(m => m.name === e.name && m.isElder)) addPerson(elderRoleKey, {name: e.name, notes: notesContent} as MemberInputData, "Clan Elder", -3, true); 
         }
     });
 
@@ -137,9 +134,10 @@ const transformTreeFormDataToMembers = (
     });
     
     console.log("Home.tsx: Client-side transformation complete. Final members generated:", members.length);
-    if (members.length > 0) console.log("Home.tsx: First processed member for saving (client-side object):", JSON.stringify(members[0], null, 2));
+    if (members.length > 0) console.log("Home.tsx: First processed member (client-side object):", JSON.stringify(members[0], null, 2));
     return { members, idMap };
 };
+
 
 const Home = () => {
   const { user, session } = useAuth();
@@ -158,8 +156,7 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-
-const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
+  const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
       setShowAuth(true);
@@ -173,21 +170,19 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     toast.promise(
       async () => {
         try {
-          console.log("Home.tsx: Processing TreeFormData directly on client (first 500 chars):", JSON.stringify(formData, null, 2).substring(0, 500) + "...");
+          console.log("Home.tsx: Processing TreeFormData directly on client (formData snippet):", JSON.stringify(formData, null, 2).substring(0, 500) + "...");
 
-        
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
-             console.warn("Home.tsx: Client-side transformation resulted in zero members (only main person might exist if form was otherwise empty).");
-             toast.warning("Tree metadata will be created. Add more family members if needed or check form input.");
+             console.warn("Home.tsx: Client-side transformation resulted in zero members (main person might exist if form was otherwise empty). Review form data or transformation logic.");
+             toast.warning("Tree metadata will be created, but no family members were processed from the form details. Please check your input or contact support if you entered many relatives.");
           } else if (members.length > 0) {
              console.log(`Home.tsx: Client-side transformation resulted in ${members.length} members.`);
              toast.info("Data transformed locally. Now saving to database...");
-          } else if (!formData.extendedFamily.familyName) {
+          } else if (!formData.extendedFamily.familyName) { // Should be caught by form validation if familyName is required
              throw new Error("Main person's name is missing from the form.");
           }
-
 
           const treeId = crypto.randomUUID();
           const createdAt = new Date().toISOString();
@@ -195,60 +190,50 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
           const { data: savedTreeData, error: treeError } = await supabase
             .from('family_trees')
             .insert({
-              id: treeId, 
-              user_id: user.id,
-              surname: formData.surname,
-              tribe: formData.tribe,
-              clan: formData.clan,
-              created_at: createdAt,
+              id: treeId, user_id: user.id, surname: formData.surname,
+              tribe: formData.tribe, clan: formData.clan, created_at: createdAt,
             })
-            .select()
-            .single();
+            .select().single();
 
-          if (treeError) {
-            console.error("Home.tsx: Supabase 'family_trees' table insert error:", treeError);
-            throw treeError;
-          }
-          if (!savedTreeData) throw new Error("Failed to save family tree metadata to database.");
+          if (treeError) throw treeError; 
+          if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
           console.log("Home.tsx: Family tree metadata saved:", savedTreeData);
 
-          
           if (members && members.length > 0) {
             const membersToInsert = members.map(member => ({
-              id: member.id, 
+              id: member.id, // Already a string from generateClientMemberId
               name: member.name, 
               relationship: member.relationship,
               birth_year: member.birthYear || null, 
               death_year: member.deathYear || null,
               generation: member.generation, 
-              parent_id: member.parentId || null, 
+              parent_id: member.parentId || null, // Already a string or undefined from transform
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
-              // status: member.status, // <<<<<< REMOVED THIS LINE
-              // photo_url: member.photoUrl || null, // Already correctly omitted
-              // notes: member.notes || null, // Already correctly omitted (unless you added this column)
+              // status: member.status, // OMITTED - 'status' column does not exist in your DB schema for family_members
+              // photo_url: member.photoUrl || null, // OMITTED - 'photo_url' column does not exist
+              // notes: member.notes || null,       // OMITTED - 'notes' column does not exist (VERIFY THIS IN YOUR DB)
+                                                  // If you DO have a 'notes' column in your 'family_members' table, uncomment the line above.
               family_tree_id: savedTreeData.id, 
-              user_id: user.id,
+              // user_id: user.id, // REMOVED - 'user_id' column does not exist in your 'family_members' table schema
             }));
 
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
             const { error: membersError } = await supabase.from('family_members').insert(membersToInsert);
             if (membersError) {
-              console.error("Home.tsx: Supabase 'family_members' table insert error (FULL OBJECT):", JSON.stringify(membersError, null, 2));
               await supabase.from('family_trees').delete().eq('id', savedTreeData.id); 
               throw membersError; 
             }
-            console.log(`Home.tsx: ${membersToInsert.length} family members successfully saved to DB.`);
+            console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
           } else {
-            console.warn("Home.tsx: No members to save to the 'family_members' table (members array was empty after client-side transformation).");
+            console.warn("Home.tsx: No members to save (members array was empty after client-side transformation).");
           }
 
           const completeNewTreeForPreview: FamilyTree = {
             id: savedTreeData.id, userId: user.id, surname: savedTreeData.surname,
             tribe: savedTreeData.tribe, clan: savedTreeData.clan,
-            createdAt: savedTreeData.created_at, 
-            members: members || [], 
+            createdAt: savedTreeData.created_at, members: members || [], 
           };
           setFamilyTreeForPreview(completeNewTreeForPreview);
           return completeNewTreeForPreview;
@@ -269,7 +254,7 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
           console.error("Home.tsx: Toast caught error from promise (FULL OBJECT):", JSON.stringify(err, Object.getOwnPropertyNames(err))); 
           let displayMessage = "Unknown error during tree creation.";
           if (err && typeof err === 'object') {
-            displayMessage = err.message || "Database operation failed."; // Main Supabase/Postgres message
+            displayMessage = err.message || "Database operation failed.";
             if (err.details) displayMessage += ` Details: ${err.details}`;
             if (err.hint) displayMessage += ` Hint: ${err.hint}`;
             if (err.code) displayMessage += ` (Code: ${err.code})`;
@@ -286,12 +271,11 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     navigate('/family-trees');
   };
 
-  
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section */}
+        {/* Hero Section - Your Exact JSX */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -397,7 +381,7 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* Now calls createAndSaveTreeFromFormData */}
+                {/* THIS NOW CALLS THE CLIENT-SIDE FUNCTION createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
@@ -425,7 +409,7 @@ const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
                             />
                         ) : (
                             <div className="p-10 text-center text-muted-foreground flex items-center justify-center h-full">
-                                Tree created, but no members were processed/found.
+                                Tree metadata created, but no members were processed from the form to display.
                             </div>
                         )}
                       </div>
