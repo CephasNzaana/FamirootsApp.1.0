@@ -35,7 +35,7 @@ const transformTreeFormDataToMembers = (
     const members: FamilyMember[] = [];
     const idMap: Record<string, string> = {}; // Maps conceptual roleKey to the actual generated UUID
 
-    // Define Role Keys at the TOP of this function, so they are in scope for ALL logic below
+    // !!! DEFINE ROLE KEYS HERE, AT THE TOP OF THE FUNCTION SCOPE !!!
     const mainPersonRKey = "mainPerson";
     const fatherRKey = "form_father"; 
     const motherRKey = "form_mother";
@@ -44,7 +44,7 @@ const transformTreeFormDataToMembers = (
     const mgfRKey = "form_maternalGrandfather"; 
     const mgmRKey = "form_maternalGrandmother"; 
     const spouseRKey = "form_spouse";
-    // For siblings and children, dynamic keys like "form_sibling_0" will be used directly in idMap
+    // For siblings and children, dynamic keys like "form_sibling_0" will be used directly when populating idMap
 
     const addPerson = (
         roleKey: string, 
@@ -153,25 +153,25 @@ const transformTreeFormDataToMembers = (
 
         // Parent Linking
         if (memberOriginalRoleKey === mainPersonRKey) { 
-            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
+            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey]; // Use fatherRKey (which is in scope)
             else if (idMap[motherRKey] && !idMap[fatherRKey]) member.parentId = idMap[motherRKey]; 
         } else if (memberOriginalRoleKey === fatherRKey) { 
             if (idMap[pgfRKey]) member.parentId = idMap[pgfRKey];
         } else if (memberOriginalRoleKey === motherRKey) { 
             if (idMap[mgfRKey]) member.parentId = idMap[mgfRKey];
         } 
-        // Grandmothers are not children of Grandfathers in this model; spousal link handles their connection.
-        // Their parentId would be for Great-Grandparents if data was available.
+        else if (memberOriginalRoleKey === pgmRKey) { /* PGM's parent would be PGF's parent, not PGF */ } 
+        else if (memberOriginalRoleKey === mgmRKey) { /* MGM's parent would be MGF's parent, not MGF */ } 
         else if (memberOriginalRoleKey.startsWith("form_sibling_")) { 
             if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
             else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
         } else if (memberOriginalRoleKey.startsWith("form_child_")) { 
-            if (mainPersonId) member.parentId = mainPersonId; // Use the actual UUID of the main person
+            if (mainPersonGeneratedId) member.parentId = mainPersonGeneratedId;
         }
 
         // Spouse Linking (Reciprocal)
         if (memberOriginalRoleKey === mainPersonRKey && idMap[spouseRKey]) member.spouseId = idMap[spouseRKey];
-        else if (memberOriginalRoleKey === spouseRKey && mainPersonId) member.spouseId = mainPersonId;
+        else if (memberOriginalRoleKey === spouseRKey && mainPersonGeneratedId) member.spouseId = mainPersonGeneratedId;
         else if (memberOriginalRoleKey === fatherRKey && idMap[motherRKey]) member.spouseId = idMap[motherRKey];
         else if (memberOriginalRoleKey === motherRKey && idMap[fatherRKey]) member.spouseId = idMap[fatherRKey];
         else if (memberOriginalRoleKey === pgfRKey && idMap[pgmRKey]) member.spouseId = idMap[pgmRKey];
@@ -203,8 +203,8 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-  // Function name from your original Home.tsx file, now performing client-side logic
-  const generateFamilyTree = async (formData: TreeFormData) => {
+  // This function is called by FamilyTreeForm onSubmit
+  const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
       setShowAuth(true);
@@ -223,8 +223,8 @@ const Home = () => {
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
-             console.warn("Home.tsx: Client-side transformation resulted in zero members (main person might exist if form was otherwise empty).");
-             toast.warning("Tree metadata will be created. Add more family members or check form input.");
+             console.warn("Home.tsx: Client-side transformation resulted in zero members.");
+             toast.warning("Tree metadata will be created. Ensure form details are filled for members.");
           } else if (members.length > 0) {
              console.log(`Home.tsx: Client-side transformation resulted in ${members.length} members.`);
              toast.info("Data transformed locally. Saving to database...");
@@ -259,19 +259,23 @@ const Home = () => {
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
-              status: member.status, // Your DB schema for family_members does NOT have this column. Remove if it causes error.
-              // notes: member.notes || null, // Your DB schema for family_members does NOT have this. Remove if it causes error.
+              status: member.status, // This field IS in your client FamilyMember type
+                                     // BUT NOT in your DB schema for family_members. Omit for DB insert.
+              // notes: member.notes || null, // Same for notes, omit if no DB column.
               family_tree_id: savedTreeData.id, 
-              // user_id: user.id, // REMOVED - Not in your family_members schema
             }));
+            
+            // Create a new array for insertion, omitting fields not in DB schema
+            const dbSafeMembersToInsert = membersToInsert.map(({ status, notes, photoUrl, spouseId, childrenIds, ...rest }) => rest);
 
-            console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
-            const { error: membersError } = await supabase.from('family_members').insert(membersToInsert);
+
+            console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(dbSafeMembersToInsert.slice(0,2), null, 2));
+            const { error: membersError } = await supabase.from('family_members').insert(dbSafeMembersToInsert);
             if (membersError) {
               await supabase.from('family_trees').delete().eq('id', savedTreeData.id); 
               throw membersError; 
             }
-            console.log(`Home.tsx: ${membersToInsert.length} family members saved.`);
+            console.log(`Home.tsx: ${dbSafeMembersToInsert.length} family members saved.`);
           } else {
             console.warn("Home.tsx: No members to save (members array was empty after client-side transformation).");
           }
@@ -284,7 +288,7 @@ const Home = () => {
           setFamilyTreeForPreview(completeNewTreeForPreview);
           return completeNewTreeForPreview;
         } catch(error) {
-            console.error("Home.tsx: Error within generateFamilyTree's async promise:", JSON.stringify(error, Object.getOwnPropertyNames(error))); 
+            console.error("Home.tsx: Error within createAndSaveTreeFromFormData's async promise:", JSON.stringify(error, Object.getOwnPropertyNames(error))); 
             if (error instanceof Error) throw error; 
             throw new Error(String(error || "An unknown error occurred during tree creation."));
         } 
@@ -317,7 +321,7 @@ const Home = () => {
     navigate('/family-trees');
   };
 
-  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU) ---
+  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
@@ -428,7 +432,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* onSubmit now calls createAndSaveTreeFromFormData */}
+                {/* Changed generateFamilyTree to createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
