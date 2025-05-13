@@ -36,18 +36,18 @@ const transformTreeFormDataToMembers = (
     const idMap: Record<string, string> = {}; // Maps conceptual roleKey to the actual generated UUID
 
     // !!! DEFINE ROLE KEYS HERE, AT THE TOP OF THIS FUNCTION'S SCOPE !!!
-    const mainPersonRKey = "mainPerson"; // "RKey" suffix to distinguish from actual ID variables
-    const fatherRKey = "father"; 
-    const motherRKey = "mother";
-    const pgfRKey = "paternalGrandfather"; 
-    const pgmRKey = "paternalGrandmother";
-    const mgfRKey = "maternalGrandfather"; 
-    const mgmRKey = "maternalGrandmother"; 
-    const spouseRKey = "spouse";
-    // For siblings and children, dynamic keys like "sibling_0" or "child_0" will be used directly when populating idMap in addPerson
+    const mainPersonRKey = "mainPerson";
+    const fatherRKey = "form_father"; 
+    const motherRKey = "form_mother";
+    const pgfRKey = "form_paternalGrandfather"; 
+    const pgmRKey = "form_paternalGrandmother";
+    const mgfRKey = "form_maternalGrandfather"; 
+    const mgmRKey = "form_maternalGrandmother"; 
+    const spouseRKey = "form_spouse";
+    // For siblings and children, dynamic keys like "form_sibling_0" will be used directly when populating idMap
 
     const addPerson = (
-        roleKey: string, // This key will be used for idMap
+        roleKey: string, 
         inputData: MemberInputData | ExtendedFamilyInputData | undefined,
         relationshipToProband: string, 
         generation: number, 
@@ -68,15 +68,16 @@ const transformTreeFormDataToMembers = (
                 console.warn(`[transform] Skipping empty optional member: ${roleKey}`);
                 return undefined; 
             }
-            if (roleKey === mainPersonRKey) { // Should be caught by form validation
+            if (roleKey === mainPersonRKey) {
                  console.error("[transform] Main person's name (familyName) is missing but required.");
                  throw new Error("Main person's name (familyName) is required in the form.");
             }
+            // For other roles, if name is empty but other data might exist, a placeholder will be used.
             console.warn(`[transform] Name missing for ${roleKey}. Using placeholder 'Unnamed ${relationshipToProband}'.`);
         }
 
         const finalId = generateClientMemberId(); 
-        idMap[roleKey] = finalId; // Map the conceptual roleKey to this actual UUID
+        idMap[roleKey] = finalId; 
 
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
 
@@ -103,27 +104,36 @@ const transformTreeFormDataToMembers = (
 
     // --- Create Members (First Pass) ---
     const mainPersonGeneratedId = addPerson(mainPersonRKey, extendedFamily, "Self", 0, false);
-    if (!mainPersonGeneratedId) throw new Error("Main person processing failed.");
+    if (!mainPersonGeneratedId) throw new Error("Main person processing failed catastrophically."); // Should be caught by addPerson earlier
 
-    // Use the role keys defined at the top of the function
     if (extendedFamily.parents) {
-        if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) addPerson(fatherRKey, extendedFamily.parents.father, "Father", -1, false, "paternal");
-        if (extendedFamily.parents.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) addPerson(motherRKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal");
+        if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) {
+            addPerson(fatherRKey, extendedFamily.parents.father, "Father", -1, false, "paternal");
+        }
+        if (extendedFamily.parents.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) {
+            addPerson(motherRKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal");
+        }
     }
+    
     if (extendedFamily.grandparents?.paternal?.grandfather && (extendedFamily.grandparents.paternal.grandfather.name?.trim() || extendedFamily.grandparents.paternal.grandfather.birthYear)) addPerson(pgfRKey, extendedFamily.grandparents.paternal.grandfather, "Paternal Grandfather", -2, false, "paternal");
     if (extendedFamily.grandparents?.paternal?.grandmother && (extendedFamily.grandparents.paternal.grandmother.name?.trim() || extendedFamily.grandparents.paternal.grandmother.birthYear)) addPerson(pgmRKey, extendedFamily.grandparents.paternal.grandmother, "Paternal Grandmother", -2, false, "paternal");
     if (extendedFamily.grandparents?.maternal?.grandfather && (extendedFamily.grandparents.maternal.grandfather.name?.trim() || extendedFamily.grandparents.maternal.grandfather.birthYear)) addPerson(mgfRKey, extendedFamily.grandparents.maternal.grandfather, "Maternal Grandfather", -2, false, "maternal");
     if (extendedFamily.grandparents?.maternal?.grandmother && (extendedFamily.grandparents.maternal.grandmother.name?.trim() || extendedFamily.grandparents.maternal.grandmother.birthYear)) addPerson(mgmRKey, extendedFamily.grandparents.maternal.grandmother, "Maternal Grandmother", -2, false, "maternal");
-    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) addPerson(spouseRKey, extendedFamily.spouse, "Spouse", 0);
     
+    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) {
+        addPerson(spouseRKey, extendedFamily.spouse, "Spouse", 0);
+    }
+
     (extendedFamily.siblings || []).forEach((s, i) => { 
         if (s.name?.trim() || s.birthYear) {
-            addPerson(`form_sibling_${i}`, s, s.gender === 'male' ? 'Brother' : s.gender === 'female' ? 'Sister' : 'Sibling', 0);
+            const siblingRoleKey = `form_sibling_${i}`; // Dynamic key for this sibling
+            addPerson(siblingRoleKey, s, s.gender === 'male' ? 'Brother' : s.gender === 'female' ? 'Sister' : 'Sibling', 0);
         }
     });
     (extendedFamily.children || []).forEach((c, i) => { 
         if (c.name?.trim() || c.birthYear) {
-            addPerson(`form_child_${i}`, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1);
+            const childRoleKey = `form_child_${i}`; // Dynamic key for this child
+            addPerson(childRoleKey, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1);
         }
     });
     (extendedFamily.selectedElders || []).forEach((e, i) => {
@@ -137,9 +147,13 @@ const transformTreeFormDataToMembers = (
     });
 
     // --- Second pass: Link ParentIDs AND SpouseIDs using the actual generated IDs from idMap ---
+    // The role keys like mainPersonRKey, fatherRKey etc. ARE IN SCOPE HERE.
     members.forEach(member => {
         const memberOriginalRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id); 
-        if (!memberOriginalRoleKey) return;
+        if (!memberOriginalRoleKey) {
+            console.warn(`[transform] Could not find original role key for member ID: ${member.id}, Name: ${member.name}. Skipping linking for this member.`);
+            return;
+        }
 
         // Parent Linking
         if (memberOriginalRoleKey === mainPersonRKey) { 
@@ -150,6 +164,8 @@ const transformTreeFormDataToMembers = (
         } else if (memberOriginalRoleKey === motherRKey) { 
             if (idMap[mgfRKey]) member.parentId = idMap[mgfRKey];
         } 
+        // PGM and MGM are spouses of PGF and MGF respectively. Their parentId would be for their own parents.
+        // For this form's depth, they likely won't have parentIds set unless GGF/GGM were also selectedElders and linked.
         else if (memberOriginalRoleKey.startsWith("form_sibling_")) { 
             if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
             else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
@@ -192,6 +208,7 @@ const Home = () => {
   const handleSignup = () => setShowAuth(true);
 
   // This function is called by FamilyTreeForm onSubmit
+  // It now performs client-side transformation and direct DB save (BYPASSING EDGE FUNCTION)
   const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
@@ -208,11 +225,12 @@ const Home = () => {
         try {
           console.log("Home.tsx: Processing TreeFormData directly on client (formData surname):", formData.surname);
 
+          // Step 1: Client-side transformation
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
-             console.warn("Home.tsx: Client-side transformation resulted in zero members.");
-             toast.warning("Tree metadata will be created. Ensure form details are filled for members.");
+             console.warn("Home.tsx: Client-side transformation resulted in zero members (only main person might exist if form was otherwise empty).");
+             toast.warning("Tree metadata will be created. Add more family members or check form input.");
           } else if (members.length > 0) {
              console.log(`Home.tsx: Client-side transformation resulted in ${members.length} members.`);
              toast.info("Data transformed locally. Saving to database...");
@@ -220,6 +238,7 @@ const Home = () => {
              throw new Error("Main person's name is missing from the form.");
           }
 
+          // Step 2: Save the FamilyTree metadata to Supabase
           const treeId = crypto.randomUUID();
           const createdAt = new Date().toISOString();
 
@@ -235,6 +254,7 @@ const Home = () => {
           if (!savedTreeData) throw new Error("Failed to save family tree metadata.");
           console.log("Home.tsx: Family tree metadata saved:", savedTreeData);
 
+          // Step 3: Save the FamilyMember records to Supabase
           if (members && members.length > 0) {
             const membersToInsert = members.map(member => ({
               id: member.id, 
@@ -248,8 +268,9 @@ const Home = () => {
               gender: member.gender || null, 
               side: member.side || null,
               status: member.status, // This column needs to exist in your 'family_members' table
-              // notes: member.notes || null, // This column needs to exist in your 'family_members' table
+              notes: member.notes || null, // This column needs to exist in your 'family_members' table
               family_tree_id: savedTreeData.id, 
+              // user_id for individual members is not in your provided schema for family_members
             }));
 
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
@@ -304,7 +325,7 @@ const Home = () => {
     navigate('/family-trees');
   };
 
-  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU) ---
+  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
@@ -415,7 +436,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* Changed generateFamilyTree to createAndSaveTreeFromFormData */}
+                {/* This now calls createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
