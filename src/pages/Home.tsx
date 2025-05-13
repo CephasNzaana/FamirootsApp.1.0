@@ -1,4 +1,4 @@
-// src/pages/Home.tsx (or Index.tsx - ensure filename matches your project)
+// src/pages/Home.tsx
 
 import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
 import { toast } from "@/components/ui/sonner";
@@ -12,14 +12,14 @@ import {
     TreeFormData, 
     FamilyTree, 
     FamilyMember,
-    ExtendedFamilyInputData, // Ensure these types are correctly defined in @/types
+    ExtendedFamilyInputData, // Make sure these types are correctly defined in @/types
     MemberInputData 
     // ParentsInputData and GrandparentsInputData are implicitly part of ExtendedFamilyInputData
 } from "@/types"; // Ensure your FamilyMember type in @/types includes spouseId?: string;
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Dna, Users, FileText, Search, Eye, Save, ZoomIn, ZoomOut } from "lucide-react";
+import { Dna, Users, FileText, Search, Eye, Save } from "lucide-react"; // ZoomIn/Out removed, handled by MultiView
 import { useNavigate } from "react-router-dom";
 
 // Helper to generate unique STRING UUIDs client-side
@@ -37,7 +37,7 @@ const transformTreeFormDataToMembers = (
     const members: FamilyMember[] = [];
     const idMap: Record<string, string> = {}; 
 
-    // Define Role Keys at the TOP of this function scope
+    // Define Role Keys at the TOP of this function's scope
     const mainPersonRKey = "mainPerson"; 
     const fatherRKey = "father"; 
     const motherRKey = "mother";
@@ -89,7 +89,7 @@ const transformTreeFormDataToMembers = (
             deathYear: inputData?.deathYear || undefined,
             generation: generation,
             parentId: undefined, 
-            spouseId: undefined, 
+            spouseId: undefined, // Initialize spouseId
             isElder: isElderFlag || false,
             gender: inputData?.gender || undefined,
             side: familySide,
@@ -106,6 +106,7 @@ const transformTreeFormDataToMembers = (
     const mainPersonGeneratedId = addPerson(mainPersonRKey, extendedFamily, "Self", 0, false);
     if (!mainPersonGeneratedId) throw new Error("Main person processing failed catastrophically.");
 
+    // Use the role keys defined at the top of this transform function
     if (extendedFamily.parents) {
         if (extendedFamily.parents.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) {
             addPerson(fatherRKey, extendedFamily.parents.father, "Father", -1, false, "paternal");
@@ -149,7 +150,7 @@ const transformTreeFormDataToMembers = (
     members.forEach(member => {
         const memberOriginalRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id); 
         if (!memberOriginalRoleKey) {
-            console.warn(`[transform] Could not find original role key for member ID: ${member.id}, Name: ${member.name}. Skipping linking.`);
+            console.warn(`[transform] Could not find original role key for member ID: ${member.id}, Name: ${member.name}. Skipping linking for this member.`);
             return;
         }
 
@@ -168,6 +169,7 @@ const transformTreeFormDataToMembers = (
         } else if (memberOriginalRoleKey.startsWith("form_child_")) { 
             if (mainPersonGeneratedId) member.parentId = mainPersonGeneratedId;
         }
+        // Note: Grandmothers' parentIds are not set to Grandfathers here; they are linked via spouseId.
 
         // Spouse Linking (Reciprocal)
         if (memberOriginalRoleKey === mainPersonRKey && idMap[spouseRKey]) member.spouseId = idMap[spouseRKey];
@@ -181,7 +183,7 @@ const transformTreeFormDataToMembers = (
     });
     
     console.log("Home.tsx: Client-side transformation complete. Final members generated:", members.length);
-    if (members.length > 0) console.log("Home.tsx: First processed member for saving (client-side object with UUID):", JSON.stringify(members[0], null, 2));
+    if (members.length > 0) console.log("Home.tsx: First processed member (with links):", JSON.stringify(members[0], null, 2));
     return { members, idMap };
 };
 
@@ -191,7 +193,7 @@ const Home = () => {
   const [showAuth, setShowAuth] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [familyTreeForPreview, setFamilyTreeForPreview] = useState<FamilyTree | null>(null);
-  // previewZoomLevel is removed as FamilyTreeMultiView will handle its own zoom
+  // Zoom control for the preview is now managed by FamilyTreeMultiView
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -204,6 +206,7 @@ const Home = () => {
   const handleSignup = () => setShowAuth(true);
 
   // This function is called by FamilyTreeForm onSubmit
+  // It now performs client-side transformation and direct DB save
   const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
@@ -259,9 +262,10 @@ const Home = () => {
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
-              // status: member.status, // OMIT if 'status' column NOT in your DB family_members table
-              // notes: member.notes || null, // OMIT if 'notes' column NOT in your DB family_members table
-              family_tree_id: savedTreeData.id,
+              // status: member.status, // OMITTED - IF YOU ADD 'status' COLUMN TO DB, UNCOMMENT
+              // notes: member.notes || null, // OMITTED - IF YOU ADD 'notes' COLUMN TO DB, UNCOMMENT
+              family_tree_id: savedTreeData.id, 
+              // user_id for individual members is omitted
             }));
 
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
@@ -318,15 +322,12 @@ const Home = () => {
 
   // Callback for FamilyTreeMultiView if edits are made in the preview
   const handlePreviewTreeUpdate = (updatedTree: FamilyTree) => {
-    console.log("Home.tsx: Preview tree data potentially updated by child component.");
+    console.log("Home.tsx: Preview tree data updated by FamilyTreeMultiView/Display child component.");
     setFamilyTreeForPreview(updatedTree);
-    // For now, this just updates the local preview. 
-    // If you want these preview edits to be persistent, you'd need to add a "save changes from preview" button
-    // that calls a similar save logic to createAndSaveTreeFromFormData (but for updates).
-    toast.info("Preview updated. Note: Changes made in this preview are not automatically saved to the database.");
+    toast.info("Preview updated. Note: These changes are not yet saved to the database from this preview page.");
   };
 
-  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN YOUR PREVIOUS MESSAGE) ---
+  // --- YOUR FULL PAGE JSX STRUCTURE ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
@@ -437,7 +438,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* THIS NOW CALLS THE CLIENT-SIDE FUNCTION */}
+                {/* Changed generateFamilyTree to createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
@@ -457,8 +458,8 @@ const Home = () => {
                         <Button variant="outline" size="sm" onClick={handleNavigateToTrees} title="View all your saved trees"><Eye className="mr-1.5 h-4 w-4"/> My Saved Trees</Button>
                     </div>
                     {/* Using FamilyTreeMultiView for the preview to include tabs */}
-                    <div className="h-[auto] min-h-[550px] border-t border-border"> {/* Adjusted height and removed overflow-auto from here */}
-                        {familyTreeForPreview.members ? ( // Check if members array exists
+                    <div className="h-[auto] min-h-[550px] border-t border-border"> 
+                        {familyTreeForPreview.members && familyTreeForPreview.members.length >= 0 ? ( // Check if members array exists, even if empty
                             <FamilyTreeMultiView 
                               tree={familyTreeForPreview} 
                               onTreeDataUpdate={handlePreviewTreeUpdate} 
@@ -469,7 +470,6 @@ const Home = () => {
                             </div>
                         )}
                     </div>
-                    {/* Zoom controls are now inside FamilyTreeMultiView, so removed from here */}
                   </div>
                 )}
                 {!isLoading && !familyTreeForPreview && ( 
