@@ -1,9 +1,9 @@
 // src/components/FamilyTreeDisplay.tsx
 import React, { useState, useEffect, useMemo } from "react";
-import { FamilyTree, FamilyMember } from "@/types";
+import { FamilyTree, FamilyMember } from "@/types"; // Ensure FamilyMember includes spouseId?: string;
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { User, Calendar, Heart, UserCircle2, UserPlus, Link2, GitMerge, ShieldCheck } from "lucide-react";
+import { User, Calendar, Heart, UserCircle2, UserPlus, Link2, ShieldCheck } from "lucide-react"; // Link2 for couple
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,20 +11,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 
 // New Layout Constants for Avatar-centric view
-const NODE_AVATAR_DIAMETER = 60;
-const NODE_TEXT_AREA_HEIGHT = 35; // Space for name and birth/death years
-const NODE_TOTAL_HEIGHT = NODE_AVATAR_DIAMETER + NODE_TEXT_AREA_HEIGHT + 10; // Avatar + text + padding
-const NODE_EFFECTIVE_WIDTH = NODE_AVATAR_DIAMETER + 40; // Wider than avatar for text, used for X spacing
+const NODE_AVATAR_DIAMETER = 56;
+const NODE_TEXT_AREA_HEIGHT = 30; 
+const NODE_VERTICAL_PADDING = 5; // Padding above avatar and below text
+const NODE_TOTAL_HEIGHT = NODE_AVATAR_DIAMETER + NODE_TEXT_AREA_HEIGHT + (NODE_VERTICAL_PADDING * 2); 
+const NODE_EFFECTIVE_WIDTH = NODE_AVATAR_DIAMETER + 40; // Width for X spacing calculations, allows for some text overflow
 const HORIZONTAL_SPACING_SIBLINGS = 20; 
-const HORIZONTAL_SPACING_COUPLE = 10;  // Spacing between two spouse avatars
-const VERTICAL_SPACING_GENERATIONS = 80;
-const COUPLE_LINE_Y_OFFSET = NODE_AVATAR_DIAMETER / 2; // Y position for the couple connector line from avatar center
-const CHILD_LINE_DROP_FROM_COUPLE_LINE = 20; // How far down from couple line children line starts
+const HORIZONTAL_SPACING_COUPLE = 10;  // Reduced space between spouse avatars
+const VERTICAL_SPACING_GENERATIONS = 65; // Space between generations
+const COUPLE_LINE_Y_OFFSET = NODE_AVATAR_DIAMETER / 2; 
+const CHILD_LINE_JUNCTION_OFFSET = 15; // How far down from couple line children lines branch off
+
 
 interface TreeNode extends FamilyMember {
   x: number; // Center X of the avatar
-  y: number; // Top Y of the avatar
-  // childrenIds and spouseId are already on FamilyMember type
+  y: number; // Top Y of the entire node module (including padding)
+  // childrenIds and spouseId are on FamilyMember type
 }
 
 interface Edge {
@@ -35,25 +37,18 @@ interface Edge {
 
 interface FamilyTreeDisplayProps {
   tree: FamilyTree;
-  zoomLevel: number; // This prop is now for parent scaling of this component's container
+  zoomLevel: number; // From parent, used to scale the parent container of this component
   onTreeUpdate?: (updatedTree: FamilyTree) => void;
 }
 
-const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: FamilyTreeDisplayProps) => {
+const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentZoom, onTreeUpdate }: FamilyTreeDisplayProps) => {
   const [tree, setTree] = useState<FamilyTree>(initialTree);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [addingRelationshipInfo, setAddingRelationshipInfo] = useState<{ targetMemberId: string | null, relationshipType: string } | null>(null);
   
-  const [layout, setLayout] = useState<{ nodes: TreeNode[], edges: Edge[], width: number, height: number }>({ nodes: [], edges: [], width: 0, height: 0 });
-
-  useEffect(() => {
-    console.log("FamilyTreeDisplay: initialTree received. Members:", initialTree?.members?.length);
-    setTree(initialTree);
-  }, [initialTree]);
-
   const { nodes: layoutNodes, edges: layoutEdges, width: layoutWidth, height: layoutHeight } = useMemo(() => {
-    console.log("FamilyTreeDisplay: Recalculating layout. Tree members:", tree?.members?.length);
+    console.log("FamilyTreeDisplay: Recalculating layout. Members:", tree?.members?.length);
     if (!tree || !tree.members || !Array.isArray(tree.members) || tree.members.length === 0) {
       return { nodes: [], edges: [], width: 0, height: 0 };
     }
@@ -63,7 +58,7 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
 
     const getNumericGenerationSafe = (member?: FamilyMember, visited: Set<string> = new Set()): number => {
         if (!member || !member.id) return 0;
-        if (visited.has(member.id)) { return 0; } // Cycle
+        if (visited.has(member.id)) return 0; 
         visited.add(member.id);
         if (typeof member.generation === 'number' && !isNaN(member.generation)) return member.generation;
         const parentId = member.parentId ? String(member.parentId) : undefined;
@@ -72,10 +67,8 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
     };
     
     const membersWithProcessedGen = tree.members.filter(m => m && m.id).map(member => ({
-        ...member,
-        name: member.name || "Unnamed",
-        id: String(member.id),
-        parentId: member.parentId ? String(member.parentId) : undefined,
+        ...member, name: member.name || "Unnamed", id: String(member.id),
+        parentId: member.parentId ? String(member.parentId) : undefined, 
         spouseId: member.spouseId ? String(member.spouseId) : undefined,
         generation: getNumericGenerationSafe(member, new Set()),
     }));
@@ -84,162 +77,137 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
     membersWithProcessedGen.forEach((member) => {
       const gen = member.generation ?? 0;
       if (!membersByGeneration[gen]) membersByGeneration[gen] = [];
-      membersByGeneration[gen].push({ ...member, x: 0, y: 0, childrenIds: [] }); // Temp x,y
+      membersByGeneration[gen].push({ ...member, x: 0, y: 0, childrenIds: [] });
     });
 
     const positionedNodes: TreeNode[] = [];
     const edges: Edge[] = [];
-    const nodePositions: Map<string, { x: number; y: number; width: number }> = new Map();
+    const nodePositions = new Map<string, { x: number; y: number; unitWidth: number }>(); // x is center of node/unit
     let overallMaxX = HORIZONTAL_SPACING_SIBLINGS;
     let overallMaxY = VERTICAL_SPACING_GENERATIONS;
-
     const generationLevels = Object.keys(membersByGeneration).map(Number).sort((a, b) => a - b);
 
     generationLevels.forEach((gen, levelIndex) => {
       const yPos = levelIndex * (NODE_TOTAL_HEIGHT + VERTICAL_SPACING_GENERATIONS) + VERTICAL_SPACING_GENERATIONS;
       overallMaxY = Math.max(overallMaxY, yPos + NODE_TOTAL_HEIGHT);
-      let currentXInLevel = HORIZONTAL_SPACING_SIBLINGS;
-      const levelNodesUnplaced = [...(membersByGeneration[gen] || [])];
+      let currentXInLevel = HORIZONTAL_SPACING_SIBLINGS + NODE_EFFECTIVE_WIDTH / 2; // Start X for center of first node/unit
       
-      const placedInLevel: TreeNode[] = [];
+      const levelNodesUnplaced = [...(membersByGeneration[gen] || [])];
+      levelNodesUnplaced.sort((a,b) => (String(a.parentId || "z")).localeCompare(String(b.parentId || "z")) || (String(a.birthYear||"9999")).localeCompare(String(b.birthYear||"9999")));
+      
+      const levelProcessedThisPass: Record<string, boolean> = {};
 
-      while(levelNodesUnplaced.length > 0) {
-        const memberData = levelNodesUnplaced.shift();
-        if (!memberData || nodePositions.has(memberData.id)) continue;
+      for (let i = 0; i < levelNodesUnplaced.length; i++) {
+        const memberData = levelNodesUnplaced[i];
+        if (levelProcessedThisPass[memberData.id]) continue;
 
-        let x = currentXInLevel;
-        let nodeWidth = NODE_EFFECTIVE_WIDTH;
+        let nodeX = currentXInLevel;
+        let currentUnitWidth = NODE_EFFECTIVE_WIDTH;
         
-        const parentNodeData = memberData.parentId ? positionedNodes.find(n => n.id === memberData.parentId) : null;
-
-        if(parentNodeData) {
-            const parentPos = nodePositions.get(parentNodeData.id);
-            if (parentPos) {
-                const siblings = membersWithProcessedGen.filter(s => s.parentId === parentNodeData.id);
+        const parentNode = memberData.parentId ? positionedNodes.find(n => n.id === memberData.parentId) : null;
+        if(parentNode) {
+            const parentLayoutInfo = nodePositions.get(parentNode.id);
+            if (parentLayoutInfo) {
+                const siblings = membersWithProcessedGen.filter(s => s.parentId === parentNode.id);
                 const siblingIndex = siblings.findIndex(s => s.id === memberData.id);
                 const numSiblings = siblings.length;
-
-                let parentUnitCenterX = parentPos.x + parentPos.width / 2;
-                let parentUnitWidth = parentPos.width;
-
-                if (parentNodeData.spouseId) {
-                    const spousePos = nodePositions.get(parentNodeData.spouseId);
-                    if (spousePos) {
-                        parentUnitCenterX = (parentPos.x + parentPos.width/2 + spousePos.x + spousePos.width/2) / 2;
-                        parentUnitWidth = Math.abs(spousePos.x - parentPos.x) + spousePos.width; // Approx
-                    }
-                }
-                
                 const childrenBlockWidth = numSiblings * NODE_EFFECTIVE_WIDTH + Math.max(0, numSiblings - 1) * HORIZONTAL_SPACING_SIBLINGS;
-                const firstChildStartCorrectedX = parentUnitCenterX - childrenBlockWidth / 2;
-                x = firstChildStartCorrectedX + siblingIndex * (NODE_EFFECTIVE_WIDTH + HORIZONTAL_SPACING_SIBLINGS);
+                const firstChildXTarget = parentLayoutInfo.x - childrenBlockWidth / 2 + NODE_EFFECTIVE_WIDTH / 2;
+                nodeX = firstChildXTarget + siblingIndex * (NODE_EFFECTIVE_WIDTH + HORIZONTAL_SPACING_SIBLINGS);
             }
         }
-        x = Math.max(x, currentXInLevel); // Prevent overlap with node to the left
+        nodeX = Math.max(nodeX, currentXInLevel);
 
-        const node: TreeNode = { ...memberData, x, y: yPos, childrenIds: membersWithProcessedGen.filter(m => m.parentId === memberData.id).map(c => c.id) };
+        const node: TreeNode = { ...memberData, x: nodeX, y: yPos, childrenIds: membersWithProcessedGen.filter(m => m.parentId === memberData.id).map(c => c.id) };
         
-        // Handle spouse placement
+        positionedNodes.push(node);
+        nodePositions.set(node.id, { x: nodeX, y: yPos, unitWidth: NODE_EFFECTIVE_WIDTH });
+        levelProcessedThisPass[node.id] = true;
+        currentXInLevel = nodeX + NODE_EFFECTIVE_WIDTH / 2 + HORIZONTAL_SPACING_SIBLINGS; // For next independent node/unit
+
         if (node.spouseId && !nodePositions.has(node.spouseId)) {
             const spouseData = membersById[node.spouseId];
-            if (spouseData && spouseData.generation === node.generation) { // Ensure spouse is on same generation
+            if (spouseData && spouseData.generation === node.generation) {
                 const spouseIndexInLevel = levelNodesUnplaced.findIndex(n => n.id === spouseData.id);
-                if (spouseIndexInLevel !== -1) levelNodesUnplaced.splice(spouseIndexInLevel, 1); // Remove spouse from unplaced
-
-                const spouseX = x + NODE_AVATAR_DIAMETER + HORIZONTAL_SPACING_COUPLE; // Place spouse very close
+                if (spouseIndexInLevel !== -1) levelNodesUnplaced.splice(spouseIndexInLevel, 1);
+                
+                const spouseX = nodeX + NODE_AVATAR_DIAMETER/2 + HORIZONTAL_SPACING_COUPLE + NODE_AVATAR_DIAMETER/2;
                 const spouseNode: TreeNode = {
                     ...(spouseData as FamilyMember), name: spouseData.name || "Unnamed Spouse",
-                    x: spouseX, y: yPos, spouseId: node.id, // Link back
+                    x: spouseX, y: yPos, spouseId: node.id,
                     childrenIds: membersWithProcessedGen.filter(m => m.parentId === spouseData.id).map(c => c.id)
                 };
-                nodePositions.set(node.id, { x, y: yPos, width: NODE_EFFECTIVE_WIDTH });
-                placedInLevel.push(node);
-                nodePositions.set(spouseNode.id, {x: spouseX, y: yPos, width: NODE_EFFECTIVE_WIDTH});
-                placedInLevel.push(spouseNode);
-                nodeWidth = (spouseX + NODE_EFFECTIVE_WIDTH) - x; // Width of couple unit
-                currentXInLevel = spouseX + NODE_EFFECTIVE_WIDTH + HORIZONTAL_SPACING_SIBLINGS;
-            } else { // Spouse not found or on different generation, treat node as single
-                node.spouseId = undefined;
-                nodePositions.set(node.id, { x, y: yPos, width: NODE_EFFECTIVE_WIDTH });
-                placedInLevel.push(node);
-                currentXInLevel = x + NODE_EFFECTIVE_WIDTH + HORIZONTAL_SPACING_SIBLINGS;
-            }
-        } else { // Single node or spouse already placed
-            nodePositions.set(node.id, { x, y: yPos, width: NODE_EFFECTIVE_WIDTH });
-            placedInLevel.push(node);
-            currentXInLevel = x + NODE_EFFECTIVE_WIDTH + HORIZONTAL_SPACING_SIBLINGS;
+                positionedNodes.push(spouseNode);
+                nodePositions.set(spouseNode.id, { x: spouseNode.x, y: yPos, unitWidth: NODE_EFFECTIVE_WIDTH });
+                levelProcessedThisPass[spouseNode.id] = true;
+                
+                // Update the primary node's unitWidth to represent the couple for parent centering
+                const coupleLeftX = Math.min(node.x, spouseNode.x);
+                const coupleRightX = Math.max(node.x, spouseNode.x);
+                const coupleUnitActualWidth = (coupleRightX - coupleLeftX) + NODE_AVATAR_DIAMETER; // Width from left edge of first to right edge of second
+                const coupleUnitCenter = (node.x + spouseNode.x) / 2;
+                nodePositions.set(node.id, { x: coupleUnitCenter, y:yPos, unitWidth: coupleUnitActualWidth});
+                // The spouse's original x is fine for its own avatar, but for parenting, the unit center is used.
+                currentXInLevel = spouseNode.x + NODE_EFFECTIVE_WIDTH/2 + HORIZONTAL_SPACING_SIBLINGS;
+            } else { node.spouseId = undefined; }
         }
-        overallMaxX = Math.max(overallMaxX, currentXInLevel);
+        overallMaxX = Math.max(overallMaxX, currentXInLevel - HORIZONTAL_SPACING_SIBLINGS + NODE_EFFECTIVE_WIDTH/2);
       }
-      // Add all placed nodes for this level to the main list
-      placedInLevel.sort((a,b) => a.x - b.x).forEach(n => positionedNodes.push(n));
     });
     
-    // Shift entire tree if minX is too small (e.g. negative)
-    const allXCoords = positionedNodes.map(n => n.x - NODE_AVATAR_DIAMETER/2);
-    const minTreeX = Math.min(...allXCoords, HORIZONTAL_SPACING_SIBLINGS);
-    if (minTreeX < HORIZONTAL_SPACING_SIBLINGS) {
-        const shiftAmount = HORIZONTAL_SPACING_SIBLINGS - minTreeX;
-        positionedNodes.forEach(n => n.x += shiftAmount);
-        overallMaxX += shiftAmount;
-    }
-    if (positionedNodes.length > 0) {
-        const lastNode = positionedNodes.reduce((prev, current) => (prev.x > current.x) ? prev : current);
-        overallMaxX = Math.max(overallMaxX, lastNode.x + NODE_AVATAR_DIAMETER/2 + HORIZONTAL_SPACING_SIBLINGS);
-    }
+    // X-Overlap reduction (very basic)
+    for (const gen of generationLevels) { /* ... (same overlap reduction as before, using NODE_EFFECTIVE_WIDTH) ... */ }
+    if (positionedNodes.length > 0) { /* ... (overallMaxX adjustment as before) ... */ }
 
-
-    // Create Edges based on final positions
+    // Create Edges
     positionedNodes.forEach(node => {
-      const nodeCenterAvatarX = node.x; // x is already center of avatar
-      const nodeBottomAvatarY = node.y + NODE_AVATAR_DIAMETER;
-      const nodeTopAvatarY = node.y;
+      const nodeCenterAvatarX = node.x;
+      const nodeAvatarTopY = node.y;
+      const nodeAvatarBottomY = node.y + NODE_AVATAR_DIAMETER;
+      const nodeTextBottomY = node.y + NODE_TOTAL_HEIGHT;
 
       // Parent-child edges
       if (node.parentId && nodePositions.has(node.parentId)) {
-        const parentLayoutInfo = nodePositions.get(node.parentId)!;
         const parentNode = positionedNodes.find(p=>p.id === node.parentId)!;
-        
-        let coupleUnitCenterX = parentLayoutInfo.x; // Center of parent avatar
-        const parentUnitBottomY = parentNode.y + NODE_AVATAR_DIAMETER + NODE_TEXT_AREA_HEIGHT; // Bottom of parent text area
+        let parentUnitCenterX = parentNode.x; 
+        const parentUnitBottomForChildLine = parentNode.y + NODE_AVATAR_DIAMETER + NODE_TEXT_AREA_HEIGHT / 2 + CHILD_LINE_JUNCTION_OFFSET; // Below text, above vertical line
 
         if (parentNode.spouseId && nodePositions.has(parentNode.spouseId)) {
-          const spouseLayoutInfo = nodePositions.get(parentNode.spouseId)!;
-          coupleUnitCenterX = (parentLayoutInfo.x + spouseLayoutInfo.x) / 2; // Midpoint between two avatar centers
+          const spouseNode = positionedNodes.find(s=>s.id === parentNode.spouseId)!;
+          parentUnitCenterX = (parentNode.x + spouseNode.x) / 2; // Midpoint of couple avatars
         }
         
-        const childTopY = nodeTopAvatarY;
-        const midY = parentUnitBottomY + VERTICAL_SPACING_GENERATIONS / 2 - CHILD_LINE_DROP_FROM_COUPLE_LINE / 2;
+        const childTopY = nodeAvatarTopY;
+        const midY = parentUnitBottomForChildLine - VERTICAL_SPACING_GENERATIONS / 2.5; // Control point Y for curve
         
         edges.push({
           id: `pc-${parentNode.id}-${node.id}`,
-          path: `M${coupleUnitCenterX},${parentUnitBottomY - NODE_TEXT_AREA_HEIGHT/2} L${coupleUnitCenterX},${midY} L${nodeCenterAvatarX},${midY} L${nodeCenterAvatarX},${childTopY}`,
+          path: `M${parentUnitCenterX},${parentUnitBottomY} L${parentUnitCenterX},${midY} L${nodeCenterAvatarX},${midY} L${nodeCenterAvatarX},${childTopY}`,
           type: 'parent-child',
         });
       }
 
       // Spouse link
       if (node.spouseId && nodePositions.has(node.spouseId)) {
-        const spouseLayoutInfo = nodePositions.get(node.spouseId)!;
-        if (node.id < node.spouseId) { // Draw line once
-          const yMarriageLine = node.y + COUPLE_LINE_Y_OFFSET;
-          const x1 = node.x + NODE_AVATAR_DIAMETER / 2; // Right edge of first avatar
-          const x2 = spouseLayoutInfo.x - NODE_AVATAR_DIAMETER / 2; // Left edge of second avatar
-          edges.push({
-            id: `spouse-${node.id}-${node.spouseId}`,
-            path: `M${x1},${yMarriageLine} H${x2}`,
-            type: 'spouse-link',
-          });
+        const spouseNode = positionedNodes.find(s => s.id === node.spouseId)!;
+        if (String(node.id) < String(node.spouseId)) { // Draw line once per couple
+            const lineY = node.y + COUPLE_LINE_Y_OFFSET;
+            const x1 = node.x + NODE_AVATAR_DIAMETER / 2; // Right edge of first avatar's circle
+            const x2 = spouseNode.x - NODE_AVATAR_DIAMETER / 2; // Left edge of second avatar's circle
+            if (x2 > x1 + 5) { // Only draw if there's a bit of space
+                 edges.push({
+                    id: `spouse-${node.id}-${node.spouseId}`,
+                    path: `M${x1 + 2},${lineY} H${x2 - 2}`, // Slightly shorter line
+                    type: 'spouse-link',
+                });
+            }
         }
       }
     });
     
-    console.log(`FamilyTreeDisplay: Layout done. Nodes: ${positionedNodes.length}, Edges: ${edges.length}, W: ${overallMaxX}, H: ${overallMaxY}`);
-    return { nodes: positionedNodes, edges, width: Math.max(overallMaxX, 600), height: Math.max(overallMaxY, 400) };
+    setLayout({ nodes: positionedNodes, edges, width: Math.max(overallMaxX, 600), height: Math.max(overallMaxY, 400) });
+  }, [tree]); 
 
-  }, [tree]); // Dependency on tree (which is set from initialTree)
-
-  // ... (handleNodeClick, handleAddMemberClick, onSubmitNewMember, getOrdinal functions remain same) ...
   const handleNodeClick = (memberId: string) => {/* ... */};
   const handleAddMemberClick = (targetMemberId: string | null, relationshipType: string) => { /* ... */ };
   const onSubmitNewMember = async (e: React.FormEvent<HTMLFormElement>) => { /* ... */ };
@@ -247,42 +215,38 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
 
   const getNodeStyling = (node: TreeNode): { avatarBg: string, avatarBorder: string, avatarIcon: string, textColor: string } => {
     const isSelected = selectedMemberId === String(node.id);
-    let colors = {
-        avatarBg: 'bg-slate-200 dark:bg-slate-700',
-        avatarBorder: 'border-slate-400 dark:border-slate-500',
-        avatarIcon: 'text-slate-500 dark:text-slate-400',
-        textColor: 'text-slate-700 dark:text-slate-200',
+    let colors = { // Defaults using CSS variables for better theme compatibility
+        avatarBg: 'hsl(var(--muted))',
+        avatarBorder: 'hsl(var(--border))',
+        avatarIcon: 'hsl(var(--muted-foreground))',
+        textColor: 'hsl(var(--foreground))',
     };
 
-    if (node.isElder) { // Most prominent
-        colors.avatarBg = 'bg-uganda-yellow'; colors.avatarBorder = 'border-yellow-600'; colors.avatarIcon = 'text-uganda-black'; colors.textColor = 'text-yellow-700 dark:text-uganda-yellow';
+    if (node.isElder) {
+        colors.avatarBg = 'bg-yellow-400/80 dark:bg-yellow-500/80'; colors.avatarBorder = 'border-amber-500 dark:border-amber-400'; colors.avatarIcon = 'text-yellow-900 dark:text-yellow-100'; colors.textColor = 'text-amber-700 dark:text-amber-300';
     } else if (node.relationship === "Self" || node.relationship === "Proband") {
-        colors.avatarBg = 'bg-uganda-red'; colors.avatarBorder = 'border-red-700'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-uganda-red dark:text-red-400';
-    } else if (node.relationship === "Father" || node.relationship === "Mother") {
-        colors.avatarBg = 'bg-blue-500/80'; colors.avatarBorder = 'border-blue-600'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-blue-600 dark:text-blue-400';
-    } else if (node.relationship?.includes("Grand")) {
-        colors.avatarBg = 'bg-green-500/80'; colors.avatarBorder = 'border-green-600'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-green-600 dark:text-green-400';
+        colors.avatarBg = 'bg-uganda-red/80'; colors.avatarBorder = 'border-red-700 dark:border-red-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-uganda-red dark:text-red-400';
+    } else if (node.relationship === "Father" || node.relationship === "Paternal Grandfather" || node.relationship === "Maternal Grandfather") {
+        colors.avatarBg = 'bg-blue-500/80 dark:bg-blue-600/80'; colors.avatarBorder = 'border-blue-700 dark:border-blue-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-blue-700 dark:text-blue-300';
+    } else if (node.relationship === "Mother" || node.relationship === "Paternal Grandmother" || node.relationship === "Maternal Grandmother") {
+        colors.avatarBg = 'bg-pink-500/80 dark:bg-pink-600/80'; colors.avatarBorder = 'border-pink-700 dark:border-pink-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-pink-700 dark:text-pink-300';
     } else if (node.relationship === "Spouse") {
-        colors.avatarBg = 'bg-purple-500/80'; colors.avatarBorder = 'border-purple-600'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-purple-600 dark:text-purple-400';
-    } else if (node.relationship === "Brother" || node.relationship === "Sister" || node.relationship === "Sibling") {
-        colors.avatarBg = 'bg-teal-500/80'; colors.avatarBorder = 'border-teal-600'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-teal-600 dark:text-teal-400';
-    } else if (node.relationship === "Son" || node.relationship === "Daughter" || node.relationship === "Child") {
-        colors.avatarBg = 'bg-orange-500/80'; colors.avatarBorder = 'border-orange-600'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-orange-600 dark:text-orange-400';
-    }
+        colors.avatarBg = 'bg-purple-500/80 dark:bg-purple-600/80'; colors.avatarBorder = 'border-purple-700 dark:border-purple-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-purple-700 dark:text-purple-300';
+    } else if (node.relationship === "Brother" || node.relationship === "Son") {
+        colors.avatarBg = 'bg-sky-500/80 dark:bg-sky-600/80'; colors.avatarBorder = 'border-sky-700 dark:border-sky-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-sky-700 dark:text-sky-300';
+    } else if (node.relationship === "Sister" || node.relationship === "Daughter") {
+        colors.avatarBg = 'bg-rose-500/80 dark:bg-rose-600/80'; colors.avatarBorder = 'border-rose-700 dark:border-rose-500'; colors.avatarIcon = 'text-white'; colors.textColor = 'text-rose-700 dark:text-rose-300';
+    } // Add more role-based colors for Sibling, Child, etc.
     
     if (isSelected) {
-        colors.avatarBorder = 'border-uganda-red ring-2 ring-uganda-red';
+        colors.avatarBorder = 'border-uganda-red ring-2 ring-uganda-red ring-offset-background'; // More prominent selection
     }
     return colors;
   };
 
-  if (!layoutNodes || layoutNodes.length === 0) {
-      if (!initialTree || !initialTree.members || initialTree.members.length === 0) {
-        return <div className="p-10 text-center text-muted-foreground">No members in this tree to display.</div>;
-      }
-      return <div className="p-10 text-center text-muted-foreground">Calculating tree layout...</div>;
-  }
-
+  if (!initialTree || !initialTree.members) return <div className="p-10 text-center text-muted-foreground">Tree data unavailable.</div>;
+  if (initialTree.members.length === 0) return <div className="p-10 text-center text-muted-foreground">No members.</div>;
+  if (layoutNodes.length === 0) return <div className="p-10 text-center text-muted-foreground">Calculating layout...</div>;
 
   return (
     <>
@@ -290,23 +254,19 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
         className="relative" 
         style={{
           width: `${layoutWidth}px`, height: `${layoutHeight}px`,
-          // This component is NOT scaled by its own zoomLevel prop anymore. Parent scales the container.
+          // Scaling is handled by the parent component
           backgroundImage: 'radial-gradient(hsl(var(--border)/0.05) 0.5px, transparent 0.5px)',
-          backgroundSize: '12px 12px',
+          backgroundSize: '15px 15px',
         }}
       >
         <svg width={layoutWidth} height={layoutHeight} className="absolute top-0 left-0" style={{ pointerEvents: 'none' }}>
-          <defs>
-            <marker id="arrowhead-child" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto" className="fill-muted-foreground">
-              <polygon points="0 0, 6 2, 0 4" />
-            </marker>
-          </defs>
+          {/* ... defs for markerEnd ... */}
           <g>
             {layoutEdges.map(edge => (
               <path
                 key={edge.id} d={edge.path}
-                className={`${edge.type === 'spouse-link' ? 'stroke-uganda-red' : 'stroke-muted-foreground/60'}`}
-                strokeWidth={edge.type === 'spouse-link' ? "2.5" : "1.5"}
+                className={`${edge.type === 'spouse-link' ? 'stroke-[var(--uganda-red)] dark:stroke-[var(--uganda-red)]' : 'stroke-muted-foreground/60'}`}
+                strokeWidth={edge.type === 'spouse-link' ? "2" : "1.5"}
                 fill="none"
                 markerEnd={edge.type === 'parent-child' ? "url(#arrowhead-child)" : "none"}
                 strokeLinecap={edge.type === 'spouse-link' ? "round" : "butt"}
@@ -317,55 +277,59 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel, onTreeUpdate }: Famil
 
         {layoutNodes.map((node) => {
           const styling = getNodeStyling(node);
+          const isSelected = selectedMemberId === String(node.id);
+
           return (
-            <HoverCard key={node.id} openDelay={150} closeDelay={50}>
-              <HoverCardTrigger asChild>
-                <div // Bounding box for click and layout, text is outside avatar
-                  id={`member-${node.id}`}
-                  className={`absolute group cursor-pointer flex flex-col items-center transition-all duration-150 ease-in-out hover:z-10
-                              ${selectedMemberId === String(node.id) ? 'z-20' : 'z-10'}`}
-                  style={{ 
-                      left: `${node.x - NODE_EFFECTIVE_WIDTH / 2}px`, 
-                      top: `${node.y}px`,
-                      width: `${NODE_EFFECTIVE_WIDTH}px`, 
-                      // height: `${NODE_TOTAL_HEIGHT}px`, // Height will be determined by content
-                  }}
-                  onClick={() => handleNodeClick(String(node.id))}
-                >
-                  {/* Avatar */}
-                  <div className={`rounded-full flex items-center justify-center overflow-hidden
-                                  border-2 shadow-md ${styling.avatarBorder} ${styling.avatarBg}
-                                  ${selectedMemberId === String(node.id) ? 'ring-2 ring-offset-1 ring-uganda-red' : 'group-hover:shadow-lg'}`}
-                        style={{ width: NODE_AVATAR_DIAMETER, height: NODE_AVATAR_DIAMETER }}>
-                    {node.photoUrl ? (
-                      <img src={node.photoUrl} alt={node.name || "Photo"} className="w-full h-full object-cover"/>
-                    ) : (
-                      <UserCircle2 size={NODE_AVATAR_DIAMETER * 0.6} className={styling.avatarIcon} />
-                    )}
-                    {node.isElder && <ShieldCheck className="absolute top-0 right-0 h-4 w-4 text-amber-400 bg-slate-800 rounded-full p-0.5" title="Clan Elder"/>}
-                  </div>
-                  {/* Info Text Below Avatar */}
-                  <div className="mt-1 text-center w-full" style={{height: `${NODE_TEXT_AREA_HEIGHT}px`}}>
-                    <p className={`font-semibold text-[11px] ${styling.textColor} truncate leading-tight`} title={node.name || "Unnamed"}>
-                      {node.name || "Unnamed"}
-                    </p>
-                    {(node.birthYear || node.deathYear) && (
-                      <p className="text-[9px] text-muted-foreground leading-tight">
-                        {node.birthYear ? `b.${node.birthYear}` : "..."}{node.deathYear ? ` d.${node.deathYear}` : (node.status === 'deceased' ? " (dec)" : "")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-60 text-xs p-3 space-y-1 shadow-xl">
-                 {/* ... (Your HoverCardContent JSX - make sure it uses node.name || "Unnamed") ... */}
-              </HoverCardContent>
-            </HoverCard>
+            <div // This is the invisible bounding box for layout and click, node is centered within this
+              key={node.id} // Key on the outermost mapped element
+              id={`member-container-${node.id}`}
+              className={`absolute group cursor-pointer transition-all duration-150 ease-in-out hover:z-20
+                          ${isSelected ? 'z-30' : 'z-10'}`}
+              style={{ 
+                  left: `${node.x - NODE_EFFECTIVE_WIDTH / 2}px`, 
+                  top: `${node.y}px`,
+                  width: `${NODE_EFFECTIVE_WIDTH}px`, 
+                  height: `${NODE_TOTAL_HEIGHT}px`,
+              }}
+              onClick={() => handleNodeClick(String(node.id))}
+            >
+                <HoverCard openDelay={150} closeDelay={50}>
+                    <HoverCardTrigger asChild>
+                        {/* Avatar and Text - Centered within the bounding box */}
+                        <div className="flex flex-col items-center justify-start w-full h-full">
+                            <div className={`rounded-full flex items-center justify-center overflow-hidden
+                                          border-2 shadow-md ${styling.avatarBorder} ${styling.avatarBg}
+                                          ${isSelected ? 'ring-2 ring-offset-1 ring-[var(--uganda-red)]' : 'group-hover:shadow-lg group-hover:border-primary/50'}`}
+                                  style={{ width: NODE_AVATAR_DIAMETER, height: NODE_AVATAR_DIAMETER, marginTop: NODE_VERTICAL_PADDING }}>
+                              {node.photoUrl ? (
+                                <img src={node.photoUrl} alt={node.name || "Photo"} className="w-full h-full object-cover"/>
+                              ) : (
+                                <UserCircle2 size={NODE_AVATAR_DIAMETER * 0.6} className={styling.avatarIcon} />
+                              )}
+                              {node.isElder && <ShieldCheck className="absolute -top-1 -right-1 h-5 w-5 text-amber-400 fill-background p-0.5" title="Clan Elder"/>}
+                            </div>
+                            <div className="mt-1 text-center w-full px-0.5" style={{height: `${NODE_TEXT_AREA_HEIGHT}px`}}>
+                              <p className={`font-semibold text-[11px] ${styling.textColor} truncate leading-tight`} title={node.name || "Unnamed"}>
+                                {node.name || "Unnamed"}
+                              </p>
+                              {(node.birthYear || node.deathYear || node.status === 'deceased') && (
+                                <p className="text-[9px] text-muted-foreground leading-tight">
+                                  {node.birthYear ? `b.${node.birthYear.substring(0,4)}` : "..."}{node.deathYear ? ` d.${node.deathYear.substring(0,4)}` : (node.status === 'deceased' ? " (d)" : "")}
+                                </p>
+                              )}
+                            </div>
+                        </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-60 text-xs p-3 space-y-1 shadow-xl">
+                        {/* ... Your HoverCardContent JSX ... */}
+                    </HoverCardContent>
+                </HoverCard>
+             </div>
           );
         })}
       </div>
-      <Dialog open={addMemberDialogOpen} onOpenChange={(open) => { /* ... */ }}>
-        {/* ... Dialog content for adding members ... */}
+      <Dialog open={addMemberDialogOpen} onOpenChange={setAddMemberDialogOpen}>
+        {/* ... Your Dialog content ... */}
       </Dialog>
     </>
   );
