@@ -20,25 +20,20 @@ import { Button } from "@/components/ui/button";
 import { Dna, Users, FileText, Search, Eye, Save, ZoomIn, ZoomOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Helper to generate unique string IDs client-side
-const generateClientMemberId = (roleHint: string, nameHint?: string, index?: number): string => {
-  const safeRole = roleHint.toLowerCase().replace(/[^a-z0-9_]/gi, '_');
-  const safeName = (nameHint && nameHint.trim()) 
-    ? nameHint.trim().toLowerCase().replace(/[^a-z0-9_]/gi, '').substring(0,10) 
-    : 'person';
-  const randomSuffix = Date.now().toString(36).slice(-5) + Math.random().toString(36).substring(2, 7);
-  return `${safeRole}_${safeName}_${index !== undefined ? String(index) : ''}${randomSuffix}`.substring(0, 60);
+// Helper to generate unique STRING UUIDs client-side
+const generateClientMemberId = (): string => { // No longer needs roleHint or nameHint for UUID
+  return crypto.randomUUID(); // Generates a proper UUID string
 };
 
 // Client-side transformation function
 const transformTreeFormDataToMembers = (
     extendedFamily: ExtendedFamilyInputData,
     _mainPersonSurname: string 
-): { members: FamilyMember[], idMap: Record<string, string> } => {
+): { members: FamilyMember[], idMap: Record<string, string> } => { // idMap maps temp role keys to final UUIDs
     
     console.log("[transformTreeFormDataToMembers] Starting transformation for main person:", extendedFamily.familyName);
     const members: FamilyMember[] = [];
-    const idMap: Record<string, string> = {}; 
+    const idMap: Record<string, string> = {}; // e.g., idMap["mainPersonKey"] = "generated_uuid_for_main_person"
 
     const addPerson = (
         roleKey: string, 
@@ -69,13 +64,13 @@ const transformTreeFormDataToMembers = (
             console.warn(`[transform] Name missing for ${roleKey}. Using placeholder 'Unnamed ${relationshipToProband}'.`);
         }
 
-        const finalId = generateClientMemberId(roleKey, personName || roleKey, members.length);
+        const finalId = generateClientMemberId(); // Generate a UUID
         idMap[roleKey] = finalId;
 
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
 
         const member: FamilyMember = {
-            id: finalId,
+            id: finalId, // Now a UUID string
             name: personName || `Unnamed ${relationshipToProband}`, 
             relationship: relationshipToProband,
             birthYear: inputData?.birthYear || undefined,
@@ -85,9 +80,9 @@ const transformTreeFormDataToMembers = (
             isElder: isElderFlag || false,
             gender: inputData?.gender || undefined,
             side: familySide,
-            status: inputData?.deathYear ? 'deceased' : 'living', // This is for client-side FamilyMember
-            notes: memberNotes, // This is for client-side FamilyMember
-            photoUrl: undefined, // This is for client-side FamilyMember
+            status: inputData?.deathYear ? 'deceased' : 'living',
+            notes: memberNotes, 
+            photoUrl: undefined, 
         };
         members.push(member);
         console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey}, Gen: ${member.generation})`);
@@ -115,26 +110,46 @@ const transformTreeFormDataToMembers = (
     (extendedFamily.children || []).forEach((c, i) => { if (c.name?.trim() || c.birthYear) addPerson(`form_child_${i}`, c, c.gender === 'male' ? 'Son' : c.gender === 'female' ? 'Daughter' : 'Child', 1); });
     (extendedFamily.selectedElders || []).forEach((e, i) => {
         if (e.name) {
-            const elderRoleKey = `form_selectedElder_${e.id || i}`;
-            const notesContent = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes;
-            if (!members.some(m => m.name === e.name && m.isElder)) addPerson(elderRoleKey, {name: e.name, notes: notesContent} as MemberInputData, "Clan Elder", -3, true); 
+            const elderRoleKey = e.id ? `form_selectedElder_${e.id}` : `form_selectedElder_${i}`; // Prefer using elder.id if it's meant to be unique for mapping
+            const notes = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes;
+            if (!members.some(m => m.name === e.name && m.isElder)) {
+                 const elderId = addPerson(elderRoleKey, {name: e.name, notes: notes} as MemberInputData, "Clan Elder", -3, true);
+                 if (elderId && e.id && !idMap[elderRoleKey]) { // Ensure idMap uses the role key we built if addPerson was called
+                    idMap[elderRoleKey] = elderId;
+                 } else if (elderId && e.id && idMap[elder.id] && idMap[elder.id] !== elderId) {
+                    console.warn(`Possible ID collision or remapping for elder ${e.name}. Key ${elder.id} already mapped to ${idMap[elder.id]}, new ID ${elderId}`);
+                 } else if (elderId && e.id) { // If using elder.id from form as part of roleKey
+                    idMap[elder.id] = elderId; // Also map the direct elder.id if it's intended to be a reference
+                 }
+            }
         }
     });
 
     members.forEach(member => {
         const memberRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id);
         if (!memberRoleKey) return;
-        if (memberRoleKey === mainPersonKey) { if (idMap[fatherKey]) member.parentId = idMap[fatherKey]; else if (idMap[motherKey]) member.parentId = idMap[motherKey]; }
-        else if (memberRoleKey === fatherKey) { if (idMap[pgfKey]) member.parentId = idMap[pgfKey]; }
-        else if (memberRoleKey === motherKey) { if (idMap[mgfKey]) member.parentId = idMap[mgfKey]; }
-        else if (memberRoleKey === pgmKey) { if (idMap[pgfKey]) member.parentId = idMap[pgfKey]; }
-        else if (memberRoleKey === mgmKey) { if (idMap[mgfKey]) member.parentId = idMap[mgfKey]; }
-        else if (memberRoleKey.startsWith("form_sibling_")) { if (idMap[fatherKey]) member.parentId = idMap[fatherKey]; else if (idMap[motherKey]) member.parentId = idMap[motherKey]; }
-        else if (memberRoleKey.startsWith("form_child_")) { member.parentId = mainPersonId; }
+
+        if (memberRoleKey === mainPersonKey) { 
+            if (idMap[fatherKey]) member.parentId = idMap[fatherKey];
+            else if (idMap[motherKey] && !idMap[fatherKey]) member.parentId = idMap[motherKey]; 
+        } else if (memberRoleKey === fatherKey) { 
+            if (idMap[pgfKey]) member.parentId = idMap[pgfKey];
+        } else if (memberRoleKey === motherKey) { 
+            if (idMap[mgfKey]) member.parentId = idMap[mgfKey];
+        } else if (memberRoleKey === pgmKey) { 
+             if (idMap[pgfKey]) member.parentId = idMap[pgfKey]; 
+        } else if (memberRoleKey === mgmKey) { 
+             if (idMap[mgfKey]) member.parentId = idMap[mgfKey];
+        } else if (memberRoleKey.startsWith("form_sibling_")) { 
+            if (idMap[fatherKey]) member.parentId = idMap[fatherKey];
+            else if (idMap[motherKey]) member.parentId = idMap[motherKey];
+        } else if (memberRoleKey.startsWith("form_child_")) { 
+            member.parentId = mainPersonId;
+        }
     });
     
     console.log("Home.tsx: Client-side transformation complete. Final members generated:", members.length);
-    if (members.length > 0) console.log("Home.tsx: First processed member (client-side object):", JSON.stringify(members[0], null, 2));
+    if (members.length > 0) console.log("Home.tsx: First processed member for saving (client-side object with UUID):", JSON.stringify(members[0], null, 2));
     return { members, idMap };
 };
 
@@ -156,7 +171,8 @@ const Home = () => {
   const handleLogin = () => setShowAuth(true);
   const handleSignup = () => setShowAuth(true);
 
-  const createAndSaveTreeFromFormData = async (formData: TreeFormData) => {
+  // Function name from your original Home.tsx file
+  const generateFamilyTree = async (formData: TreeFormData) => {
     if (!user) { 
       toast.error("Authentication required. Please log in.");
       setShowAuth(true);
@@ -170,21 +186,21 @@ const Home = () => {
     toast.promise(
       async () => {
         try {
-          console.log("Home.tsx: Processing TreeFormData directly on client (formData snippet):", JSON.stringify(formData, null, 2).substring(0, 500) + "...");
+          console.log("Home.tsx: Processing TreeFormData directly on client (formData surname):", formData.surname);
 
           const { members } = transformTreeFormDataToMembers(formData.extendedFamily, formData.surname);
 
           if (members.length === 0 && formData.extendedFamily.familyName) {
-             console.warn("Home.tsx: Client-side transformation resulted in zero members (main person might exist if form was otherwise empty). Review form data or transformation logic.");
-             toast.warning("Tree metadata will be created, but no family members were processed from the form details. Please check your input or contact support if you entered many relatives.");
+             console.warn("Home.tsx: Client-side transformation resulted in zero members.");
+             toast.warning("Tree metadata will be created, but no family members were processed. Check form input.");
           } else if (members.length > 0) {
              console.log(`Home.tsx: Client-side transformation resulted in ${members.length} members.`);
              toast.info("Data transformed locally. Now saving to database...");
-          } else if (!formData.extendedFamily.familyName) { // Should be caught by form validation if familyName is required
+          } else if (!formData.extendedFamily.familyName) { // Should not happen if form requires it
              throw new Error("Main person's name is missing from the form.");
           }
 
-          const treeId = crypto.randomUUID();
+          const treeId = crypto.randomUUID(); // Correct: Generates UUID for the tree
           const createdAt = new Date().toISOString();
 
           const { data: savedTreeData, error: treeError } = await supabase
@@ -201,22 +217,20 @@ const Home = () => {
 
           if (members && members.length > 0) {
             const membersToInsert = members.map(member => ({
-              id: member.id, // Already a string from generateClientMemberId
+              id: member.id, // Already a UUID string from generateClientMemberId
               name: member.name, 
               relationship: member.relationship,
               birth_year: member.birthYear || null, 
               death_year: member.deathYear || null,
               generation: member.generation, 
-              parent_id: member.parentId || null, // Already a string or undefined from transform
+              parent_id: member.parentId || null, // Already a UUID string or undefined (becomes null)
               is_elder: member.isElder, 
               gender: member.gender || null, 
               side: member.side || null,
               // status: member.status, // OMITTED - 'status' column does not exist in your DB schema for family_members
-              // photo_url: member.photoUrl || null, // OMITTED - 'photo_url' column does not exist
-              // notes: member.notes || null,       // OMITTED - 'notes' column does not exist (VERIFY THIS IN YOUR DB)
-                                                  // If you DO have a 'notes' column in your 'family_members' table, uncomment the line above.
+              // notes: member.notes || null, // OMITTED - 'notes' column does not exist
               family_tree_id: savedTreeData.id, 
-              // user_id: user.id, // REMOVED - 'user_id' column does not exist in your 'family_members' table schema
+              // user_id was removed as it's not in family_members schema
             }));
 
             console.log("Home.tsx: Data being sent to 'family_members' table (first 2 objects):", JSON.stringify(membersToInsert.slice(0,2), null, 2));
@@ -271,6 +285,7 @@ const Home = () => {
     navigate('/family-trees');
   };
 
+  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
@@ -381,7 +396,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* THIS NOW CALLS THE CLIENT-SIDE FUNCTION createAndSaveTreeFromFormData */}
+                {/* Switched to call createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
