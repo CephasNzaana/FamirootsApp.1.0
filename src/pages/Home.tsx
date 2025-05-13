@@ -72,7 +72,7 @@ const transformTreeFormDataToMembers = (
         const finalId = generateClientMemberId(roleKey, personName || roleKey, members.length);
         idMap[roleKey] = finalId;
 
-        // Extract notes if present on inputData (assuming 'notes' could be a field in MemberInputData or ExtendedFamilyInputData)
+        // Extract notes if present on inputData - these will exist on the client-side FamilyMember object
         const memberNotes = (inputData as MemberInputData)?.notes || (inputData as ExtendedFamilyInputData)?.notes || undefined;
 
         const member: FamilyMember = {
@@ -87,8 +87,8 @@ const transformTreeFormDataToMembers = (
             gender: inputData?.gender || undefined,
             side: familySide,
             status: inputData?.deathYear ? 'deceased' : 'living',
-            notes: memberNotes, // Keep notes in the client-side FamilyMember object
-            photoUrl: undefined, // Keep photoUrl in client-side FamilyMember object (if it exists in your type)
+            notes: memberNotes, // Notes ARE part of the client-side FamilyMember object
+            photoUrl: undefined, // PhotoUrl is part of client-side FamilyMember (not saved to DB in this version)
         };
         members.push(member);
         console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey}, Gen: ${member.generation})`);
@@ -117,8 +117,10 @@ const transformTreeFormDataToMembers = (
     (extendedFamily.selectedElders || []).forEach((e, i) => {
         if (e.name) {
             const elderRoleKey = `form_selectedElder_${e.id || i}`;
-            const notes = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes;
-            if (!members.some(m => m.name === e.name && m.isElder)) addPerson(elderRoleKey, {name: e.name, notes: notes} as MemberInputData, "Clan Elder", -3, true); 
+            const notesContent = e.approximateEra ? `Era: ${e.approximateEra}` : (e as any).notes; // Cast to any if notes isn't on ElderReference
+            if (!members.some(m => m.name === e.name && m.isElder)) {
+                 addPerson(elderRoleKey, {name: e.name, notes: notesContent} as MemberInputData, "Clan Elder", -3, true); 
+            }
         }
     });
 
@@ -135,7 +137,7 @@ const transformTreeFormDataToMembers = (
     });
     
     console.log("Home.tsx: Client-side transformation complete. Final members generated:", members.length);
-    if (members.length > 0) console.log("Home.tsx: First processed member for saving:", JSON.stringify(members[0], null, 2));
+    if (members.length > 0) console.log("Home.tsx: First processed member for saving (client-side object):", JSON.stringify(members[0], null, 2));
     return { members, idMap };
 };
 
@@ -212,9 +214,8 @@ const Home = () => {
               gender: member.gender || null, 
               side: member.side || null,
               status: member.status, 
-              // photo_url: member.photoUrl || null, // OMITTED - ensure this column does not exist or is nullable with default in DB
-              notes: member.notes || null,        // OMITTED - ensure this column does not exist or is nullable with default in DB 
-                                                  // (Your schema did not list these for family_members)
+              // photo_url: member.photoUrl || null, // OMITTED - ensure 'photo_url' column does NOT exist or is nullable with default in DB 'family_members' table
+              // notes: member.notes || null,       // OMITTED - ensure 'notes' column does NOT exist or is nullable with default in DB 'family_members' table
               family_tree_id: savedTreeData.id, 
               user_id: user.id,
             }));
@@ -251,7 +252,7 @@ const Home = () => {
         },
         error: (err: any) => {
           setIsLoading(false);
-          console.error("Home.tsx: Toast caught error from promise:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+          console.error("Home.tsx: Toast caught error from promise:", JSON.stringify(err, Object.getOwnPropertyNames(err))); 
           let displayMessage = "Unknown error during tree creation.";
           if (err && typeof err === 'object') {
             displayMessage = err.message || "Database operation failed.";
@@ -271,11 +272,12 @@ const Home = () => {
     navigate('/family-trees');
   };
 
+  // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section - Your Exact JSX */}
+        {/* Hero Section */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -381,7 +383,7 @@ const Home = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl border border-border">
-                {/* THIS NOW CALLS THE CLIENT-SIDE FUNCTION */}
+                {/* Now calls createAndSaveTreeFromFormData */}
                 <FamilyTreeForm onSubmit={createAndSaveTreeFromFormData} isLoading={isLoading} />
               </div>
               
@@ -402,16 +404,14 @@ const Home = () => {
                     </div>
                     <div className="h-[60vh] min-h-[500px] overflow-auto p-2 bg-background relative"> 
                       <div style={{transform: `scale(${previewZoomLevel})`, transformOrigin: 'top left', width: 'fit-content', height: 'fit-content'}}>
-                        {/* Ensure familyTreeForPreview.members is checked before passing to FamilyTreeDisplay */}
                         {familyTreeForPreview.members && familyTreeForPreview.members.length > 0 ? (
                             <FamilyTreeDisplay 
                               tree={familyTreeForPreview} 
-                              zoomLevel={1} // Wrapper div is scaled by previewZoomLevel
+                              zoomLevel={1} 
                             />
                         ) : (
                             <div className="p-10 text-center text-muted-foreground flex items-center justify-center h-full">
-                                No members were processed for this tree preview.
-                                {familyTreeForPreview.members && familyTreeForPreview.members.length === 0 && " (The members list is empty)"}
+                                Tree created, but no members were processed/found.
                             </div>
                         )}
                       </div>
