@@ -32,7 +32,7 @@ const transformTreeFormDataToMembers = (
     _mainPersonSurname: string 
 ): { members: FamilyMember[], idMap: Record<string, string> } => {
     
-    console.log("[transform] Starting transformation for main person:", extendedFamily.familyName);
+    console.log("[transformTreeFormDataToMembers] Starting transformation for main person:", extendedFamily.familyName);
     const members: FamilyMember[] = [];
     const idMap: Record<string, string> = {}; // Maps conceptual roleKey to the actual generated UUID
 
@@ -159,7 +159,7 @@ const transformTreeFormDataToMembers = (
 
         // Parent Linking using DEFINED role keys
         if (memberOriginalRoleKey === mainPersonRKey) { 
-            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey]; // Using fatherRKey instead of fatherKey
+            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey]; // Accessing fatherRKey
             else if (idMap[motherRKey] && !idMap[fatherRKey]) member.parentId = idMap[motherRKey]; 
         } else if (memberOriginalRoleKey === fatherRKey) { 
             if (idMap[pgfRKey]) member.parentId = idMap[pgfRKey];
@@ -167,7 +167,7 @@ const transformTreeFormDataToMembers = (
             if (idMap[mgfRKey]) member.parentId = idMap[mgfRKey];
         } 
         else if (memberOriginalRoleKey.startsWith("form_sibling_")) { 
-            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey]; // Using fatherRKey instead of fatherKey
+            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey]; // Accessing fatherRKey
             else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
         } else if (memberOriginalRoleKey.startsWith("form_child_")) { 
             if (mainPersonGeneratedId) member.parentId = mainPersonGeneratedId;
@@ -178,8 +178,8 @@ const transformTreeFormDataToMembers = (
         // Spouse Linking (Reciprocal) using DEFINED role keys
         if (memberOriginalRoleKey === mainPersonRKey && idMap[spouseRKey]) member.spouseId = idMap[spouseRKey];
         else if (memberOriginalRoleKey === spouseRKey && mainPersonGeneratedId) member.spouseId = mainPersonGeneratedId;
-        else if (memberOriginalRoleKey === fatherRKey && idMap[motherRKey]) member.spouseId = idMap[motherRKey]; // Using fatherRKey instead of fatherKey
-        else if (memberOriginalRoleKey === motherRKey && idMap[fatherRKey]) member.spouseId = idMap[fatherRKey]; // Using motherRKey & fatherRKey
+        else if (memberOriginalRoleKey === fatherRKey && idMap[motherRKey]) member.spouseId = idMap[motherRKey]; // Accessing fatherRKey & motherRKey
+        else if (memberOriginalRoleKey === motherRKey && idMap[fatherRKey]) member.spouseId = idMap[fatherRKey]; // Accessing motherRKey & fatherRKey
         else if (memberOriginalRoleKey === pgfRKey && idMap[pgmRKey]) member.spouseId = idMap[pgmRKey];
         else if (memberOriginalRoleKey === pgmRKey && idMap[pgfRKey]) member.spouseId = idMap[pgfRKey];
         else if (memberOriginalRoleKey === mgfRKey && idMap[mgmRKey]) member.spouseId = idMap[mgmRKey];
@@ -321,7 +321,7 @@ const Home = () => {
   const handleNavigateToTrees = () => {
     navigate('/family-trees');
   };
-    
+
   // --- YOUR FULL PAGE JSX STRUCTURE (AS PROVIDED BY YOU IN PREVIOUS MESSAGE) ---
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
