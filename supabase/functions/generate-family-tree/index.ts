@@ -36,7 +36,7 @@ interface TreeFormData { surname: string; tribe: string; clan: string; extendedF
 interface FamilyMember {
   id: string; name: string; relationship: string; birthYear?: string; deathYear?: string;
   generation: number; parentId?: string; isElder: boolean; gender?: string;
-  side?: 'paternal' | 'maternal'; status: 'living' | 'deceased'; photoUrl?: string; notes?: string;
+  side?: 'paternal' | 'maternal'; status: 'living' | 'deceased'; photoUrl?: string; notes?: string; spouseId?: string;
 }
 
 const fallbackMembers: FamilyMember[] = [ /* Your fallback data */ ];
