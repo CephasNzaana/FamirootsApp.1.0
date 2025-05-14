@@ -5,17 +5,17 @@ import { toast } from "@/components/ui/sonner";
 import Header from "@/components/Header";
 import AuthForm from "@/components/AuthForm";
 import FamilyTreeForm from "@/components/FamilyTreeForm";
-import FamilyTreeMultiView from "@/components/FamilyTreeMultiView";
+import FamilyTreeMultiView from "@/components/FamilyTreeMultiView"; 
 import Footer from "@/components/Footer";
-import {
-    TreeFormData,
-    FamilyTree,
+import { 
+    TreeFormData, 
+    FamilyTree, 
     FamilyMember,
     ExtendedFamilyInputData,
     MemberInputData,
-    ElderReference,
-    ClanElder as FullClanElderType
-} from "@/types";
+    ElderReference, 
+    ClanElder as FullClanElderType 
+} from "@/types"; 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -24,101 +24,101 @@ import { useNavigate } from "react-router-dom";
 import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 
 const generateClientMemberId = (): string => {
-  return crypto.randomUUID();
+  return crypto.randomUUID(); 
 };
 
 const transformTreeFormDataToMembers = (
     extendedFamily: ExtendedFamilyInputData,
-    mainPersonSurname: string // Added for potential use, though not directly used in current logic
+    mainPersonSurname: string
 ): { members: FamilyMember[], idMap: Record<string, string> } => {
-
+    
     console.log("[Home.tsx transform] Starting transformation for main person:", extendedFamily.familyName);
     const members: FamilyMember[] = [];
-    const idMap: Record<string, string> = {}; // For main lineage roles
+    const idMap: Record<string, string> = {}; 
 
-    const mainPersonRKey = "mainPerson";
-    const fatherRKey = "father";
+    const mainPersonRKey = "mainPerson"; 
+    const fatherRKey = "father"; 
     const motherRKey = "mother";
-    const pgfRKey = "paternalGrandfather";
+    const pgfRKey = "paternalGrandfather"; 
     const pgmRKey = "paternalGrandmother";
-    const mgfRKey = "maternalGrandfather";
-    const mgmRKey = "maternalGrandmother";
+    const mgfRKey = "maternalGrandfather"; 
+    const mgmRKey = "maternalGrandmother"; 
     const spouseRKey = "spouse";
 
     const addPerson = (
         roleKey: string | null,
         inputData: Partial<Pick<FamilyMember, 'name' | 'birthYear' | 'deathYear' | 'gender' | 'notes' | 'status'>> | undefined,
-        relationshipToProband: string,
-        generation: number,
+        relationshipToProband: string, 
+        generation: number, 
         isElderFlag?: boolean,
         familySide?: 'paternal' | 'maternal',
-        existingId?: string
-    ): string | undefined => {
-
+        existingId?: string 
+    ): string | undefined => { 
+        
         let personName = inputData?.name?.trim();
 
         if (!personName && roleKey !== mainPersonRKey && !relationshipToProband.includes("Ancestor") && !relationshipToProband.includes("Progenitor")) {
-            const isTrulyOptionalAndEmpty =
+            const isTrulyOptionalAndEmpty = 
                 (roleKey?.includes("grandparent") || roleKey === spouseRKey || roleKey?.includes("sibling") || roleKey?.includes("child")) &&
                 !(inputData?.birthYear || inputData?.deathYear || inputData?.gender || inputData?.notes);
-
-            if (isTrulyOptionalAndEmpty) {
-                return undefined;
+            
+            if (isTrulyOptionalAndEmpty && roleKey !== mainPersonRKey) { // Restored check from your original
+                console.warn(`[transform] Skipping empty optional member: ${roleKey}`);
+                return undefined; 
+            }
+            // Restored original warning logic
+            if (roleKey !== mainPersonRKey) { // Avoid placeholder for main person if name is missing initially
+                 console.warn(`[transform] Name missing for ${roleKey}. Using placeholder 'Unnamed ${relationshipToProband}'.`);
             }
         }
-        // Ensure main person's name is sourced correctly if inputData for it is structured differently
-        if (!personName && roleKey === mainPersonRKey && (extendedFamily as ExtendedFamilyInputData).familyName) {
-             personName = (extendedFamily as ExtendedFamilyInputData).familyName?.trim();
+        
+        if (!personName && roleKey === mainPersonRKey && extendedFamily.familyName) {
+             personName = extendedFamily.familyName.trim();
         }
-
         if (!personName && roleKey === mainPersonRKey) {
              console.error("[transform] Main person's name (familyName) is missing but required.");
              throw new Error("Main person's name (familyName) is required in the form.");
         }
         const displayName = personName || `Unnamed ${relationshipToProband}`;
 
-        const finalId = existingId || generateClientMemberId();
-        // Only add to idMap if it's a predefined role AND we are not using an existingId (to avoid overwriting TA or Elder nodes if they share an ID with a role, though unlikely)
-        if (roleKey && !existingId && !idMap[roleKey]) {
-             idMap[roleKey] = finalId;
+        const finalId = existingId || generateClientMemberId(); 
+        if(roleKey && !existingId && !idMap[roleKey]) {
+            idMap[roleKey] = finalId;
         }
         
-        // Avoid adding duplicates if an elder (with existingId from ugandaTribesData) is processed
         if (existingId && members.find(m => m.id === finalId)) {
             console.log(`[transform] Member ${displayName} (ID: ${finalId}) using existingId already processed. Skipping re-addition.`);
             return finalId; 
         }
 
-
         const member: FamilyMember = {
             id: finalId,
-            name: displayName,
+            name: displayName, 
             relationship: relationshipToProband,
             birthYear: inputData?.birthYear || undefined,
             deathYear: inputData?.deathYear || undefined,
             generation: generation,
-            parentId: undefined,
-            spouseId: undefined,
+            parentId: undefined, 
+            spouseId: undefined, 
             isElder: isElderFlag || false,
             gender: (inputData?.gender as 'male' | 'female' | undefined) || undefined,
             side: familySide,
             status: inputData?.status || (inputData?.deathYear ? 'deceased' : 'living'),
-            notes: inputData?.notes || undefined,
-            photoUrl: undefined,
+            notes: inputData?.notes || undefined, 
+            photoUrl: undefined, 
         };
         members.push(member);
         console.log(`[transform] Added: ${member.name} (ID: ${member.id}, RoleKey: ${roleKey || 'Custom'}, Gen: ${member.generation}, Rel: ${member.relationship})`);
         return finalId;
     };
 
-    // --- 1. Create Main Person and their direct lineage ---
-    const mainPersonInputDataForAddPerson: Partial<Pick<FamilyMember, 'name' | 'birthYear' | 'gender' | 'notes' | 'status'>> = {
+    const mainPersonInputDataForAddPerson: Partial<Pick<FamilyMember, 'name' | 'birthYear' | 'deathYear' | 'gender' | 'notes' | 'status'>> = {
         name: extendedFamily.familyName,
         birthYear: extendedFamily.birthYear,
+        deathYear: extendedFamily.deathYear,
         gender: extendedFamily.gender,
         notes: extendedFamily.notes,
-        status: extendedFamily.deathYear ? 'deceased' : 'living', // Assuming deathYear means deceased
-        deathYear: extendedFamily.deathYear
+        status: extendedFamily.deathYear ? 'deceased' : 'living',
     };
     const mainPersonGeneratedId = addPerson(mainPersonRKey, mainPersonInputDataForAddPerson, "Self", 0, false);
     if (!mainPersonGeneratedId) throw new Error("Main person processing failed catastrophically.");
@@ -129,51 +129,62 @@ const transformTreeFormDataToMembers = (
     let highestMaternalAncestorGen: number = 0;
 
     // Parents
-    if (extendedFamily.parents?.father?.name) {
+    if (extendedFamily.parents?.father && (extendedFamily.parents.father.name?.trim() || extendedFamily.parents.father.birthYear)) {
         const fatherId = addPerson(fatherRKey, extendedFamily.parents.father, "Father", -1, false, "paternal");
         if (fatherId) { highestPaternalAncestorFmId = fatherId; highestPaternalAncestorGen = -1; }
     }
-    if (extendedFamily.parents?.mother?.name) {
+    if (extendedFamily.parents?.mother && (extendedFamily.parents.mother.name?.trim() || extendedFamily.parents.mother.birthYear)) {
         const motherId = addPerson(motherRKey, extendedFamily.parents.mother, "Mother", -1, false, "maternal");
         if (motherId) { highestMaternalAncestorFmId = motherId; highestMaternalAncestorGen = -1; }
     }
 
     // Grandparents
     if (idMap[fatherRKey]) {
-        if (extendedFamily.grandparents?.paternal?.grandfather?.name) {
+        if (extendedFamily.grandparents?.paternal?.grandfather && (extendedFamily.grandparents.paternal.grandfather.name?.trim() || extendedFamily.grandparents.paternal.grandfather.birthYear)) {
             const pgfId = addPerson(pgfRKey, extendedFamily.grandparents.paternal.grandfather, "Paternal Grandfather", -2, false, "paternal");
             if (pgfId) { highestPaternalAncestorFmId = pgfId; highestPaternalAncestorGen = -2;}
         }
-        if (extendedFamily.grandparents?.paternal?.grandmother?.name) {
+        if (extendedFamily.grandparents?.paternal?.grandmother && (extendedFamily.grandparents.paternal.grandmother.name?.trim() || extendedFamily.grandparents.paternal.grandmother.birthYear)) {
             addPerson(pgmRKey, extendedFamily.grandparents.paternal.grandmother, "Paternal Grandmother", -2, false, "paternal");
         }
     }
     if (idMap[motherRKey]) {
-        if (extendedFamily.grandparents?.maternal?.grandfather?.name) {
+        if (extendedFamily.grandparents?.maternal?.grandfather && (extendedFamily.grandparents.maternal.grandfather.name?.trim() || extendedFamily.grandparents.maternal.grandfather.birthYear)) {
             const mgfId = addPerson(mgfRKey, extendedFamily.grandparents.maternal.grandfather, "Maternal Grandfather", -2, false, "maternal");
             if (mgfId) { highestMaternalAncestorFmId = mgfId; highestMaternalAncestorGen = -2;}
         }
-        if (extendedFamily.grandparents?.maternal?.grandmother?.name) {
+        if (extendedFamily.grandparents?.maternal?.grandmother && (extendedFamily.grandparents.maternal.grandmother.name?.trim() || extendedFamily.grandparents.maternal.grandmother.birthYear)) {
             addPerson(mgmRKey, extendedFamily.grandparents.maternal.grandmother, "Maternal Grandmother", -2, false, "maternal");
         }
     }
     
     // Spouse, Siblings, Children
-    if (extendedFamily.spouse?.name) {
+    if (extendedFamily.spouse && (extendedFamily.spouse.name?.trim() || extendedFamily.spouse.birthYear)) {
         addPerson(spouseRKey, extendedFamily.spouse, "Spouse", 0);
     }
     (extendedFamily.siblings || []).forEach((s, i) => { 
-        if (s.name?.trim()) {
+        if (s.name?.trim() || s.birthYear) { // Check birthYear as well as per original logic
             addPerson(`form_sibling_${i}`, s, s.gender === 'male' ? 'Brother' : (s.gender === 'female' ? 'Sister' : 'Sibling'), 0, false, idMap[fatherRKey] ? "paternal" : (idMap[motherRKey] ? "maternal" : undefined) );
         }
     });
     (extendedFamily.children || []).forEach((c, i) => { 
-        if (c.name?.trim()) {
+        if (c.name?.trim() || c.birthYear) {
             addPerson(`form_child_${i}`, c, c.gender === 'male' ? 'Son' : (c.gender === 'female' ? 'Daughter' : 'Child'), 1);
         }
     });
 
-    // --- Helper to add historical lineage branch ---
+    const getFullClanElder = (elderId: string, tribeNameHint?: string, clanNameHint?: string): FullClanElderType | undefined => {
+        for (const tribe of ugandaTribesData) {
+            if (tribeNameHint && tribe.name !== tribeNameHint) continue;
+            for (const clan of tribe.clans) {
+                if (clanNameHint && clan.name !== clanNameHint) continue;
+                const found = clan.elders?.find(e => e.id === elderId);
+                if (found) return { ...found, clanName: clan.name, clanId: clan.id };
+            }
+        }
+        return undefined;
+    };
+    
     const addHistoricalLineageBranch = (
         lineageElderRef: ElderReference | undefined,
         lineageElderTribeName: string | undefined,
@@ -184,19 +195,7 @@ const transformTreeFormDataToMembers = (
     ) => {
         if (!lineageElderRef?.id) return;
 
-        const getFullClanElder = (elderId: string): FullClanElderType | undefined => {
-            for (const tribe of ugandaTribesData) {
-                if (lineageElderTribeName && tribe.name !== lineageElderTribeName) continue;
-                for (const clan of tribe.clans) {
-                    if (lineageElderClanName && clan.name !== lineageElderClanName) continue;
-                    const found = clan.elders?.find(e => e.id === elderId);
-                    if (found) return { ...found, clanName: clan.name, clanId: clan.id }; // Add clan context
-                }
-            }
-            return undefined;
-        };
-
-        const primaryLineageElder = getFullClanElder(lineageElderRef.id);
+        const primaryLineageElder = getFullClanElder(lineageElderRef.id, lineageElderTribeName, lineageElderClanName);
         if (!primaryLineageElder) {
             console.warn(`[transform] Full details for lineage elder ID ${lineageElderRef.id} not found. Adding simple reference.`);
             const simpleElderFmId = addPerson(null, { name: lineageElderRef.name, notes: `Era: ${lineageElderRef.approximateEra}. Clan lineage connection point.` }, "Clan Ancestor", attachmentPointGen - 1, true, lineageSide, lineageElderRef.id);
@@ -209,23 +208,25 @@ const transformTreeFormDataToMembers = (
 
         const historicalChain: FullClanElderType[] = [];
         let currentElderToTrace: FullClanElderType | undefined = primaryLineageElder;
-        const taProcessedFmIds: Record<string, string> = {}; // TA_original_id -> TA_FamilyMember_id
+        const taProcessedFmIds: Record<string, string> = {};
 
-        for (let i = 0; i < 3 && currentElderToTrace; i++) { // Trace up to 2 ancestors + TA
+        for (let i = 0; i < 3 && currentElderToTrace; i++) {
             historicalChain.unshift(currentElderToTrace); 
             if (currentElderToTrace.parentId) {
                 if (currentElderToTrace.parentId.startsWith("TA_")) {
                     const taId = currentElderToTrace.parentId;
-                    // Add TA node if not already added (use addPerson to handle duplicates via existingId)
-                    const tribeForTAName = ugandaTribesData.find(t => t.id === taId.substring(3))?.name || lineageElderTribeName || currentElderToTrace.clanName?.split(' ')[0] || "Unknown";
-                    const taName = `Progenitor of ${tribeForTAName}`;
-                    const taFmId = addPerson(null, { name: taName }, "Tribal Progenitor", attachmentPointGen - historicalChain.length -1 , true, undefined, taId);
-                    if (taFmId) taProcessedFmIds[taId] = taFmId;
-                    
-                    // Add TA stub to ensure it's the ultimate parent in this chain if not already first
-                    if (!historicalChain.find(e => e.id === taId)) {
+                    if (!taProcessedFmIds[taId] && !members.find(m => m.id === taId)) { 
+                        let tribeForTAName = ugandaTribesData.find(t => t.id === taId.substring(3))?.name || lineageElderTribeName || currentElderToTrace.clanName?.split(' ')[0] || "Unknown";
+                        const taName = `Progenitor of ${tribeForTAName}`;
+                        const taFmId = addPerson(null, { name: taName }, "Tribal Progenitor", attachmentPointGen - historicalChain.length -1 , true, undefined, taId);
+                        if (taFmId) taProcessedFmIds[taId] = taFmId;
+                    } else if (taProcessedFmIds[taId] === undefined && members.find(m => m.id === taId)){
+                        taProcessedFmIds[taId] = taId; // TA node already added with its original ID
+                    }
+                    if (!historicalChain.find(e => e.id === taId)) { // Add TA stub if it's the ultimate ancestor
+                        const taNameFromMap = members.find(m=> m.id === taProcessedFmIds[taId] || m.id === taId)?.name || "Tribal Progenitor";
                         historicalChain.unshift({
-                            id: taId, name: taName, approximateEra: "Ancient", verificationScore: 0, gender: 'male', parentId: undefined, familyUnits:[], clanName: "Tribal"
+                            id: taId, name: taNameFromMap, approximateEra: "Ancient", verificationScore: 0, gender: 'male', parentId: undefined, familyUnits:[], clanName: "Tribal Ancestry"
                         } as FullClanElderType);
                     }
                     currentElderToTrace = undefined; 
@@ -239,22 +240,24 @@ const transformTreeFormDataToMembers = (
         
         let previousHistoricalFmIdInChain: string | undefined = undefined;
         
+        if (historicalChain.length > 0 && historicalChain[0].id.startsWith("TA_")) {
+            const taStub = historicalChain.shift()!; 
+            previousHistoricalFmIdInChain = taProcessedFmIds[taStub.id] || (members.find(m=>m.id === taStub.id) ? taStub.id : undefined); 
+            if (!previousHistoricalFmIdInChain) {
+                 let tribeForTAName = ugandaTribesData.find(t => t.id === taStub.id.substring(3))?.name || lineageElderTribeName || taStub.clanName?.split(' ')[0] || "Unknown";
+                 const taName = `Progenitor of ${tribeForTAName}`;
+                 const taFmId = addPerson(null, { name: taName }, "Tribal Progenitor", attachmentPointGen - historicalChain.length -1, true, undefined, taStub.id);
+                 if (taFmId) {
+                    taProcessedFmIds[taStub.id] = taFmId;
+                    previousHistoricalFmIdInChain = taFmId;
+                 }
+            }
+        }
+
         for (let i = 0; i < historicalChain.length; i++) {
             const elder = historicalChain[i];
-            const isTA = elder.id.startsWith("TA_");
-            // If TA, its ID is already its fmID due to existingId in addPerson
-            if (isTA) {
-                previousHistoricalFmIdInChain = elder.id; 
-                // Ensure TA node actually exists in members array
-                if (!members.find(m => m.id === elder.id)) {
-                     const tribeForTAName = ugandaTribesData.find(t => t.id === elder.id.substring(3))?.name || lineageElderTribeName || elder.clanName?.split(' ')[0] || "Unknown";
-                     const taName = `Progenitor of ${tribeForTAName}`;
-                     addPerson(null, { name: taName }, "Tribal Progenitor", attachmentPointGen - historicalChain.length + i, true, undefined, elder.id);
-                }
-                continue; 
-            }
-
             const gen = attachmentPointGen - (historicalChain.length - 1 - i);
+            
             const fmId = addPerson(
                 null,
                 { name: elder.name, birthYear: elder.birthYear?.toString(), deathYear: elder.deathYear?.toString(), gender: elder.gender, notes: elder.significance || elder.notes },
@@ -267,7 +270,7 @@ const transformTreeFormDataToMembers = (
                     if (previousHistoricalFmIdInChain && memberInArray.id !== previousHistoricalFmIdInChain) {
                         memberInArray.parentId = previousHistoricalFmIdInChain;
                     } else if (elder.parentId && elder.parentId.startsWith("TA_")) { 
-                         memberInArray.parentId = elder.parentId; // Link to TA's original ID
+                         memberInArray.parentId = taProcessedFmIds[elder.parentId] || elder.parentId; 
                     }
                 }
                 previousHistoricalFmIdInChain = fmId;
@@ -278,7 +281,7 @@ const transformTreeFormDataToMembers = (
 
         if (previousHistoricalFmIdInChain && attachmentPointFmId) { 
             const attachmentMember = members.find(m => m.id === attachmentPointFmId);
-            const historicalMember = members.find(m => m.id === previousHistoricalFmIdInChain); // This is the PLE's FM ID
+            const historicalMember = members.find(m => m.id === previousHistoricalFmIdInChain);
             if (attachmentMember && historicalMember && attachmentMember.id !== previousHistoricalFmIdInChain) {
                 attachmentMember.parentId = previousHistoricalFmIdInChain;
                 console.log(`[transform] Linked ${attachmentMember.name} (gen ${attachmentMember.generation}) to historical elder ${historicalMember.name} (ID: ${previousHistoricalFmIdInChain}, gen ${historicalMember.generation})`);
@@ -287,7 +290,6 @@ const transformTreeFormDataToMembers = (
     };
 
     if (extendedFamily.paternalLineageElderRef?.id && highestPaternalAncestorFmId) {
-        console.log("[transform] Processing Paternal Lineage Elder:", extendedFamily.paternalLineageElderRef.name);
         addHistoricalLineageBranch(
             extendedFamily.paternalLineageElderRef,
             extendedFamily.paternalLineageElderTribe,
@@ -299,9 +301,8 @@ const transformTreeFormDataToMembers = (
     }
 
     if (extendedFamily.maternalLineageElderRef?.id && highestMaternalAncestorFmId) {
-        const matAttachId = idMap[motherRKey] ? highestMaternalAncestorFmId : mainPersonGeneratedId; 
-        const matAttachGen = idMap[motherRKey] ? highestMaternalAncestorGen : 0;
-        console.log("[transform] Processing Maternal Lineage Elder:", extendedFamily.maternalLineageElderRef.name);
+        const matAttachId = idMap[motherRKey] && highestMaternalAncestorFmId === idMap[motherRKey] ? highestMaternalAncestorFmId : (idMap[mgfRKey] ? idMap[mgfRKey] : (idMap[motherRKey] || mainPersonGeneratedId)); 
+        const matAttachGen = idMap[motherRKey] && highestMaternalAncestorFmId === idMap[motherRKey] ? highestMaternalAncestorGen : (idMap[mgfRKey] ? -2 : (idMap[motherRKey] ? -1 : 0));
         addHistoricalLineageBranch(
             extendedFamily.maternalLineageElderRef,
             extendedFamily.maternalLineageElderTribe,
@@ -312,30 +313,35 @@ const transformTreeFormDataToMembers = (
         );
     }
     
-    // --- Final Linking Pass for main lineage (Parents, Spouses) ---
+    // Final linking pass for main lineage (Parents, Spouses)
     members.forEach(member => {
         if (member.relationship && (member.relationship.includes("Clan Ancestor") || member.relationship.includes("Tribal Progenitor"))) {
             return; 
         }
         const memberOriginalRoleKey = Object.keys(idMap).find(key => idMap[key] === member.id);
         
-        if (member.id === mainPersonGeneratedId) { 
-            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
-            else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
-        } 
-        else if (member.id === idMap[fatherRKey]) { 
-            if (idMap[pgfRKey]) member.parentId = idMap[pgfRKey];
-        } else if (member.id === idMap[motherRKey]) { 
-            if (idMap[mgfRKey]) member.parentId = idMap[mgfRKey];
-        } 
-        else if (memberOriginalRoleKey?.startsWith("form_sibling_")) { 
-            if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
-            else if (idMap[motherRKey] && !idMap[fatherRKey]) member.parentId = idMap[motherRKey];
-        } 
-        else if (memberOriginalRoleKey?.startsWith("form_child_")) { 
-            if (mainPersonGeneratedId) member.parentId = mainPersonGeneratedId;
+        // Parent linking based on idMap (for direct family)
+        // This ensures that if historical elders were inserted as parents, these explicit links take precedence.
+        if (!member.parentId) { // Only set if not already set by historical lineage logic
+            if (member.id === mainPersonGeneratedId) { 
+                if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
+                else if (idMap[motherRKey]) member.parentId = idMap[motherRKey];
+            } 
+            else if (member.id === idMap[fatherRKey] && idMap[pgfRKey]) { 
+                member.parentId = idMap[pgfRKey];
+            } else if (member.id === idMap[motherRKey] && idMap[mgfRKey]) { 
+                member.parentId = idMap[mgfRKey];
+            } 
+            else if (memberOriginalRoleKey?.startsWith("form_sibling_")) { 
+                if (idMap[fatherRKey]) member.parentId = idMap[fatherRKey];
+                else if (idMap[motherRKey] && !idMap[fatherRKey]) member.parentId = idMap[motherRKey];
+            } 
+            else if (memberOriginalRoleKey?.startsWith("form_child_")) { 
+                if (mainPersonGeneratedId) member.parentId = mainPersonGeneratedId;
+            }
         }
 
+        // Spouse Linking for main lineage
         if (memberOriginalRoleKey) {
             if (member.id === mainPersonGeneratedId && idMap[spouseRKey]) member.spouseId = idMap[spouseRKey];
             else if (member.id === idMap[spouseRKey] && mainPersonGeneratedId) member.spouseId = mainPersonGeneratedId;
@@ -424,8 +430,8 @@ const Home = () => {
               gender: member.gender || null, 
               side: member.side || null,
               status: member.status || (member.deathYear ? 'deceased' : 'living'),
-              // notes: member.notes || null, // <<<< REMINDER: Add 'notes' column to your Supabase 'family_members' table
-              // photo_url: member.photoUrl || null, // <<<< REMINDER: Add 'photo_url' column if you plan to use it
+              // notes: member.notes || null, 
+              // photo_url: member.photoUrl || null, 
               family_tree_id: savedTreeData.id, 
             }));
             
@@ -497,7 +503,6 @@ const Home = () => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Header onLogin={handleLogin} onSignup={handleSignup} />
       <main className="flex-grow">
-        {/* Hero Section */}
         <section className="py-16 px-4 bg-gradient-to-br from-uganda-black via-uganda-black to-uganda-red/90 text-white">
           <div className="container mx-auto max-w-7xl">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
