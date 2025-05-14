@@ -26,45 +26,64 @@ export interface FamilyTree {
   members: FamilyMember[];
 }
 
-export interface TreeFormData {
-  surname: string;
-  tribe: string;
-  clan: string;
-  extendedFamily: {
-    familyName?: string;
-    gender?: string; // Input type from form
-    birthYear?: string;
-    birthPlace?: string;
-    notes?: string; // <<<< ADDED for main person's notes
-    siblings?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>; // Added notes consistency
-    spouse?: {name: string; birthYear?: string; gender?: string; notes?: string}; // Added gender & notes consistency
-    selectedElders?: ElderReference[];
-    parents?: {
-      father?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
-      mother?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
-    };
-    grandparents?: {
-      paternal?: {
-        grandfather?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
-        grandmother?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
-      };
-      maternal?: {
-        grandfather?: {name: string; birthYear: string; deathYear?: string; notes?: string}; // Added notes
-        grandmother?: {name: string; birthYear: string; deathYear?: string; notes?: string}; // Added notes
-      };
-    };
-    children?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>; // Added notes consistency
-    paternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>; // <<<< ADDED
-    maternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>; // <<<< ADDED
-  };
-}
-
-export interface ElderReference {
+export interface ElderReference { // This type is for storing a reference to a selected elder
   id: string;
   name: string;
   approximateEra: string;
-  familyUnits: string[];
+  familyUnits: string[]; // Kept as per your original type
+  // You might add clanId and tribeId here if it simplifies data passing
 }
+
+export interface TreeFormData {
+  surname: string;
+  tribe: string; // Main tribe affiliation of the family/user
+  clan: string;  // Main clan affiliation of the family/user
+  extendedFamily: {
+    familyName?: string; // Main person's name
+    gender?: string;     // Main person's gender (form input type)
+    birthYear?: string;
+    birthPlace?: string;
+    notes?: string; 
+    
+    siblings?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>;
+    spouse?: {name: string; birthYear?: string; gender?: string; notes?: string};
+    children?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>;
+    
+    parents?: {
+      father?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+      mother?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+    };
+    grandparents?: {
+      paternal?: {
+        grandfather?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+        grandmother?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+      };
+      maternal?: {
+        grandfather?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+        grandmother?: {name: string; birthYear?: string; deathYear?: string; notes?: string};
+      };
+    };
+
+    // --- Updated Elder Lineage Connection ---
+    // Paternal Lineage Elder Connection (Optional)
+    paternalLineageElderTribe?: string;
+    paternalLineageElderClan?: string;
+    paternalLineageElderRef?: ElderReference; // Stores the selected paternal elder
+
+    // Maternal Lineage Elder Connection (Optional)
+    maternalLineageElderTribe?: string;
+    maternalLineageElderClan?: string;
+    maternalLineageElderRef?: ElderReference; // Stores the selected maternal elder
+    
+    // Optional: General notable elders (if still needed, separate from direct lineage)
+    // associatedNotableElders?: ElderReference[]; 
+
+    // Aunts/Uncles
+    paternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>;
+    maternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>;
+  };
+}
+
 
 export interface User {
   id: string;
@@ -104,12 +123,11 @@ export interface DNATestResult {
   ethnicityBreakdown?: Record<string, number>;
 }
 
-// --- New Interface for Tribal Ancestor Information ---
 export interface TribalAncestorInfo {
-  id: string; // e.g., "TA_baganda", this ID will be used in ClanElder.parentId
-  name: string; // e.g., "Kintu, The Progenitor of Baganda"
-  approximateEra: string; // e.g., "Ancient Past", "Mythological Era"
-  description?: string; // A brief description or story
+  id: string; 
+  name: string; 
+  approximateEra: string; 
+  description?: string; 
   notes?: string;
 }
 
@@ -127,11 +145,11 @@ export interface Tribe {
 export interface Clan {
   id: string;
   name: string;
-  tribeId: string;
-  tribeName?: string;
+  tribeId: string; // Link back to Tribe
+  tribeName?: string; // Denormalized for convenience
   totem?: string;
   description?: string;
-  elders?: ClanElder[];
+  elders?: ClanElder[]; // Uses the full ClanElder type
   origin?: string;
   families?: number;
   traditions?: Tradition[];
@@ -139,23 +157,23 @@ export interface Clan {
   historicalNotes?: string[];
 }
 
-export interface ClanElder {
+export interface ClanElder { // This is the full elder data structure from ugandaTribesData
   id: string;
   name: string;
-  clanId?: string;
-  clanName?: string;
+  clanId?: string; // The ID of the clan this elder belongs to
+  clanName?: string; // The name of the clan this elder belongs to
   approximateEra: string;
-  birthYear?: string;
-  deathYear?: string;
+  birthYear?: string; // Kept as string, consistent with FamilyMember
+  deathYear?: string; // Kept as string
   significance?: string;
   verificationScore: number;
   familyUnits: string[];
   familyConnections?: string[];
-  era?: string;
+  era?: string; // Can be same as approximateEra or more specific
   notes?: string;
   gender?: 'male' | 'female';
-  parentId?: string; // Can be ID of another ClanElder or a TribalAncestorInfo.id
-  spouseIds?: string[]; // Business rule: IDs should point to elders of a different gender.
+  parentId?: string; 
+  spouseIds?: string[]; 
 }
 
 export interface Tradition {
