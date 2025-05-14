@@ -1,3 +1,5 @@
+// src/types.ts
+
 export interface FamilyMember {
   id: string;
   name: string;
@@ -6,8 +8,9 @@ export interface FamilyMember {
   deathYear?: string;
   generation: number;
   parentId?: string;
+  spouseId?: string; // Business rule: if populated, represents a spouse of a different gender.
   isElder: boolean;
-  gender?: string;
+  gender?: 'male' | 'female'; // Updated: Only 'male' or 'female'
   side?: 'maternal' | 'paternal';
   status: 'living' | 'deceased';
   photoUrl?: string;
@@ -29,15 +32,15 @@ export interface TreeFormData {
   clan: string;
   extendedFamily: {
     familyName?: string;
-    gender?: string;
+    gender?: string; // Input type can remain string, validation/transformation handles conversion
     birthYear?: string;
     birthPlace?: string;
     siblings?: Array<{name: string; gender: string; birthYear: string}>;
-    spouse?: {name: string; birthYear: string};
+    spouse?: {name: string; birthYear: string}; // Gender might be inferred or added here for validation
     selectedElders?: ElderReference[];
     parents?: {
-      father?: {name: string; birthYear: string; deathYear?: string};
-      mother?: {name: string; birthYear: string; deathYear?: string};
+      father?: {name: string; birthYear: string; deathYear?: string}; // Gender is implicit
+      mother?: {name: string; birthYear: string; deathYear?: string}; // Gender is implicit
     };
     grandparents?: {
       paternal?: {
@@ -137,6 +140,11 @@ export interface ClanElder {
   familyConnections?: string[];
   era?: string;
   notes?: string;
+
+  // Updated fields for elder-to-elder relationships:
+  gender?: 'male' | 'female'; // Updated: Only 'male' or 'female'
+  parentId?: string;
+  spouseIds?: string[]; // Business rule: IDs should point to elders of a different gender.
 }
 
 export interface Tradition {
