@@ -1,14 +1,14 @@
 // src/components/FamilyTreeDisplay.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { FamilyTree, FamilyMember } from "@/types";
-import { Button } from "@/components/ui/button"; // Keep for potential future use in dialogs
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"; // Keep for AddMemberDialog
-import { User, Calendar, Heart, UserCircle2, UserPlus, ShieldCheck } from "lucide-react"; // Link2 removed
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { User, Calendar, Heart, UserCircle2, UserPlus, ShieldCheck } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Badge } from "@/components/ui/badge"; // Keep for potential future use in dialogs
-import { Input } from "@/components/ui/input"; // Keep for AddMemberDialog
-import { Textarea } from "@/components/ui/textarea"; // Keep for AddMemberDialog
-import { toast } from "@/components/ui/sonner"; // Keep for AddMemberDialog
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/sonner";
 
 // Layout Constants
 const NODE_AVATAR_DIAMETER = 56;
@@ -17,22 +17,21 @@ const NODE_VERTICAL_PADDING = 5;
 const NODE_TOTAL_HEIGHT = NODE_AVATAR_DIAMETER + NODE_TEXT_AREA_HEIGHT + (NODE_VERTICAL_PADDING * 2); 
 const NODE_EFFECTIVE_WIDTH = NODE_AVATAR_DIAMETER + 50; 
 const HORIZONTAL_SPACING_SIBLINGS = 20; 
-const HORIZONTAL_SPACING_COUPLE_SYMBOL = 24; // Used as gap between spouse avatars for symbol
+const HORIZONTAL_SPACING_COUPLE_SYMBOL = 24; 
 const VERTICAL_SPACING_GENERATIONS = 70;
-const COUPLE_SYMBOL_Y_OFFSET = NODE_AVATAR_DIAMETER / 2; // Vertically center symbol with avatars
+const COUPLE_SYMBOL_Y_OFFSET = NODE_AVATAR_DIAMETER / 2; 
 const CHILD_LINE_JUNCTION_Y_OFFSET = 15; 
 
 interface TreeNode extends FamilyMember {
   x: number; 
   y: number; 
-  childrenIds?: string[]; // Added for clarity, populated if node is a parent
+  childrenIds?: string[];
 }
 
 interface Edge {
   id: string;
-  path?: string; // Optional for non-path elements like rings
+  path?: string; 
   type: 'parent-child' | 'spouse-rings';
-  // For spouse-rings, include coordinates needed for drawing
   nodeX?: number;
   spouseX?: number;
   symbolY?: number;
@@ -44,16 +43,15 @@ interface FamilyTreeDisplayProps {
   onTreeUpdate: (updatedTree: FamilyTree) => void;
 }
 
-const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onTreeUpdate }: FamilyTreeDisplayProps) => {
-  const [tree, setTree] = useState<FamilyTree>(initialTree);
+const FamilyTreeDisplay = ({ tree: initialTreeData, zoomLevel: parentPassedZoom, onTreeUpdate }: FamilyTreeDisplayProps) => {
+  const [tree, setTree] = useState<FamilyTree>(initialTreeData);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [addingRelationshipInfo, setAddingRelationshipInfo] = useState<{ targetMemberId: string | null, relationshipType: string } | null>(null);
   
-  // Ensure initialTree updates are reflected
   useEffect(() => {
-    setTree(initialTree);
-  }, [initialTree]);
+    setTree(initialTreeData);
+  }, [initialTreeData]);
 
   const { nodes: layoutNodes, edges: layoutEdges, width: layoutWidth, height: layoutHeight } = useMemo(() => {
     if (!tree || !tree.members) return { nodes: [], edges: [], width: 600, height: 400 };
@@ -62,7 +60,7 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
     tree.members.forEach(member => { membersById[String(member.id)] = member; });
 
     const getNumericGenerationSafe = (gen: string | number | undefined): number => {
-      if (gen === undefined || gen === null) return 0; // Default generation if undefined
+      if (gen === undefined || gen === null) return 0;
       const num = Number(gen);
       return isNaN(num) ? 0 : num;
     };
@@ -102,11 +100,9 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
             if (levelProcessedThisPass[memberData.id]) continue;
 
             let nodeX = currentXInLevel;
-            // Parent-based X positioning (same logic as before - this is a placeholder in your provided code)
             const parentNodeFromPositioned = memberData.parentId ? positionedNodes.find(n => n.id === memberData.parentId) : null;
             if(parentNodeFromPositioned) { /* ... (same parent-based X centering) ... */ }
             nodeX = Math.max(nodeX, currentXInLevel);
-
 
             const node: TreeNode = { 
                 ...memberData, 
@@ -116,19 +112,11 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
             };
 
             let isCouple = false;
-            // Check for spouse for this node
             if (node.spouseId && !levelProcessedThisPass[node.spouseId]) {
                 const spouseData = membersById[node.spouseId];
                 if (spouseData && spouseData.generation === node.generation) {
                     isCouple = true;
-                    const spouseIndexInLevel = levelNodesUnplaced.findIndex(n => n.id === spouseData.id);
-                    if (spouseIndexInLevel !== -1) {
-                         // Mark as processed to avoid adding spouse as a separate individual later in this loop
-                        levelProcessedThisPass[spouseData.id] = true; 
-                        // Remove from unplaced if it exists there, to avoid double processing.
-                        // Note: Splicing here might affect loop indices if not careful. 
-                        // Better to rely on `levelProcessedThisPass` check.
-                    }
+                    levelProcessedThisPass[spouseData.id] = true; 
                     
                     const spouseXPos = nodeX + NODE_AVATAR_DIAMETER / 2 + HORIZONTAL_SPACING_COUPLE_SYMBOL + NODE_AVATAR_DIAMETER / 2;
                     const spouseNode: TreeNode = {
@@ -144,10 +132,9 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
                     nodePositions.set(spouseNode.id, { x: spouseNode.x, y: yPos, unitWidth: NODE_EFFECTIVE_WIDTH, isCoupleUnit: true, spouseX: node.x });
                     
                     levelProcessedThisPass[node.id] = true;
-                    // spouseData.id already marked above
                     currentXInLevel = spouseNode.x + NODE_EFFECTIVE_WIDTH/2 + HORIZONTAL_SPACING_SIBLINGS;
                 } else { 
-                    node.spouseId = undefined; // Spouse not found or different gen, treat as single for layout
+                    node.spouseId = undefined; 
                 }
             }
             
@@ -161,9 +148,6 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
         }
     });
     
-    // --- X-Overlap Reduction Pass (Simplified) ---
-    // Basic overlap check: If a node overlaps significantly with its left neighbor in the same generation, push it right.
-    // This is a very basic implementation and might need refinement for complex trees.
     generationLevels.forEach(gen => {
         const nodesInGen = positionedNodes.filter(n => n.generation === gen).sort((a,b) => a.x - b.x);
         for (let i = 1; i < nodesInGen.length; i++) {
@@ -174,7 +158,6 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
             if (currentSpace < requiredSpace) {
                 const shift = requiredSpace - currentSpace;
                 currNode.x += shift;
-                // Propagate shift to subsequent nodes in the same generation
                 for (let j = i + 1; j < nodesInGen.length; j++) {
                     nodesInGen[j].x += shift;
                 }
@@ -183,20 +166,16 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
         }
     });
 
-
-    // Create Edges
     positionedNodes.forEach(node => {
         const nodeCenterAvatarX = node.x;
         const nodeAvatarTopY = node.y + NODE_VERTICAL_PADDING;
-        const nodeAvatarBottomY = node.y + NODE_VERTICAL_PADDING + NODE_AVATAR_DIAMETER;
         
-        // Parent-child edges
         if (node.parentId && nodePositions.has(node.parentId)) {
-            const parentNode = positionedNodes.find(p => p.id === node.parentId)!; // Safe due to .has check
+            const parentNode = positionedNodes.find(p => p.id === node.parentId)!; 
             const parentLayoutInfo = nodePositions.get(parentNode.id)!;
             
             let coupleUnitCenterX = parentLayoutInfo.x; 
-            let parentLineStartY = parentNode.y + NODE_TOTAL_HEIGHT - NODE_VERTICAL_PADDING; // Default start from bottom of parent text area
+            let parentLineStartY = parentNode.y + NODE_TOTAL_HEIGHT - NODE_VERTICAL_PADDING;
 
             if (parentNode.spouseId && nodePositions.has(parentNode.spouseId)) {
                 const spouseNode = positionedNodes.find(s => s.id === parentNode.spouseId)!;
@@ -217,10 +196,8 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
             });
         }
 
-        // Spouse rings (replaces simple line or external icon)
         if (node.spouseId && nodePositions.has(node.spouseId)) {
             const spouseNode = positionedNodes.find(s => s.id === node.spouseId)!;
-            // Draw once per couple (e.g., from the node with the smaller ID or X position)
             if (String(node.id) < String(spouseNode.id)) { 
                 const symbolY = node.y + NODE_VERTICAL_PADDING + COUPLE_SYMBOL_Y_OFFSET;
                 edges.push({
@@ -229,17 +206,15 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
                     nodeX: node.x,
                     spouseX: spouseNode.x,
                     symbolY: symbolY,
-                    // path is not used for rings, actual drawing handled by type
                 });
             }
         }
     });
     return { nodes: positionedNodes, edges, width: Math.max(overallMaxX, 600), height: Math.max(overallMaxY, 400) };
-  }, [tree, membersById, membersByGeneration, generationLevels, nodePositions, positionedNodes, overallMaxX, overallMaxY]); // Dependencies refined
+  }, [tree]); // <<<< ------ CORRECTED DEPENDENCY ARRAY HERE ------
 
   const handleNodeClick = (memberId: string) => {
     setSelectedMemberId(prevId => (prevId === memberId ? null : memberId));
-    // Potentially open a detail view or edit form here
     console.log("Clicked member:", memberId);
   };
   
@@ -249,11 +224,6 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
   };
 
   const onSubmitNewMember = (newMemberData: Partial<FamilyMember>) => {
-    // This is a simplified version. You'll need to:
-    // 1. Generate a new ID for the member.
-    // 2. Determine parentId, spouseId based on addingRelationshipInfo.
-    // 3. Update the tree state.
-    // 4. Call onTreeUpdate to notify parent.
     toast.success(`Member "${newMemberData.name}" addition logic pending.`);
     console.log("New member data:", newMemberData, "Relationship context:", addingRelationshipInfo);
     setAddMemberDialogOpen(false);
@@ -305,8 +275,8 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
           width: `${layoutWidth}px`, height: `${layoutHeight}px`,
           backgroundImage: 'radial-gradient(rgba(0,0,0,0.05) 0.5px, transparent 0.5px)', 
           backgroundSize: '15px 15px',
-          transform: parentPassedZoom ? `scale(${parentPassedZoom})` : 'none', // Example zoom application
-          transformOrigin: 'top left', // Example zoom origin
+          // transform: parentPassedZoom ? `scale(${parentPassedZoom})` : 'none', // Zoom is handled by parent (FamilyTreeMultiView)
+          // transformOrigin: 'top left',
         }}
       >
         <svg width={layoutWidth} height={layoutHeight} className="absolute top-0 left-0" style={{ pointerEvents: 'none' }}>
@@ -330,7 +300,7 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
               } else if (edge.type === 'spouse-rings' && typeof edge.nodeX === 'number' && typeof edge.spouseX === 'number' && typeof edge.symbolY === 'number') {
                 const ringRadius = 7; 
                 const ringStrokeWidth = 1.5;
-                const overlapFactor = 0.6; // How much the rings overlap (0.6 means 60% of radius offset)
+                const overlapFactor = 0.6; 
 
                 const midPointX = (edge.nodeX + edge.spouseX) / 2;
                 
@@ -413,7 +383,6 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
                         {node.notes && <p className="text-muted-foreground pt-1 border-t border-border mt-1"><span className="font-medium text-foreground">Notes:</span> {node.notes}</p>}
                         {node.isElder && <Badge variant="outline" className="mt-1 border-yellow-500 text-yellow-600 dark:border-yellow-600 dark:text-yellow-400">Clan Elder</Badge>}
                         
-                        {/* Action buttons in HoverCard - placeholder actions */}
                         <div className="pt-2 mt-2 border-t border-border space-x-2">
                             <Button variant="outline" size="xs" onClick={() => console.log("Edit", node.id)}>Edit</Button>
                             <Button variant="outline" size="xs" onClick={() => handleAddMemberClick(String(node.id), 'child')}>
@@ -432,18 +401,16 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
             <DialogHeader>
                 <DialogTitle className="text-foreground">Add New Family Member</DialogTitle>
             </DialogHeader>
-            {/* Simplified form for adding a member. Needs state and handlers. */}
             <div className="grid gap-4 py-4">
                 <p className="text-sm text-muted-foreground">
                     Adding a new member related to {addingRelationshipInfo?.targetMemberId ? `member ${tree.members.find(m=>m.id === addingRelationshipInfo.targetMemberId)?.name}` : 'the family'} as a {addingRelationshipInfo?.relationshipType}.
                 </p>
                 <Input placeholder="Name" className="text-foreground border-border placeholder:text-muted-foreground"/>
                 <Input type="number" placeholder="Birth Year (YYYY)" className="text-foreground border-border placeholder:text-muted-foreground"/>
-                {/* Add more fields as needed: gender, death year, notes, etc. */}
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setAddMemberDialogOpen(false)}>Cancel</Button>
-                <Button onClick={() => onSubmitNewMember({ name: "Dummy" /* Get from form state */})}>Save Member</Button>
+                <Button onClick={() => onSubmitNewMember({ name: "Dummy" })}>Save Member</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -451,4 +418,3 @@ const FamilyTreeDisplay = ({ tree: initialTree, zoomLevel: parentPassedZoom, onT
   );
 };
 export default FamilyTreeDisplay;
-
