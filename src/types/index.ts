@@ -10,7 +10,7 @@ export interface FamilyMember {
   parentId?: string;
   spouseId?: string; // Business rule: if populated, represents a spouse of a different gender.
   isElder: boolean;
-  gender?: 'male' | 'female'; // Updated: Only 'male' or 'female'
+  gender?: 'male' | 'female';
   side?: 'maternal' | 'paternal';
   status: 'living' | 'deceased';
   photoUrl?: string;
@@ -32,15 +32,15 @@ export interface TreeFormData {
   clan: string;
   extendedFamily: {
     familyName?: string;
-    gender?: string; // Input type can remain string, validation/transformation handles conversion
+    gender?: string;
     birthYear?: string;
     birthPlace?: string;
     siblings?: Array<{name: string; gender: string; birthYear: string}>;
-    spouse?: {name: string; birthYear: string}; // Gender might be inferred or added here for validation
+    spouse?: {name: string; birthYear: string};
     selectedElders?: ElderReference[];
     parents?: {
-      father?: {name: string; birthYear: string; deathYear?: string}; // Gender is implicit
-      mother?: {name: string; birthYear: string; deathYear?: string}; // Gender is implicit
+      father?: {name: string; birthYear: string; deathYear?: string};
+      mother?: {name: string; birthYear: string; deathYear?: string};
     };
     grandparents?: {
       paternal?: {
@@ -101,6 +101,15 @@ export interface DNATestResult {
   ethnicityBreakdown?: Record<string, number>;
 }
 
+// --- New Interface for Tribal Ancestor Information ---
+export interface TribalAncestorInfo {
+  id: string; // e.g., "TA_baganda", this ID will be used in ClanElder.parentId
+  name: string; // e.g., "Kintu, The Progenitor of Baganda"
+  approximateEra: string; // e.g., "Ancient Past", "Mythological Era"
+  description?: string; // A brief description or story
+  notes?: string;
+}
+
 export interface Tribe {
   id: string;
   name: string;
@@ -109,6 +118,7 @@ export interface Tribe {
   description: string;
   clans: Clan[];
   traditions?: Tradition[];
+  conceptualAncestor?: TribalAncestorInfo; // <<<< NEW OPTIONAL FIELD
 }
 
 export interface Clan {
@@ -140,10 +150,8 @@ export interface ClanElder {
   familyConnections?: string[];
   era?: string;
   notes?: string;
-
-  // Updated fields for elder-to-elder relationships:
-  gender?: 'male' | 'female'; // Updated: Only 'male' or 'female'
-  parentId?: string;
+  gender?: 'male' | 'female';
+  parentId?: string; // Can be ID of another ClanElder or a TribalAncestorInfo.id
   spouseIds?: string[]; // Business rule: IDs should point to elders of a different gender.
 }
 
