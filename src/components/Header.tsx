@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { Navigation } from "@/components/Navigation"; // For Desktop
-import { Menu, Home, Users, Book, User as UserIcon, Briefcase } from "lucide-react"; // Changed User to UserIcon to avoid conflict if needed, added Briefcase as an example
+import { Navigation } from "@/components/Navigation"; 
+import { Menu, Home, Users, Book, User as UserIcon, Briefcase } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Sheet,
@@ -20,13 +20,12 @@ interface HeaderProps {
 }
 
 const Header = ({ onLogin, onSignup }: HeaderProps) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuth(); // user object is available here
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const commonLinkClass = "flex items-center px-4 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200";
-  const iconClass = "mr-3 h-5 w-5 text-uganda-yellow"; // Unified icon class
+  const iconClass = "mr-3 h-5 w-5 text-uganda-yellow";
 
-  // Close sheet after navigation
   const handleLinkClick = () => {
     setIsSheetOpen(false);
   };
@@ -47,14 +46,11 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
           </Link>
         </div>
         
-        {/* Navigation Menu (Desktop) */}
-        {/* TODO: You will need to update your separate src/components/Navigation.tsx 
-            component to include "Tribes & Clans" and "My Profile" links for the desktop view. */}
         <div className="hidden md:block">
-          <Navigation />
+          {/* Pass the user prop to Navigation */}
+          <Navigation user={user} /> 
         </div>
 
-        {/* Desktop Auth Menu */}
         <div className="hidden md:flex items-center space-x-4">
           {user ? (
             <div className="flex items-center gap-4">
@@ -88,7 +84,6 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
           )}
         </div>
 
-        {/* Mobile Menu */}
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon" className="text-uganda-black dark:text-white">
@@ -105,6 +100,23 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                 <Home className={iconClass} />
                 Home
               </Link>
+              <Link to="/tribes" className={commonLinkClass} onClick={handleLinkClick}> {/* Public link */}
+                <Briefcase className={iconClass} /> 
+                Tribes & Clans
+              </Link>
+              <Link to="/cultural-resources" className={commonLinkClass} onClick={handleLinkClick}> {/* Added for consistency */}
+                <Book className={iconClass} /> 
+                Cultural Resources
+              </Link>
+              <Link to="/traditions" className={commonLinkClass} onClick={handleLinkClick}> {/* Added for consistency */}
+                 <Users className={iconClass}/> {/* Example icon, choose appropriate */}
+                Traditions 
+              </Link>
+              <Link to="/elders" className={commonLinkClass} onClick={handleLinkClick}>  {/* Added for consistency */}
+                <UserIcon className={iconClass}/>
+                Clan Elders
+              </Link>
+
 
               {user && (
                 <>
@@ -112,20 +124,16 @@ const Header = ({ onLogin, onSignup }: HeaderProps) => {
                     <Users className={iconClass} />
                     Family Trees
                   </Link>
-                  <Link to="/tribes" className={commonLinkClass} onClick={handleLinkClick}>
-                    <Briefcase className={iconClass} /> {/* Changed icon for variety */}
-                    Tribes & Clans
-                  </Link>
-                  <Link to="/elders" className={commonLinkClass} onClick={handleLinkClick}>
-                    <Book className={iconClass} /> {/* Changed icon */}
-                    Elder Database
-                  </Link>
                   <Link to="/relationship-analyzer" className={commonLinkClass} onClick={handleLinkClick}>
-                    <Users className={iconClass} /> {/* Consider GitFork or Network icon */}
+                    <Users className={iconClass} /> 
                     Relationship Analyzer
                   </Link>
+                   <Link to="/dna-test" className={commonLinkClass} onClick={handleLinkClick}>  {/* Added for consistency */}
+                    <UserIcon className={iconClass}/> {/* Example icon, choose appropriate */}
+                    DNA Test
+                  </Link>
                   <Link to="/profile" className={commonLinkClass} onClick={handleLinkClick}>
-                    <UserIcon className={iconClass} /> {/* Added My Profile Link */}
+                    <UserIcon className={iconClass} /> 
                     My Profile
                   </Link>
                 </>
