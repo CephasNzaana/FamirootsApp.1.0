@@ -32,27 +32,30 @@ export interface TreeFormData {
   clan: string;
   extendedFamily: {
     familyName?: string;
-    gender?: string;
+    gender?: string; // Input type from form
     birthYear?: string;
     birthPlace?: string;
-    siblings?: Array<{name: string; gender: string; birthYear: string}>;
-    spouse?: {name: string; birthYear: string};
+    notes?: string; // <<<< ADDED for main person's notes
+    siblings?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>; // Added notes consistency
+    spouse?: {name: string; birthYear?: string; gender?: string; notes?: string}; // Added gender & notes consistency
     selectedElders?: ElderReference[];
     parents?: {
-      father?: {name: string; birthYear: string; deathYear?: string};
-      mother?: {name: string; birthYear: string; deathYear?: string};
+      father?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
+      mother?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
     };
     grandparents?: {
       paternal?: {
-        grandfather?: {name: string; birthYear: string; deathYear?: string};
-        grandmother?: {name: string; birthYear: string; deathYear?: string};
+        grandfather?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
+        grandmother?: {name: string; birthYear?: string; deathYear?: string; notes?: string}; // Added notes
       };
       maternal?: {
-        grandfather?: {name: string; birthYear: string; deathYear?: string};
-        grandmother?: {name: string; birthYear: string; deathYear?: string};
+        grandfather?: {name: string; birthYear: string; deathYear?: string; notes?: string}; // Added notes
+        grandmother?: {name: string; birthYear: string; deathYear?: string; notes?: string}; // Added notes
       };
     };
-    children?: Array<{name: string; gender: string; birthYear: string}>;
+    children?: Array<{name: string; gender: string; birthYear?: string; notes?: string}>; // Added notes consistency
+    paternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>; // <<<< ADDED
+    maternalAuntsUncles?: Array<{ name: string; gender: string; birthYear?: string; notes?: string }>; // <<<< ADDED
   };
 }
 
@@ -118,7 +121,7 @@ export interface Tribe {
   description: string;
   clans: Clan[];
   traditions?: Tradition[];
-  conceptualAncestor?: TribalAncestorInfo; // <<<< NEW OPTIONAL FIELD
+  conceptualAncestor?: TribalAncestorInfo; 
 }
 
 export interface Clan {
