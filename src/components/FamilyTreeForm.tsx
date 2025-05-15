@@ -6,14 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    TreeFormData,
-    ElderReference,
-    ClanElder as FullClanElderType,
-    ExtendedFamilyInputData,
-    Tribe as TribeType,
-    Clan as ClanType
-} from "@/types";
+import { TreeFormData, ElderReference, ClanElder as FullClanElderType, ExtendedFamilyInputData, Clan as ClanType, Tribe as TribeType } from "@/types";
 import { toast } from "@/components/ui/sonner";
 import {
   Select,
@@ -45,15 +38,15 @@ type RepeatableItem = { name: string; gender: string; birthYear?: string; notes?
 const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   const [formData, setFormData] = useState<TreeFormData>({
     surname: "",
-    tribe: "",
-    clan: "",
+    tribe: "", 
+    clan: "",  
     extendedFamily: {
       familyName: "",
       gender: "male",
       birthYear: "",
       birthPlace: "",
-      notes: "",
-      siblings: [],
+      notes: "", 
+      siblings: [], 
       spouse: { name: "", birthYear: "", gender: "female", notes: "" },
       parents: {
         father: { name: "", birthYear: "", deathYear: "", notes: "" },
@@ -89,7 +82,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   const handleExtendedFamilyChange = (path: string, value: any) => {
     setFormData(prev => {
       const keys = path.split('.');
-      const newExtendedFamily = JSON.parse(JSON.stringify(prev.extendedFamily || {}));
+      const newExtendedFamily = JSON.parse(JSON.stringify(prev.extendedFamily || {})); 
       let currentLevel = newExtendedFamily;
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
@@ -116,54 +109,81 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   
   useEffect(() => {
     const selectedTribeName = formData.tribe;
+    console.log("[Form Effect] Main tribe changed to:", selectedTribeName);
     if (selectedTribeName) {
       const selectedTribeData = ugandaTribesData.find(tribe => tribe.name === selectedTribeName);
       const newClans = selectedTribeData ? selectedTribeData.clans.map(c => c.name) : [];
       setMainAvailableClans(newClans);
+      console.log("[Form Effect] Main available clans set to:", newClans);
       if (!newClans.includes(formData.clan || "")) {
-        setFormData(prev => ({ ...prev, clan: "" }));
+        console.log("[Form Effect] Resetting main clan");
+        setFormData(prev => ({ ...prev, clan: "" })); 
       }
     } else {
       setMainAvailableClans([]);
       setFormData(prev => ({ ...prev, clan: "" }));
+      console.log("[Form Effect] Main tribe cleared, resetting clans.");
     }
-  }, [formData.tribe, formData.clan]); // Added formData.clan to dependencies to ensure clan reset logic fires correctly
+  }, [formData.tribe]); 
 
   const commonTribeChangeHandler = (lineageType: 'paternal' | 'maternal', value: string | undefined) => {
-    const tribeField = `extendedFamily.${lineageType}LineageElderTribe`;
-    const clanField = `extendedFamily.${lineageType}LineageElderClan`;
-    const elderRefField = `extendedFamily.${lineageType}LineageElderRef`;
-    const setAvailableClans = lineageType === 'paternal' ? setPaternalAvailableClans : setMaternalAvailableClans;
-    const setAvailableElders = lineageType === 'paternal' ? setPaternalAvailableElders : setMaternalAvailableElders;
+    const tribeField = `${lineageType}LineageElderTribe`;
+    const clanField = `${lineageType}LineageElderClan`;
+    const elderRefField = `${lineageType}LineageElderRef`;
+    const setAvailableClansFn = lineageType === 'paternal' ? setPaternalAvailableClans : setMaternalAvailableClans;
+    const setAvailableEldersFn = lineageType === 'paternal' ? setPaternalAvailableElders : setMaternalAvailableElders;
 
-    handleExtendedFamilyChange(tribeField, value || undefined);
-    handleExtendedFamilyChange(clanField, undefined);
-    handleExtendedFamilyChange(elderRefField, undefined);
+    console.log(`[Form Effect] ${lineageType} lineage tribe changed to:`, value);
+    
+    // Update formData directly for this change first
+    setFormData(prev => ({
+      ...prev,
+      extendedFamily: {
+        ...prev.extendedFamily,
+        [tribeField]: value || undefined,
+        [clanField]: undefined,
+        [elderRefField]: undefined,
+      }
+    }));
     
     if (value) {
         const selectedTribeData = ugandaTribesData.find(t => t.name === value);
-        setAvailableClans(selectedTribeData ? selectedTribeData.clans : []);
+        const clans = selectedTribeData ? selectedTribeData.clans : [];
+        setAvailableClansFn(clans);
+        console.log(`[Form Effect] ${lineageType} available clans set to:`, clans.map(c=>c.name));
     } else {
-        setAvailableClans([]);
+        setAvailableClansFn([]);
+        console.log(`[Form Effect] ${lineageType} tribe cleared, resetting its clans.`);
     }
-    setAvailableElders([]);
+    setAvailableEldersFn([]);
   };
   
   const commonClanChangeHandler = (lineageType: 'paternal' | 'maternal', value: string | undefined) => {
-    const clanField = `extendedFamily.${lineageType}LineageElderClan`;
-    const elderRefField = `extendedFamily.${lineageType}LineageElderRef`;
+    const clanField = `${lineageType}LineageElderClan`;
+    const elderRefField = `${lineageType}LineageElderRef`;
     const selectedTribe = formData.extendedFamily[`${lineageType}LineageElderTribe`];
-    const setAvailableElders = lineageType === 'paternal' ? setPaternalAvailableElders : setMaternalAvailableElders;
+    const setAvailableEldersFn = lineageType === 'paternal' ? setPaternalAvailableElders : setMaternalAvailableElders;
 
-    handleExtendedFamilyChange(clanField, value || undefined);
-    handleExtendedFamilyChange(elderRefField, undefined);
+    console.log(`[Form Effect] ${lineageType} lineage clan changed to:`, value);
+    
+    setFormData(prev => ({
+        ...prev,
+        extendedFamily: {
+            ...prev.extendedFamily,
+            [clanField]: value || undefined,
+            [elderRefField]: undefined,
+        }
+    }));
 
     if (value && selectedTribe) {
         const tribeData = ugandaTribesData.find(t => t.name === selectedTribe);
         const clanData = tribeData?.clans.find(c => c.name === value);
-        setAvailableElders(clanData?.elders || []);
+        const elders = clanData?.elders || [];
+        setAvailableEldersFn(elders);
+        console.log(`[Form Effect] ${lineageType} available elders set for clan ${value}:`, elders.map(e=>e.name));
     } else {
-        setAvailableElders([]);
+        setAvailableEldersFn([]);
+        console.log(`[Form Effect] ${lineageType} clan cleared or tribe missing, resetting its elders.`);
     }
   };
 
@@ -178,30 +198,26 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   }, []);
   
   const handleAddItem = (fieldKey: RepeatableItemKey) => {
-    console.log(`[FamilyTreeForm] Adding item to: ${fieldKey}`);
+    console.log(`[FamilyTreeForm] Attempting to Add item to: ${fieldKey}`);
     setFormData(prev => {
         const currentItems = prev.extendedFamily?.[fieldKey] || [];
         const newItem: RepeatableItem = { name: "", gender: "male", birthYear: "", notes: "" };
-        const updatedItems = [...(currentItems as any[]), newItem];
-        return {
-            ...prev,
-            extendedFamily: {
-                ...prev.extendedFamily,
-                [fieldKey]: updatedItems
-            }
-        };
+        const updatedItems = [...(currentItems as RepeatableItem[]), newItem]; // Ensure type
+        const newExtendedFamily = { ...prev.extendedFamily, [fieldKey]: updatedItems };
+        console.log(`[FamilyTreeForm] State after adding to ${fieldKey}:`, newExtendedFamily);
+        return { ...prev, extendedFamily: newExtendedFamily };
     });
   };
 
   const handleRemoveItem = (fieldKey: RepeatableItemKey, index: number) => {
-    console.log(`[FamilyTreeForm] Removing item from: ${fieldKey} at index: ${index}`);
-    setFormData(prev => ({
-      ...prev,
-      extendedFamily: {
-        ...prev.extendedFamily,
-        [fieldKey]: (prev.extendedFamily?.[fieldKey] || ([] as any[])).filter((_, i) => i !== index)
-      }
-    }));
+    console.log(`[FamilyTreeForm] Attempting to Remove item from: ${fieldKey} at index: ${index}`);
+    setFormData(prev => {
+        const currentItems = prev.extendedFamily?.[fieldKey] || [];
+        const updatedItems = (currentItems as RepeatableItem[]).filter((_, i) => i !== index);
+        const newExtendedFamily = { ...prev.extendedFamily, [fieldKey]: updatedItems };
+        console.log(`[FamilyTreeForm] State after removing from ${fieldKey}:`, newExtendedFamily);
+        return { ...prev, extendedFamily: newExtendedFamily };
+    });
   };
 
   const handleItemChange = (
@@ -212,15 +228,16 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
   ) => {
     console.log(`[FamilyTreeForm] Changing item in: ${fieldKey}, index: ${index}, field: ${subField}, value: ${value}`);
     setFormData(prev => {
-      const newExtendedFamily = JSON.parse(JSON.stringify(prev.extendedFamily));
+      const newExtendedFamily = JSON.parse(JSON.stringify(prev.extendedFamily)); // Deep clone for safety
       const items = newExtendedFamily[fieldKey] as RepeatableItem[] || [];
-      if (items[index]) {
+      if (items && items[index]) {
         (items[index] as any)[subField] = value;
+         newExtendedFamily[fieldKey] = items; // Re-assign the modified array
+      } else {
+        console.warn(`[FamilyTreeForm] Could not find item at index ${index} for ${fieldKey}`);
       }
-      return {
-        ...prev,
-        extendedFamily: newExtendedFamily
-      };
+      console.log(`[FamilyTreeForm] State after item change in ${fieldKey}:`, newExtendedFamily);
+      return { ...prev, extendedFamily: newExtendedFamily };
     });
   };
 
@@ -228,7 +245,9 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
     const fieldRefKey = `extendedFamily.${lineageType}LineageElderRef`;
     let elderRefToStore: ElderReference | undefined = undefined;
 
-    if (elderId && elderId !== "") { 
+    console.log(`[FamilyTreeForm] ${lineageType} lineage elder selected ID:`, elderId);
+
+    if (elderId && elderId !== "") {
       const sourceElderList = lineageType === 'paternal' ? paternalAvailableElders : maternalAvailableElders;
       const elderFullData = sourceElderList.find(e => e.id === elderId);
       if (elderFullData) {
@@ -238,6 +257,9 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
           approximateEra: elderFullData.approximateEra || elderFullData.era || "Unknown era",
           familyUnits: elderFullData.familyUnits || []
         };
+        console.log(`[FamilyTreeForm] Storing ${lineageType} elder ref:`, elderRefToStore);
+      } else {
+        console.warn(`[FamilyTreeForm] Full data for ${lineageType} elder ID ${elderId} not found in available list.`);
       }
     }
     handleExtendedFamilyChange(fieldRefKey, elderRefToStore);
@@ -360,7 +382,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
       <CardContent className="space-y-4">
         <div className="grid gap-3">
           <Label>Tribe for {lineageType} Lineage</Label>
-          <Select value={selectedTribeInForm || undefined} onValueChange={onTribeChangeCallback}>
+          <Select value={selectedTribeInForm || ""} onValueChange={onTribeChangeCallback}> {/* Ensure value is "" for "None" item to match */}
             <SelectTrigger><SelectValue placeholder={`Select ${lineageType} tribe`} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">None</SelectItem>
@@ -373,8 +395,8 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         {selectedTribeInForm && (
           <div className="grid gap-3">
             <Label>Clan for {lineageType} Lineage</Label>
-            <Select value={selectedClanInForm || undefined} onValueChange={onClanChangeCallback} disabled={!selectedTribeInForm || availableClansForLineage.length === 0}>
-              <SelectTrigger><SelectValue placeholder={availableClansForLineage.length > 0 ? `Select ${lineageType} clan` : "Select tribe first or no clans"} /></SelectTrigger>
+            <Select value={selectedClanInForm || ""} onValueChange={onClanChangeCallback} disabled={!selectedTribeInForm || availableClansForLineage.length === 0}>
+              <SelectTrigger><SelectValue placeholder={availableClansForLineage.length > 0 ? `Select ${lineageType} clan` : "No clans available"} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="">None</SelectItem>
                 {availableClansForLineage.map((clan) => (
@@ -387,7 +409,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
         {selectedTribeInForm && selectedClanInForm && (
           <div className="grid gap-3">
             <Label>Select Key Ancestral Elder from {selectedClanInForm}</Label>
-            <Select value={selectedElderReferenceInForm?.id || undefined} onValueChange={(value) => onElderSelectCallback(value || undefined)}>
+            <Select value={selectedElderReferenceInForm?.id || ""} onValueChange={(value) => onElderSelectCallback(value || undefined)}>
               <SelectTrigger><SelectValue placeholder={availableEldersForLineage.length > 0 ? "Select an elder or 'None'" : "No elders in this clan"} /></SelectTrigger>
               <SelectContent className="max-h-[300px]">
                 <SelectGroup>
@@ -441,7 +463,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
             <div className="grid gap-3">
               <Label htmlFor="tribe">Your Primary Tribe *</Label>
               <Select value={formData.tribe || undefined} onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, tribe: value || "", clan: ""}));
+                  setFormData((prev) => ({ ...prev, tribe: value || "", clan: ""})); 
               }} required>
                 <SelectTrigger id="tribe"><SelectValue placeholder="Select your primary tribe" /></SelectTrigger>
                 <SelectContent>
@@ -454,7 +476,7 @@ const FamilyTreeForm = ({ onSubmit, isLoading }: FamilyTreeFormProps) => {
             <div className="grid gap-3">
               <Label htmlFor="clan">Your Primary Clan *</Label>
               <Select value={formData.clan || undefined} onValueChange={(value) => {
-                  setFormData((prev) => ({ ...prev, clan: value || ""}));
+                  setFormData((prev) => ({ ...prev, clan: value || ""})); 
               }} disabled={!formData.tribe || mainAvailableClans.length === 0} required>
                 <SelectTrigger id="clan"><SelectValue placeholder={formData.tribe ? (mainAvailableClans.length > 0 ? "Select your primary clan" : "No clans for tribe") : "Select tribe first"} /></SelectTrigger>
                 <SelectContent>
