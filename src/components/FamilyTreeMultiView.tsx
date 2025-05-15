@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
-import { ZoomIn, ZoomOut, User, Users, Plus, GitBranch, List, UserCircle2, ListTree } from "lucide-react";
+import { ZoomIn, ZoomOut, User, Users, Plus, GitBranch, List, UserCircle2, ListTree, ChevronsUpDown } from "lucide-react"; // Added ChevronsUpDown
 import { toast } from "@/components/ui/sonner";
 import FamilyTreeStats from "@/components/FamilyTreeStats";
 import FamilyTreeDisplay from "@/components/FamilyTreeDisplay";
@@ -20,12 +20,10 @@ interface FamilyTreeMultiViewProps {
 const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initialTreeData, onTreeDataUpdate }) => {
   const [currentTree, setCurrentTree] = useState<FamilyTree>(initialTreeData);
   const [viewType, setViewType] = useState<"tree" | "pedigree" | "list">("tree");
-  const [zoomLevel, setZoomLevel] = useState<number>(0.8); // Default zoom for pedigree/tree
+  const [zoomLevel, setZoomLevel] = useState<number>(0.8);
 
   useEffect(() => {
     setCurrentTree(initialTreeData);
-    // Reset zoom when tree data changes for a fresh view, or adjust as preferred
-    // setZoomLevel(viewType === "tree" || viewType === "pedigree" ? 0.8 : 1);
     console.log("FamilyTreeMultiView: Tree data updated for surname:", initialTreeData?.surname, "with", initialTreeData?.members?.length, "members");
   }, [initialTreeData]);
 
@@ -37,15 +35,14 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
     toast.info("Tree view updated by an action within the display.");
   }, [onTreeDataUpdate]);
 
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5)); // Max zoom 150%
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.3)); // Min zoom 30%
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.3));
   
-  // Helper to safely get generation number, defaulting to 0 if invalid/undefined
-  const getSafeGeneration = (member: FamilyMember): number => {
+  const getSafeGeneration = (member: FamilyMember | { generation?: number | string }): number => { // Made generation optional for temp objects
     return typeof member.generation === 'number' ? member.generation : 0;
   };
 
-  const getMembersByGenerationList = () => { // Renamed from getMembersByGeneration to avoid conflict
+  const getMembersByGenerationList = () => {
     const result: Record<number, FamilyMember[]> = {};
     (currentTree.members || []).forEach(member => {
         const gen = getSafeGeneration(member);
@@ -68,7 +65,6 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
   };
 
   const PersonCard: React.FC<{person: FamilyMember, isMain?: boolean}> = ({person, isMain = false}) => {
-    // ... (PersonCard component remains the same as your last provided version)
     return (
       <HoverCard openDelay={200} closeDelay={100}>
         <HoverCardTrigger asChild>
@@ -126,12 +122,12 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
         (m.relationship?.toLowerCase() === 'self' || m.relationship?.toLowerCase() === 'proband')
     );
 
-    if (!mainPerson) { // Fallback to any generation 0 member
+    if (!mainPerson) {
         mainPerson = (currentTree.members || []).find(m => getSafeGeneration(m) === 0);
     }
-    if (!mainPerson && (currentTree.members || []).length > 0) { // Absolute fallback
-        mainPerson = currentTree.members[0];
-        toast.info("Pedigree view: Main person not explicitly defined (Gen 0 or 'Self'), using first member as focal point.");
+    if (!mainPerson && (currentTree.members || []).length > 0) {
+        mainPerson = currentTree.members[0]; // Absolute fallback
+        toast.info("Pedigree: Main person inferred. Ensure one member has generation 0 or relationship 'Self'.");
     }
 
     if (!mainPerson) {
@@ -143,78 +139,80 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
     const descendantsGrouped: Record<number, FamilyMember[]> = {};
 
     (currentTree.members || []).forEach(member => {
-      if (member.id === mainPerson!.id) return; // Skip main person
-
+      if (member.id === mainPerson!.id) return;
       const memberGen = getSafeGeneration(member);
-      if (memberGen < mainPersonGen) { // Ancestor
+
+      if (memberGen < mainPersonGen) {
         if (!ancestorsGrouped[memberGen]) ancestorsGrouped[memberGen] = [];
         ancestorsGrouped[memberGen].push(member);
-      } else if (memberGen > mainPersonGen) { // Descendant
+      } else if (memberGen > mainPersonGen) {
         if (!descendantsGrouped[memberGen]) descendantsGrouped[memberGen] = [];
         descendantsGrouped[memberGen].push(member);
       }
-      // Members of the same generation as mainPerson (e.g. siblings, spouses) are not explicitly placed in separate columns here
-      // but will be part of the main tree if it's visualized that way. For pedigree, focus is on direct lines.
     });
 
-    // Sort generations: ancestors from most distant to closest, descendants from closest to most distant
-    const ancestorGenerations = Object.keys(ancestorsGrouped).map(Number).sort((a, b) => a - b); // e.g., -2, -1
-    const descendantGenerations = Object.keys(descendantsGrouped).map(Number).sort((a, b) => a - b); // e.g., 1, 2
+    const ancestorGenerations = Object.keys(ancestorsGrouped).map(Number).sort((a, b) => a - b); // e.g., -3, -2, -1 (oldest first)
+    const descendantGenerations = Object.keys(descendantGrouped).map(Number).sort((a, b) => a - b); // e.g., 1, 2, 3 (closest first)
 
-    // Sort members within each generation (e.g., by birth year or name)
     ancestorGenerations.forEach(gen => ancestorsGrouped[gen].sort((a,b) => (a.birthYear || "9999").localeCompare(b.birthYear || "9999") || (a.name || "").localeCompare(b.name || "")));
     descendantGenerations.forEach(gen => descendantsGrouped[gen].sort((a,b) => (a.birthYear || "0").localeCompare(b.birthYear || "0") || (a.name || "").localeCompare(b.name || "")));
     
     return (
-      <div className="flex flex-row items-start justify-center space-x-4 md:space-x-6 p-4 overflow-x-auto w-full min-h-[300px]">
-        {/* Ancestor Columns - Rendered from left (oldest) to right (closest to main person) */}
+      <div className="flex flex-col items-center space-y-6 p-4 overflow-auto w-full min-h-[300px]">
+        {/* Ancestor Rows - Oldest at the top */}
         {ancestorGenerations.map(gen => (
-          <div key={`anc-gen-${gen}`} className="flex flex-col items-center space-y-3 min-w-[160px] shrink-0">
-            <h4 className="text-xs font-semibold text-muted-foreground dark:text-slate-400 mb-1 whitespace-nowrap">
-              {Math.abs(gen - mainPersonGen)}{getOrdinalSuffix(Math.abs(gen - mainPersonGen))} Ancestors
+          <div key={`anc-gen-${gen}`} className="w-full">
+            <h4 className="text-xs font-semibold text-muted-foreground dark:text-slate-400 mb-2 text-center uppercase tracking-wider">
+              {Math.abs(gen - mainPersonGen)}{getOrdinalSuffix(Math.abs(gen - mainPersonGen))} Ancestors (Gen {gen})
             </h4>
-            {ancestorsGrouped[gen].map(person => (
-              <PersonCard key={person.id} person={person} />
-            ))}
+            <div className="flex flex-row flex-wrap justify-center items-center gap-4">
+              {ancestorsGrouped[gen].map(person => (
+                <PersonCard key={person.id} person={person} />
+              ))}
+            </div>
           </div>
         ))}
 
-        {/* Main Person Column */}
-        <div className="flex flex-col items-center space-y-3 min-w-[170px] shrink-0 pt-6"> {/* Added pt-6 for alignment if titles are above */}
-           {/* <h4 className="text-xs font-semibold text-muted-foreground mb-1">Proband</h4> */}
-          <PersonCard person={mainPerson} isMain={true} />
+        {/* Main Person Row */}
+        <div className="w-full my-4 py-4 border-t border-b border-dashed border-gray-300 dark:border-gray-600">
+          <h4 className="text-xs font-semibold text-muted-foreground dark:text-slate-400 mb-2 text-center uppercase tracking-wider">Proband (Gen {mainPersonGen})</h4>
+          <div className="flex justify-center">
+            <PersonCard person={mainPerson} isMain={true} />
+          </div>
         </div>
 
-        {/* Descendant Columns - Rendered from left (closest to main person) to right (youngest) */}
+        {/* Descendant Rows - Closest at the top (below proband) */}
         {descendantGenerations.map(gen => (
-          <div key={`desc-gen-${gen}`} className="flex flex-col items-center space-y-3 min-w-[160px] shrink-0">
-             <h4 className="text-xs font-semibold text-muted-foreground dark:text-slate-400 mb-1 whitespace-nowrap">
-              {Math.abs(gen - mainPersonGen)}{getOrdinalSuffix(Math.abs(gen - mainPersonGen))} Descendants
+          <div key={`desc-gen-${gen}`} className="w-full">
+            <h4 className="text-xs font-semibold text-muted-foreground dark:text-slate-400 mb-2 text-center uppercase tracking-wider">
+              {Math.abs(gen - mainPersonGen)}{getOrdinalSuffix(Math.abs(gen - mainPersonGen))} Descendants (Gen {gen})
             </h4>
-            {descendantsGrouped[gen].map(person => (
-              <PersonCard key={person.id} person={person} />
-            ))}
+            <div className="flex flex-row flex-wrap justify-center items-center gap-4">
+              {descendantsGrouped[gen].map(person => (
+                <PersonCard key={person.id} person={person} />
+              ))}
+            </div>
           </div>
         ))}
       </div>
     );
   };
   
-  const renderListView = () => { /* ... Same as your previous version ... */ 
-    const generations = getMembersByGenerationList();
-    if (!generations || generations.length === 0 || generations.every(g => g.members.length === 0)) {
+  const renderListView = () => { 
+    const generationsData = getMembersByGenerationList(); // Use the renamed function
+    if (!generationsData || generationsData.length === 0 || generationsData.every(g => g.members.length === 0)) {
         return <div className="text-center p-10 text-muted-foreground dark:text-slate-400">No members to display in List View.</div>;
     }
     return (
       <div className="space-y-8 p-4">
-        {generations.map(genData => (
+        {generationsData.map(genData => (
           <div key={genData.generation} className="border-t border-border dark:border-slate-700 pt-6 first:border-0 first:pt-0">
             <h3 className="text-lg font-medium mb-4 text-foreground dark:text-slate-100">
-              {getSafeGeneration(genData.members[0]) === 0  // Check generation of first member in group
+              {genData.generation === 0 
                 ? "Proband Generation" 
-                : getSafeGeneration(genData.members[0]) < 0 
-                  ? `${Math.abs(getSafeGeneration(genData.members[0]))}${getOrdinalSuffix(Math.abs(getSafeGeneration(genData.members[0])))} Generation Up (Ancestors)`
-                  : `${getSafeGeneration(genData.members[0])}${getOrdinalSuffix(getSafeGeneration(genData.members[0]))} Generation Down (Descendants)`}
+                : (genData.generation ?? 0) < 0 
+                  ? `${Math.abs(genData.generation ?? 0)}${getOrdinalSuffix(Math.abs(genData.generation ?? 0))} Generation Up (Ancestors)`
+                  : `${genData.generation}${getOrdinalSuffix(genData.generation ?? 0)} Generation Down (Descendants)`}
             </h3>
             <div className="bg-card dark:bg-slate-800 rounded-lg shadow overflow-hidden border border-border dark:border-slate-700">
               <table className="min-w-full divide-y divide-border dark:divide-slate-700">
@@ -280,8 +278,8 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
           <div className="flex items-center gap-2">
             <Tabs value={viewType} onValueChange={(val) => setViewType(val as "tree" | "pedigree" | "list")} className="mr-2">
               <TabsList className="bg-slate-200 dark:bg-slate-900">
-                <TabsTrigger value="tree" className="text-xs px-2 py-1 h-auto md:text-sm md:px-3 md:py-1.5 md:h-9 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-uganda-red"><ListTree size={14} className="mr-1 md:mr-2"/>Tree</TabsTrigger> {/* Changed from Users to ListTree */}
-                <TabsTrigger value="pedigree" className="text-xs px-2 py-1 h-auto md:text-sm md:px-3 md:py-1.5 md:h-9 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-uganda-red"><GitBranch size={14} className="mr-1 md:mr-2"/>Pedigree</TabsTrigger>
+                <TabsTrigger value="tree" className="text-xs px-2 py-1 h-auto md:text-sm md:px-3 md:py-1.5 md:h-9 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-uganda-red"><ListTree size={14} className="mr-1 md:mr-2"/>Tree</TabsTrigger>
+                <TabsTrigger value="pedigree" className="text-xs px-2 py-1 h-auto md:text-sm md:px-3 md:py-1.5 md:h-9 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-uganda-red"><ChevronsUpDown size={14} className="mr-1 md:mr-2"/>Pedigree</TabsTrigger> {/* Changed icon */}
                 <TabsTrigger value="list" className="text-xs px-2 py-1 h-auto md:text-sm md:px-3 md:py-1.5 md:h-9 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-uganda-red"><List size={14} className="mr-1 md:mr-2"/>List</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -299,11 +297,11 @@ const FamilyTreeMultiView: React.FC<FamilyTreeMultiViewProps> = ({ tree: initial
             <div 
                  style={{ 
                     transform: `scale(${zoomLevel})`, 
-                    transformOrigin: 'top center', // Changed for better centered zoom
+                    transformOrigin: viewType === 'pedigree' ? 'top center' : 'top left', // Conditional transform origin
                     transition: 'transform 0.2s ease-out',
                     width: 'fit-content', 
                     height: 'fit-content',
-                    padding: viewType === 'tree' || viewType === 'pedigree' ? '20px' : '0', // Padding only for visual views
+                    padding: (viewType === 'tree' || viewType === 'pedigree') ? '20px' : '0',
                  }}
             >
               {viewType === "tree" && currentTree.members && currentTree.members.length > 0 && (
