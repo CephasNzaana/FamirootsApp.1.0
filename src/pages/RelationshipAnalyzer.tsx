@@ -24,22 +24,23 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // For source selection
-import { Users, Dna, Link2, Clock, UserCircle2, Search, Info, AlertTriangle } from "lucide-react"; // Updated icons
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Users, Link2, Clock, UserCircle2, Search, Info, AlertTriangle, GitMerge, Users2, BarChart3 } from "lucide-react"; // Updated icons
 import AuthForm from "@/components/AuthForm";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer"; // Added Footer
+import Footer from "@/components/Footer";
 import { FamilyTree, FamilyMember, ElderReference, ClanElder as FullClanElderType, Tribe as TribeType, Clan as ClanType } from "@/types";
 import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 
 interface RelationshipResult {
   isRelated: boolean;
-  relationshipType?: string; // e.g., "Same Clan", "Common Ancestor", "Direct (Sibling/Parent)"
-  pathDescription?: string; // Textual description of how they are related
-  commonAncestors?: {id: string, name: string, type: 'clan_elder' | 'family_member'}[];
-  generationalDistance?: number; // If calculable
+  relationshipType?: string;
+  pathDescription?: string;
+  commonAncestors?: { id: string; name: string; type: 'clan_elder' | 'family_member' | 'tribal_progenitor' }[];
+  generationalDistanceP1?: number; // Distance from P1 to LCA
+  generationalDistanceP2?: number; // Distance from P2 to LCA
   clanContext?: string;
-  confidenceScore: number; // 0 to 1
+  confidenceScore: number;
   analysisNotes?: string[];
 }
 
@@ -47,7 +48,7 @@ type PersonInputType = "tree" | "custom";
 
 const RelationshipAnalyzer = () => {
   const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState<boolean>(false); // Manage AuthForm visibility
+  const [showAuth, setShowAuth] = useState<boolean>(!user);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const [userFamilyTrees, setUserFamilyTrees] = useState<FamilyTree[]>([]);
@@ -61,11 +62,10 @@ const RelationshipAnalyzer = () => {
   const [customClanP1, setCustomClanP1] = useState<string | undefined>(undefined);
   const [availableClansP1, setAvailableClansP1] = useState<ClanType[]>([]);
   const [availableEldersP1, setAvailableEldersP1] = useState<FullClanElderType[]>([]);
-  const [selectedLineageEldersP1, setSelectedLineageEldersP1] = useState<string[]>([]); // Store IDs
+  const [selectedLineageEldersP1, setSelectedLineageEldersP1] = useState<string[]>([]);
 
   // Person 2 State
   const [person2Source, setPerson2Source] = useState<PersonInputType>("custom");
-  const [selectedTreeIdP2, setSelectedTreeIdP2] = useState<string | undefined>(undefined); // Only if P2 from same tree as P1
   const [selectedMemberIdP2, setSelectedMemberIdP2] = useState<string | undefined>(undefined);
   const [customNameP2, setCustomNameP2] = useState<string>("");
   const [customTribeP2, setCustomTribeP2] = useState<string | undefined>(undefined);
@@ -76,13 +76,18 @@ const RelationshipAnalyzer = () => {
 
   const [relationshipResult, setRelationshipResult] = useState<RelationshipResult | null>(null);
 
+  const getSafeGeneration = (member: FamilyMember | { generation?: number | string }): number => {
+    const gen = member.generation;
+    return typeof gen === 'number' ? gen : (typeof gen === 'string' ? parseInt(gen, 10) : 0);
+  };
+
   const fetchFamilyTrees = useCallback(async () => {
     if (!user?.id) return;
     setIsLoading(true);
     try {
       const { data: treesData, error: treesError } = await supabase
         .from('family_trees')
-        .select('*, family_members(*)') // Fetch members along with trees
+        .select('*, family_members(*)')
         .eq('user_id', user.id);
 
       if (treesError) throw treesError;
@@ -94,21 +99,21 @@ const RelationshipAnalyzer = () => {
         tribe: tree.tribe,
         clan: tree.clan,
         createdAt: tree.created_at,
-        members: (tree.family_members || []).map((member: any) => ({ // Cast member to any for direct db field access
-          id: member.id,
-          name: member.name,
-          relationship: member.relationship,
-          birthYear: member.birth_year,
-          deathYear: member.death_year,
-          generation: member.generation,
-          parentId: member.parent_id,
-          spouseId: member.spouse_id, // Ensure this matches your DB column name
-          isElder: Boolean(member.is_elder),
-          gender: member.gender as 'male' | 'female' | undefined,
-          side: member.side as 'maternal' | 'paternal' | undefined,
-          status: member.status as 'living' | 'deceased' || (member.death_year ? 'deceased' : 'living'),
-          notes: member.notes,
-          photoUrl: member.photo_url,
+        members: (tree.family_members || []).map((dbMember: any) => ({
+          id: dbMember.id,
+          name: dbMember.name,
+          relationship: dbMember.relationship,
+          birthYear: dbMember.birth_year,
+          deathYear: dbMember.death_year,
+          generation: typeof dbMember.generation === 'number' ? dbMember.generation : parseInt(dbMember.generation || '0', 10),
+          parentId: dbMember.parent_id,
+          spouseId: dbMember.spouse_id,
+          isElder: Boolean(dbMember.is_elder),
+          gender: dbMember.gender as 'male' | 'female' | undefined,
+          side: dbMember.side as 'maternal' | 'paternal' | undefined,
+          status: dbMember.status as 'living' | 'deceased' || (dbMember.death_year ? 'deceased' : 'living'),
+          notes: dbMember.notes,
+          photoUrl: dbMember.photo_url,
         }) as FamilyMember)
       }));
       
@@ -122,7 +127,7 @@ const RelationshipAnalyzer = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, selectedTreeIdP1]); // Added selectedTreeIdP1 to avoid re-selecting if already set
+  }, [user?.id]); // Removed selectedTreeIdP1 to allow re-fetch if user logs out and in
 
   useEffect(() => {
     if (user) {
@@ -130,28 +135,37 @@ const RelationshipAnalyzer = () => {
       fetchFamilyTrees();
     } else {
       setShowAuth(true);
-      setUserFamilyTrees([]); // Clear trees if user logs out
+      setUserFamilyTrees([]);
+      setSelectedTreeIdP1(undefined); // Reset selected tree on logout
     }
   }, [user, fetchFamilyTrees]);
 
-  // Dynamic elder/clan loading for Person 1 (Custom)
+  // Dynamic elder/clan loading for Person 1
   useEffect(() => {
-    if (person1Source === 'custom' && customTribeP1) {
-      const tribe = ugandaTribesData.find(t => t.name === customTribeP1);
-      setAvailableClansP1(tribe ? tribe.clans : []);
-      setCustomClanP1(undefined); setSelectedLineageEldersP1([]); setAvailableEldersP1([]);
+    let tribeName: string | undefined;
+    if (person1Source === 'custom') {
+      tribeName = customTribeP1;
     } else if (person1Source === 'tree' && selectedTreeIdP1) {
+      tribeName = userFamilyTrees.find(t => t.id === selectedTreeIdP1)?.tribe;
+    }
+
+    if (tribeName) {
+      const tribe = ugandaTribesData.find(t => t.name === tribeName);
+      setAvailableClansP1(tribe ? tribe.clans : []);
+      if (person1Source === 'custom') { // Only reset clan for custom input if tribe changes
+        setCustomClanP1(undefined);
+        setAvailableEldersP1([]);
+        setSelectedLineageEldersP1([]);
+      } else if (person1Source === 'tree' && selectedTreeIdP1) { // For tree source, load elders based on tree's clan
         const tree = userFamilyTrees.find(t => t.id === selectedTreeIdP1);
-        if(tree?.tribe) {
-            const tribeData = ugandaTribesData.find(t => t.name === tree.tribe);
-            if(tribeData && tree.clan) {
-                const clanData = tribeData.clans.find(c => c.name === tree.clan);
-                setAvailableEldersP1(clanData?.elders || []);
-            } else {
-                 setAvailableEldersP1([]);
-            }
+        if (tree?.clan) {
+            const clanData = tribe?.clans.find(c => c.name === tree.clan);
+            setAvailableEldersP1(clanData?.elders || []);
+        } else {
+            setAvailableEldersP1([]);
         }
-         setSelectedLineageEldersP1([]);
+        setSelectedLineageEldersP1([]);
+      }
     } else {
       setAvailableClansP1([]);
       setAvailableEldersP1([]);
@@ -164,370 +178,238 @@ const RelationshipAnalyzer = () => {
       const clan = tribe?.clans.find(c => c.name === customClanP1);
       setAvailableEldersP1(clan?.elders || []);
       setSelectedLineageEldersP1([]);
-    } else if (person1Source !== 'custom'){ // If not custom, clear elders if clan context changes
-         setAvailableEldersP1([]);
     }
+    // No else here to clear availableEldersP1 if P1 source is 'tree', that's handled by the above useEffect
   }, [customClanP1, customTribeP1, person1Source]);
 
-  // Dynamic elder/clan loading for Person 2 (Custom)
-   useEffect(() => {
-    if (person2Source === 'custom' && customTribeP2) {
-      const tribe = ugandaTribesData.find(t => t.name === customTribeP2);
+  // Dynamic elder/clan loading for Person 2
+  useEffect(() => {
+    let tribeName: string | undefined;
+    if (person2Source === 'custom') {
+      tribeName = customTribeP2;
+    } else if (person2Source === 'tree' && selectedTreeIdP1) { // P2 uses P1's selected tree
+      tribeName = userFamilyTrees.find(t => t.id === selectedTreeIdP1)?.tribe;
+    }
+    
+    if (tribeName) {
+      const tribe = ugandaTribesData.find(t => t.name === tribeName);
       setAvailableClansP2(tribe ? tribe.clans : []);
-      setCustomClanP2(undefined); setSelectedLineageEldersP2([]); setAvailableEldersP2([]);
-    } else if (person2Source === 'tree' && selectedTreeIdP1) { // P2 from same tree as P1
+      if (person2Source === 'custom') {
+        setCustomClanP2(undefined);
+        setAvailableEldersP2([]);
+        setSelectedLineageEldersP2([]);
+      } else if (person2Source === 'tree' && selectedTreeIdP1){
         const tree = userFamilyTrees.find(t => t.id === selectedTreeIdP1);
-         if(tree?.tribe) {
-            const tribeData = ugandaTribesData.find(t => t.name === tree.tribe);
-            if(tribeData && tree.clan) {
-                const clanData = tribeData.clans.find(c => c.name === tree.clan);
-                setAvailableEldersP2(clanData?.elders || []); // Elders based on tree's clan
-            } else {
-                 setAvailableEldersP2([]);
-            }
+         if (tree?.clan) { // P2 is from same clan as P1's tree if P2 source is tree
+            const clanData = tribe?.clans.find(c => c.name === tree.clan);
+            setAvailableEldersP2(clanData?.elders || []);
+        } else {
+            setAvailableEldersP2([]);
         }
         setSelectedLineageEldersP2([]);
-    }
-    else {
+      }
+    } else {
       setAvailableClansP2([]);
       setAvailableEldersP2([]);
     }
-  }, [customTribeP2, person2Source, selectedTreeIdP1, userFamilyTrees]); // Listen to P1's tree if P2 is from tree
+  }, [customTribeP2, person2Source, selectedTreeIdP1, userFamilyTrees]);
 
   useEffect(() => {
     if (person2Source === 'custom' && customTribeP2 && customClanP2) {
       const tribe = ugandaTribesData.find(t => t.name === customTribeP2);
       const clan = tribe?.clans.find(c => c.name === customClanP2);
       setAvailableEldersP2(clan?.elders || []);
-       setSelectedLineageEldersP2([]);
-    } else if (person2Source !== 'custom'){
-         setAvailableEldersP2([]);
+      setSelectedLineageEldersP2([]);
     }
   }, [customClanP2, customTribeP2, person2Source]);
 
+  // --- Graph Traversal Helpers ---
+  const getAncestryPath = (memberId: string, members: FamilyMember[]): FamilyMember[] => {
+    const path: FamilyMember[] = [];
+    let currentMember = members.find(m => m.id === memberId);
+    const visited = new Set<string>(); // To detect cycles
 
-  const getMemberDetails = (source: PersonInputType, treeId: string | undefined, memberId: string | undefined, customName: string): Partial<FamilyMember> & { tribe?: string, clan?: string } => {
+    while (currentMember) {
+        if (visited.has(currentMember.id)) {
+            console.warn("Cycle detected in ancestry path for member:", currentMember.id);
+            break; 
+        }
+        visited.add(currentMember.id);
+        path.push(currentMember);
+        if (!currentMember.parentId) break;
+        currentMember = members.find(m => m.id === currentMember!.parentId);
+    }
+    return path; // Path from member up to root/oldest ancestor
+  };
+
+  const findLCA = (pathA: FamilyMember[], pathB: FamilyMember[]): FamilyMember | null => {
+      const pathAIds = new Set(pathA.map(m => m.id));
+      for (const memberB of pathB) {
+          if (pathAIds.has(memberB.id)) {
+              return memberB; // First common ancestor found
+          }
+      }
+      return null;
+  };
+
+  const getMemberDetailsForAnalysis = (
+    source: PersonInputType, 
+    treeId: string | undefined, 
+    memberId: string | undefined, 
+    customName: string,
+    customPersonTribe?: string, // tribe for custom person
+    customPersonClan?: string   // clan for custom person
+  ): { id?: string, name: string, generation?: number, parentId?: string, spouseId?: string, tribe?: string, clan?: string } => {
     if (source === 'tree' && treeId && memberId) {
       const tree = userFamilyTrees.find(t => t.id === treeId);
       const member = tree?.members.find(m => m.id === memberId);
-      return member ? { ...member, tribe: tree?.tribe, clan: tree?.clan } : { name: "Unknown Tree Member", tribe: tree?.tribe, clan: tree?.clan };
+      return member ? { ...member, tribe: tree?.tribe, clan: tree?.clan, generation: getSafeGeneration(member) } : { name: customName || "Unknown Tree Member", tribe: tree?.tribe, clan: tree?.clan };
     }
-    return { name: customName, tribe: source === 'custom' ? (customName === customNameP1 ? customTribeP1 : customTribeP2) : undefined, clan: source === 'custom' ? (customName === customNameP1 ? customClanP1 : customClanP2) : undefined };
+    return { name: customName, tribe: customPersonTribe, clan: customPersonClan, generation: 0 }; // Custom person assumed gen 0 for context
   };
-
-  const findCommonClanElders = (elders1_ids: string[], elders2_ids: string[]): FullClanElderType[] => {
-    if (!elders1_ids.length || !elders2_ids.length) return [];
-    
-    const commonIds = elders1_ids.filter(id => elders2_ids.includes(id));
-    const commonFullElders: FullClanElderType[] = [];
-    commonIds.forEach(id => {
-        for (const tribe of ugandaTribesData) {
-            for (const clan of tribe.clans) {
-                const found = clan.elders?.find(e => e.id === id);
-                if (found) {
-                    commonFullElders.push(found);
-                    return; // Found in this clan, no need to check further for this ID
-                }
-            }
-        }
-    });
-    return commonFullElders;
-};
-
 
   const handleAnalyzeRelationship = async () => {
     setIsLoading(true);
     setRelationshipResult(null);
 
-    // Gather Person 1 Info
-    const p1Details = getMemberDetails(person1Source, selectedTreeIdP1, selectedMemberIdP1, customNameP1);
-    const p1Tribe = person1Source === 'tree' ? userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.tribe : customTribeP1;
-    const p1Clan = person1Source === 'tree' ? userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.clan : customClanP1;
+    const p1Data = getMemberDetailsForAnalysis(person1Source, selectedTreeIdP1, selectedMemberIdP1, customNameP1, customTribeP1, customClanP1);
+    const p2Data = getMemberDetailsForAnalysis(person2Source, person1Source === 'tree' && person2Source === 'tree' ? selectedTreeIdP1 : undefined, selectedMemberIdP2, customNameP2, customTribeP2, customClanP2);
 
-    // Gather Person 2 Info
-    const p2Details = getMemberDetails(person2Source, person2Source === 'tree' ? selectedTreeIdP1 : undefined, selectedMemberIdP2, customNameP2);
-    const p2Tribe = person2Source === 'tree' ? userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.tribe : customTribeP2;
-    const p2Clan = person2Source === 'tree' ? userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.clan : customClanP2;
-
-    if (!p1Details.name || !p2Details.name) {
+    if (!p1Data.name || !p2Data.name) {
       toast.error("Please provide names for both individuals.");
       setIsLoading(false);
       return;
     }
-
-    console.log("Analyzing:", p1Details, " (T:",p1Tribe, "C:", p1Clan, "E:", selectedLineageEldersP1,") vs ", p2Details, "(T:",p2Tribe, "C:", p2Clan, "E:", selectedLineageEldersP2, ")");
     
-    // Simulate analysis
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    console.log("Analyzing P1:", p1Data, "Elders P1:", selectedLineageEldersP1);
+    console.log("Analyzing P2:", p2Data, "Elders P2:", selectedLineageEldersP2);
 
-    let result: RelationshipResult = { isRelated: false, confidenceScore: 0.1, analysisNotes: ["Initial assessment based on provided data."] };
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate AI processing
+    let analysisResult: RelationshipResult = { isRelated: false, confidenceScore: 0.05, analysisNotes: ["Initial data points considered."] };
 
-    // --- More Sophisticated Simulated Analysis ---
-    // 1. Check if in the same user-created tree and try to find a direct link
-    if (person1Source === 'tree' && person2Source === 'tree' && selectedTreeIdP1 && selectedTreeIdP1 === (person2Source === 'tree' ? selectedTreeIdP1 : "अलगTreeId")) { // P2 from same tree as P1
+    // 1. Direct Tree Analysis (if both from the same selected tree)
+    if (person1Source === 'tree' && person2Source === 'tree' && selectedTreeIdP1 && p1Data.id && p2Data.id && p1Data.id !== p2Data.id) {
         const tree = userFamilyTrees.find(t => t.id === selectedTreeIdP1);
-        if (tree && selectedMemberIdP1 && selectedMemberIdP2) {
-            const member1 = tree.members.find(m => m.id === selectedMemberIdP1);
-            const member2 = tree.members.find(m => m.id === selectedMemberIdP2);
+        if (tree) {
+            const member1 = tree.members.find(m=>m.id === p1Data.id);
+            const member2 = tree.members.find(m=>m.id === p2Data.id);
+
             if (member1 && member2) {
-                if (member1.parentId === member2.id || member2.parentId === member1.id) {
-                    result = { isRelated: true, relationshipType: "Parent-Child", confidenceScore: 0.95, pathDescription: `${member1.name} and ${member2.name} are directly related as Parent/Child in the same tree.`, analysisNotes: ["Direct link found in user's tree."]};
-                } else if (member1.spouseId === member2.id || member2.spouseId === member1.id) {
-                    result = { isRelated: true, relationshipType: "Spouses", confidenceScore: 0.95, pathDescription: `${member1.name} and ${member2.name} are spouses in the same tree.`, analysisNotes: ["Direct spouse link found."]} ;
-                } else if (member1.parentId && member1.parentId === member2.parentId) {
-                    result = { isRelated: true, relationshipType: "Siblings", confidenceScore: 0.9, pathDescription: `${member1.name} and ${member2.name} are likely siblings (share a parent).`, analysisNotes: ["Shared parent found in user's tree."]};
+                // Check spouse
+                if (member1.spouseId === member2.id || member2.spouseId === member1.id) {
+                    analysisResult = { isRelated: true, relationshipType: "Spouses", confidenceScore: 1.0, pathDescription: `${member1.name} and ${member2.name} are spouses.`, analysisNotes:["Direct spouse link in tree."] };
+                } else {
+                    const pathA = getAncestryPath(member1.id, tree.members);
+                    const pathB = getAncestryPath(member2.id, tree.members);
+                    const lca = findLCA(pathA, pathB);
+
+                    if (lca) {
+                        const distA = pathA.findIndex(m => m.id === lca.id); // generations from A to LCA (0 if A is LCA)
+                        const distB = pathB.findIndex(m => m.id === lca.id); // generations from B to LCA
+
+                        analysisResult.isRelated = true;
+                        analysisResult.commonAncestors = [{id: lca.id, name: lca.name, type: 'family_member'}];
+                        analysisResult.confidenceScore = 0.9;
+                        analysisResult.generationalDistanceP1 = distA;
+                        analysisResult.generationalDistanceP2 = distB;
+                        analysisResult.analysisNotes?.push("Common ancestor found in family tree.");
+
+                        if (distA === 0) { // member1 is ancestor of member2
+                            analysisResult.relationshipType = distB === 1 ? "Parent-Child" : (distB === 2 ? "Grandparent-Grandchild" : "Direct Ancestor");
+                            analysisResult.pathDescription = `${member1.name} is a direct ${distB === 1 ? 'parent' : distB === 2 ? 'grandparent' : 'ancestor'} of ${member2.name}.`;
+                        } else if (distB === 0) { // member2 is ancestor of member1
+                            analysisResult.relationshipType = distA === 1 ? "Parent-Child" : (distA === 2 ? "Grandparent-Grandchild" : "Direct Ancestor");
+                            analysisResult.pathDescription = `${member2.name} is a direct ${distA === 1 ? 'parent' : distA === 2 ? 'grandparent' : 'ancestor'} of ${member1.name}.`;
+                        } else if (distA === 1 && distB === 1) {
+                            analysisResult.relationshipType = "Siblings";
+                            analysisResult.pathDescription = `${member1.name} and ${member2.name} are siblings.`;
+                        } else if ((distA === 1 && distB === 2) || (distA === 2 && distB === 1)) {
+                            analysisResult.relationshipType = "Aunt/Uncle - Niece/Nephew";
+                            analysisResult.pathDescription = `${member1.name} and ${member2.name} are in an Aunt/Uncle - Niece/Nephew relationship.`;
+                        } else if (distA === 2 && distB === 2) {
+                            analysisResult.relationshipType = "First Cousins";
+                            analysisResult.pathDescription = `${member1.name} and ${member2.name} are first cousins.`;
+                        } else {
+                            analysisResult.relationshipType = "Shared Ancestor (e.g., Cousins)";
+                            analysisResult.pathDescription = `${member1.name} and ${member2.name} share a common ancestor: ${lca.name}. They are likely cousins of some degree.`;
+                        }
+                    } else {
+                         analysisResult.analysisNotes?.push("No common ancestor found within this specific tree structure.");
+                         analysisResult.confidenceScore = 0.2;
+                    }
                 }
-                // Basic grandparent check
-                else if (member1.parentId && tree.members.find(m=>m.id === member1.parentId)?.parentId === member2.id) {
-                     result = { isRelated: true, relationshipType: "Grandparent-Grandchild", confidenceScore: 0.85, pathDescription: `${member2.name} is likely a grandparent of ${member1.name}.`, analysisNotes: ["Grandparent link found."]};
-                } else if (member2.parentId && tree.members.find(m=>m.id === member2.parentId)?.parentId === member1.id) {
-                     result = { isRelated: true, relationshipType: "Grandparent-Grandchild", confidenceScore: 0.85, pathDescription: `${member1.name} is likely a grandparent of ${member2.name}.`, analysisNotes: ["Grandparent link found."]};
-                }
-                 // Add more direct checks: uncle/aunt, cousin (would require finding common grandparent)
             }
         }
     }
+    
+    // 2. Fallback to Clan/Tribe/Elder based analysis if not directly related in tree or custom inputs
+    if (!analysisResult.isRelated || analysisResult.confidenceScore < 0.8) {
+        const commonClanElders = findCommonClanElders(selectedLineageEldersP1, selectedLineageEldersP2);
+        const p1FullClan = p1Data.tribe && p1Data.clan ? `${p1Data.clan} clan of ${p1Data.tribe}` : "an unknown clan";
+        const p2FullClan = p2Data.tribe && p2Data.clan ? `${p2Data.clan} clan of ${p2Data.tribe}` : "an unknown clan";
+        analysisResult.clanContext = `${p1Data.name} (${p1FullClan}) and ${p2Data.name} (${p2FullClan}).`;
 
-    // 2. Check Clan & Tribal Elders if not directly related in a tree
-    if (!result.isRelated || result.confidenceScore < 0.8) {
-        const commonElders = findCommonClanElders(selectedLineageEldersP1, selectedLineageEldersP2);
-        if (commonElders.length > 0) {
-            result = {
-                isRelated: true, relationshipType: "Shared Clan Ancestry",
-                commonAncestors: commonElders.map(e => ({id: e.id, name: e.name, type: 'clan_elder'})),
-                confidenceScore: 0.75 + commonElders.length * 0.05, // Higher confidence with more common elders
-                pathDescription: `Both individuals trace lineage to common historical elder(s): ${commonElders.map(e => e.name).join(', ')}.`,
-                analysisNotes: ["Common historical elders identified through user selection."]
-            };
-        } else if (p1Clan && p1Clan === p2Clan && p1Tribe === p2Tribe) {
-            result = {
-                isRelated: true, relationshipType: "Same Clan",
-                clanContext: `Both individuals associate with the ${p1Clan} clan of the ${p1Tribe} tribe.`,
-                confidenceScore: 0.6,
-                pathDescription: `Belonging to the same clan (${p1Clan}) suggests a high likelihood of shared, though potentially distant, ancestry.`,
-                analysisNotes: ["Same tribe and clan identified."]
-            };
-        } else if (p1Tribe && p1Tribe === p2Tribe) {
-            // Check for common Tribal Ancestor via their selected elders if any
-            const p1Founders = selectedLineageEldersP1.map(id => getFullClanElder(id, p1Tribe, p1Clan)).filter(e => e && e.parentId && e.parentId.startsWith("TA_"));
-            const p2Founders = selectedLineageEldersP2.map(id => getFullClanElder(id, p2Tribe, p2Clan)).filter(e => e && e.parentId && e.parentId.startsWith("TA_"));
-            const commonTA = p1Founders.find(f1 => p2Founders.some(f2 => f1.parentId === f2.parentId));
-
-            if (commonTA) {
-                 result = {
-                    isRelated: true, relationshipType: "Shared Tribal Origin",
-                    clanContext: `Individuals are from different clans but the same tribe (${p1Tribe}), and their selected elder lineages trace to a common tribal progenitor.`,
-                    confidenceScore: 0.45,
-                    pathDescription: `A very distant connection through the ${p1Tribe} tribe's foundational history is possible.`,
-                    analysisNotes: ["Same tribe identified, with selected elders pointing to common Tribal Ancestor."]
-                };
-            } else if (p1Tribe) { // Just same tribe, no common TA from selected elders
-                 result = {
-                    isRelated: true, relationshipType: "Same Tribe",
-                    clanContext: `Individuals are from the same tribe (${p1Tribe}) but different clans.`,
-                    confidenceScore: 0.3,
-                    pathDescription: `A distant common origin within the ${p1Tribe} tribe might exist.`,
-                    analysisNotes: ["Same tribe identified."]
-                };
-            }
+        if (commonClanElders.length > 0) {
+            analysisResult.isRelated = true;
+            analysisResult.relationshipType = analysisResult.relationshipType || "Shared Historical Clan Lineage";
+            analysisResult.commonAncestors = [
+                ...(analysisResult.commonAncestors || []), 
+                ...commonClanElders.map(e => ({id: e.id, name: e.name, type: 'clan_elder' as 'clan_elder'}))
+            ];
+            analysisResult.confidenceScore = Math.max(analysisResult.confidenceScore, 0.70 + Math.min(commonClanElders.length * 0.05, 0.15));
+            analysisResult.pathDescription = analysisResult.pathDescription || `Both individuals trace lineage to common historical elder(s): ${commonClanElders.map(e => e.name).join(', ')}.`;
+            analysisResult.analysisNotes?.push("Common historical elders selected by user provide a strong link.");
+        } else if (p1Data.clan && p1Data.clan === p2Data.clan && p1Data.tribe === p2Data.tribe) {
+            analysisResult.isRelated = true;
+            analysisResult.relationshipType = analysisResult.relationshipType || "Same Clan";
+            analysisResult.confidenceScore = Math.max(analysisResult.confidenceScore, 0.6);
+            analysisResult.pathDescription = analysisResult.pathDescription || `Belonging to the same clan (${p1Data.clan}) suggests a likelihood of shared, though potentially distant, ancestry.`;
+            analysisResult.analysisNotes?.push("Individuals belong to the same tribe and clan.");
+        } else if (p1Data.tribe && p1Data.tribe === p2Data.tribe) {
+            analysisResult.isRelated = true; // Could still be distantly related
+            analysisResult.relationshipType = analysisResult.relationshipType || "Same Tribe";
+            analysisResult.confidenceScore = Math.max(analysisResult.confidenceScore, 0.35);
+            analysisResult.pathDescription = analysisResult.pathDescription || `Individuals are from the same tribe (${p1Data.tribe}) but different clans. A very distant common origin might exist.`;
+            analysisResult.analysisNotes?.push("Individuals belong to the same tribe.");
         }
     }
-     if (!result.isRelated && result.confidenceScore < 0.2) { // If still very low or not related
-        result.pathDescription = "No clear ancestral or close familial connection could be established based on the provided information and selected elders.";
-        result.analysisNotes?.push("Consider providing more specific elder connections or using DNA analysis for deeper insights.");
+
+    if (!analysisResult.isRelated && analysisResult.confidenceScore < 0.2) {
+        analysisResult.pathDescription = "No clear ancestral or close familial connection could be established based on the provided information and selected elders.";
+        analysisResult.analysisNotes?.push("Consider providing more specific elder connections or using DNA analysis for deeper insights.");
     }
 
 
-    setRelationshipResult(result);
+    setRelationshipResult(analysisResult);
     setIsLoading(false);
   };
 
-  const resetAnalysis = () => { /* ... Same as before ... */ 
-    setRelationshipResult(null);
-    // Reset P1
-    // setPerson1Source('tree'); // Or a default
-    setSelectedTreeIdP1(userFamilyTrees.length > 0 ? userFamilyTrees[0].id : undefined);
-    setSelectedMemberIdP1(undefined);
-    setCustomNameP1(""); setCustomTribeP1(undefined); setCustomClanP1(undefined);
-    setSelectedLineageEldersP1([]); setAvailableClansP1([]); setAvailableEldersP1([]);
-    // Reset P2
-    // setPerson2Source('custom'); // Or a default
-    setSelectedMemberIdP2(undefined); // P2 tree selection depends on P1's tree
-    setCustomNameP2(""); setCustomTribeP2(undefined); setCustomClanP2(undefined);
-    setSelectedLineageEldersP2([]); setAvailableClansP2([]); setAvailableEldersP2([]);
-  };
-
-  // Helper to render the selection UI for a person
-  const renderPersonSelector = (
-    personNum: 1 | 2,
-    source: PersonInputType,
-    onSourceChange: (value: PersonInputType) => void,
-    selectedTreeId: string | undefined,
-    onTreeChange: (value: string | undefined) => void,
-    availableMembers: FamilyMember[],
-    selectedMemberId: string | undefined,
-    onMemberChange: (value: string | undefined) => void,
-    customName: string,
-    onCustomNameChange: (value: string) => void,
-    customTribe: string | undefined,
-    onCustomTribeChange: (value: string | undefined) => void,
-    availableClans: ClanType[],
-    customClan: string | undefined,
-    onCustomClanChange: (value: string | undefined) => void,
-    availableElders: FullClanElderType[],
-    selectedElders: string[], // Array of elder IDs
-    onEldersChange: (ids: string[]) => void,
-    disabled?: boolean
-  ) => {
-    const handleElderMultiSelect = (elderId: string) => {
-        onEldersChange(
-            selectedElders.includes(elderId)
-                ? selectedElders.filter(id => id !== elderId)
-                : [...selectedElders, elderId]
-        );
-    };
-
-    return (
-      <Card className="flex-1 min-w-[300px]">
-        <CardHeader>
-          <CardTitle>Person {personNum}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <RadioGroup value={source} onValueChange={(val) => onSourceChange(val as PersonInputType)} className="flex space-x-4">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="tree" id={`p${personNum}-tree`} disabled={disabled || userFamilyTrees.length === 0}/>
-              <Label htmlFor={`p${personNum}-tree`} className={userFamilyTrees.length === 0 ? "text-muted-foreground" : ""}>
-                From My Tree {userFamilyTrees.length === 0 ? "(No trees)" : ""}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="custom" id={`p${personNum}-custom`} disabled={disabled}/>
-              <Label htmlFor={`p${personNum}-custom`}>Custom Input</Label>
-            </div>
-          </RadioGroup>
-
-          {source === 'tree' && userFamilyTrees.length > 0 && (
-            <>
-              {personNum === 1 && ( // Tree selection only for Person 1, P2 uses P1's tree if 'tree' source
-                <div className="space-y-1">
-                  <Label htmlFor={`tree-p${personNum}`}>Select Family Tree</Label>
-                  <Select value={selectedTreeId || undefined} onValueChange={onTreeChange}>
-                    <SelectTrigger id={`tree-p${personNum}`}><SelectValue placeholder="Select tree" /></SelectTrigger>
-                    <SelectContent>
-                      {userFamilyTrees.map(tree => (
-                        <SelectItem key={tree.id} value={tree.id}>{tree.surname} Tree ({tree.clan})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {selectedTreeId && ( // Member select only if tree is selected
-                <div className="space-y-1">
-                  <Label htmlFor={`member-p${personNum}`}>Select Person from Tree</Label>
-                  <Select value={selectedMemberId || undefined} onValueChange={onMemberChange}>
-                    <SelectTrigger id={`member-p${personNum}`}><SelectValue placeholder="Select member" /></SelectTrigger>
-                    <SelectContent>
-                      {availableMembers.map(member => (
-                        <SelectItem key={member.id} value={member.id}>{member.name} ({member.relationship})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
-          )}
-
-          {source === 'custom' && (
-            <>
-              <div className="space-y-1"><Label htmlFor={`customName-p${personNum}`}>Name *</Label><Input id={`customName-p${personNum}`} value={customName} onChange={e => onCustomNameChange(e.target.value)} placeholder="Full name"/></div>
-              <div className="space-y-1"><Label htmlFor={`customTribe-p${personNum}`}>Tribe</Label>
-                <Select value={customTribe || undefined} onValueChange={onCustomTribeChange}>
-                    <SelectTrigger id={`customTribe-p${personNum}`}><SelectValue placeholder="Select tribe"/></SelectTrigger>
-                    <SelectContent>{ugandaTribesData.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              {customTribe && (
-                <div className="space-y-1"><Label htmlFor={`customClan-p${personNum}`}>Clan</Label>
-                  <Select value={customClan || undefined} onValueChange={onCustomClanChange} disabled={availableClans.length === 0}>
-                      <SelectTrigger id={`customClan-p${personNum}`}><SelectValue placeholder={availableClans.length > 0 ? "Select clan" : "No clans in tribe"}/></SelectTrigger>
-                      <SelectContent>{availableClans.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
-          )}
-          {/* Elder Selection for this person */}
-           {( (source === 'custom' && customClan) || (source === 'tree' && selectedMemberId) ) && availableElders.length > 0 && (
-            <div className="space-y-2 pt-2 border-t mt-4">
-                <Label className="text-sm">Known Ancestral Elders (Optional, select up to 2)</Label>
-                <p className="text-xs text-muted-foreground">Select elders you believe are in this person's lineage.</p>
-                <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
-                {availableElders.map(elder => (
-                    <div key={elder.id} className={`flex items-center justify-between p-2 border rounded-md text-xs hover:bg-muted/50 ${selectedElders.includes(elder.id) ? 'bg-uganda-yellow/20 border-uganda-yellow' : 'bg-transparent'}`}>
-                        <div>
-                            <span className="font-medium">{elder.name}</span> <span className="text-muted-foreground">({elder.approximateEra})</span>
-                        </div>
-                        <Button 
-                            size="xs" 
-                            variant={selectedElders.includes(elder.id) ? "destructive" : "outline"}
-                            onClick={() => handleElderMultiSelect(elder.id)}
-                            disabled={!selectedElders.includes(elder.id) && selectedElders.length >= 2}
-                        >
-                            {selectedElders.includes(elder.id) ? "Remove" : "Add"}
-                        </Button>
-                    </div>
-                ))}
-                </div>
-            </div>
-           )}
-        </CardContent>
-      </Card>
-    );
-  };
-
-
-  // Auth check
-  if (!user && !showAuth) { // If no user and auth form not shown, trigger auth form.
-    setShowAuth(true); // This will make the return below show the AuthForm prompt
-  }
-  if (showAuth && !user) { // If showAuth is true AND user is still null (AuthForm didn't result in user yet)
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header onLogin={() => setShowAuth(true)} onSignup={() => setShowAuth(true)} />
-        <main className="flex-grow flex items-center justify-center">
-          <Card className="w-full max-w-md m-4">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">Authentication Required</CardTitle>
-              <CardDescription className="text-center">
-                Please log in or sign up to use the Relationship Analyzer.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AuthForm onClose={() => setShowAuth(false)} />
-            </CardContent>
-          </Card>
-        </main>
-        <Footer />
-      </div>
+  // ... (Auth check and main return JSX remains largely the same, PersonSelector will be used)
+  if (showAuth && !user) {
+    return ( /* ... Auth form prompt ... */ 
+        <div className="min-h-screen flex flex-col">
+            <Header onLogin={() => setShowAuth(true)} onSignup={() => setShowAuth(true)} />
+            <main className="flex-grow flex items-center justify-center p-4">
+                <AuthForm onClose={() => {
+                    setShowAuth(false);
+                    // if (!user) navigate('/'); // Navigate away if auth is cancelled and still no user
+                }} />
+            </main>
+            <Footer/>
+        </div>
     );
   }
-  if (!user && showAuth) { // If auth form is shown, but user hasn't logged in yet.
-      return (
-          <div className="min-h-screen flex flex-col">
-             <Header onLogin={() => setShowAuth(true)} onSignup={() => setShowAuth(true)} />
-             <main className="flex-grow flex items-center justify-center">
-                <AuthForm onClose={() => {setShowAuth(false); if(!user) navigate('/');}} />
-             </main>
-             <Footer/>
-          </div>
-      )
-  }
-  if (!user) { // Fallback if user is null after checks (should be caught by above)
+   if (!user) { // If still no user after initial check (e.g. AuthForm was closed without login)
     return (
         <div className="min-h-screen flex flex-col">
             <Header onLogin={() => setShowAuth(true)} onSignup={() => setShowAuth(true)} />
-            <div className="flex-grow flex items-center justify-center text-center">
-                <p>Loading user information or please log in.</p>
+            <div className="flex-grow flex items-center justify-center text-center p-4">
+                <div>
+                    <Users2 size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h2 className="text-2xl font-semibold mb-2">Access Restricted</h2>
+                    <p className="text-muted-foreground mb-6">Please log in to use the Relationship Analyzer.</p>
+                    <Button onClick={() => setShowAuth(true)}>Login / Sign Up</Button>
+                </div>
             </div>
             <Footer/>
         </div>
@@ -536,11 +418,10 @@ const RelationshipAnalyzer = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-uganda-yellow/10 via-uganda-red/5 to-uganda-black/5 dark:from-slate-900 dark:via-slate-800 dark:to-black">
+    <div className="min-h-screen bg-gradient-to-br from-uganda-yellow/5 via-uganda-red/5 to-uganda-black/10 dark:from-slate-900 dark:via-slate-800 dark:to-black">
       <Header onLogin={() => setShowAuth(true)} onSignup={() => setShowAuth(true)} />
-      
       <main className="container mx-auto py-8 px-4">
-        <div className="max-w-5xl mx-auto"> {/* Increased max-width */}
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-bold text-uganda-black dark:text-slate-100 mb-3">
               Relationship Analyzer
@@ -564,9 +445,9 @@ const RelationshipAnalyzer = () => {
                   <div className="grid md:grid-cols-2 gap-6">
                     {renderPersonSelector(
                       1, person1Source, setPerson1Source,
-                      selectedTreeIdP1, setSelectedTreeIdP1,
+                      selectedTreeIdP1, (val) => { setSelectedTreeIdP1(val); setSelectedMemberIdP1(undefined); setSelectedLineageEldersP1([]);},
                       selectedTreeIdP1 ? (userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.members || []) : [],
-                      selectedMemberIdP1, setSelectedMemberIdP1,
+                      selectedMemberIdP1, (val) => { setSelectedMemberIdP1(val); if(val) setCustomNameP1(userFamilyTrees.find(t=>t.id===selectedTreeIdP1)?.members.find(m=>m.id===val)?.name || ""); },
                       customNameP1, setCustomNameP1,
                       customTribeP1, setCustomTribeP1,
                       availableClansP1, customClanP1, setCustomClanP1,
@@ -574,16 +455,17 @@ const RelationshipAnalyzer = () => {
                     )}
                     {renderPersonSelector(
                       2, person2Source, setPerson2Source,
-                      selectedTreeIdP1, (val) => {/* P2 uses P1's tree if selected, no separate tree selection for P2 */}, // P2 uses P1's tree
+                      selectedTreeIdP1, () => {}, // P2 uses P1's tree if source is 'tree', no dedicated tree selector
                       person2Source === 'tree' && selectedTreeIdP1 ? (userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.members || []) : [],
-                      selectedMemberIdP2, setSelectedMemberIdP2,
+                      selectedMemberIdP2, (val) => { setSelectedMemberIdP2(val); if(val) setCustomNameP2(userFamilyTrees.find(t=>t.id===selectedTreeIdP1)?.members.find(m=>m.id===val)?.name || "");},
                       customNameP2, setCustomNameP2,
                       customTribeP2, setCustomTribeP2,
                       availableClansP2, customClanP2, setCustomClanP2,
-                      availableEldersP2, selectedLineageEldersP2, setSelectedLineageEldersP2
+                      availableEldersP2, selectedLineageEldersP2, setSelectedLineageEldersP2,
+                      person1Source === 'custom' && !selectedTreeIdP1 // Disable P2 tree option if P1 is custom and no tree is selected
                     )}
                   </div>
-                  <div className="text-center pt-4">
+                  <CardFooter className="pt-6 justify-center">
                     <Button 
                       type="submit"
                       className="bg-uganda-red text-white hover:bg-uganda-red/90 px-10 py-3 text-lg rounded-lg shadow-md hover:shadow-lg transition-all"
@@ -592,11 +474,12 @@ const RelationshipAnalyzer = () => {
                       <Search className="mr-2 h-5 w-5" />
                       {isLoading ? "Analyzing..." : "Analyze Relationship"}
                     </Button>
-                  </div>
+                  </CardFooter>
                 </CardContent>
               </Card>
             </form>
           ) : (
+            // --- Result Display Card (similar structure as before, but uses richer RelationshipResult) ---
             <Card className="shadow-xl dark:bg-slate-800/70">
               <CardHeader className={`bg-gradient-to-r ${relationshipResult.isRelated ? 'from-green-500/20 to-green-400/20 dark:from-green-700/30 dark:to-green-600/30' : 'from-gray-500/20 to-gray-400/20 dark:from-slate-700/30 dark:to-slate-600/30'} p-6 rounded-t-lg`}>
                 <div className="flex justify-between items-center">
@@ -604,13 +487,13 @@ const RelationshipAnalyzer = () => {
                   <Button variant="outline" onClick={resetAnalysis} className="dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700">New Analysis</Button>
                 </div>
                  <CardDescription className="text-sm text-gray-700 dark:text-gray-300 mt-1">
-                  Between: <span className="font-semibold">{getMemberDetails(person1Source, selectedTreeIdP1, selectedMemberIdP1, customNameP1).name}</span> and <span className="font-semibold">{getMemberDetails(person2Source, person2Source === 'tree' ? selectedTreeIdP1 : undefined, selectedMemberIdP2, customNameP2).name}</span>
+                  Between: <span className="font-semibold">{p1Data.name}</span> and <span className="font-semibold">{p2Data.name}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 p-6 space-y-6">
                 <div className={`p-4 rounded-lg text-center ${relationshipResult.isRelated ? 'bg-green-100 dark:bg-green-900/50 border-green-500' : 'bg-red-100 dark:bg-red-900/50 border-red-500'} border`}>
                   <h3 className={`text-xl font-semibold ${relationshipResult.isRelated ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                    {relationshipResult.isRelated ? `Likely Related: ${relationshipResult.relationshipType || "Connection Found"}` : "Likely Unrelated"}
+                    {relationshipResult.isRelated ? `Relationship Found: ${relationshipResult.relationshipType || "Connected"}` : "No Clear Relationship Found"}
                   </h3>
                   {relationshipResult.pathDescription && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{relationshipResult.pathDescription}</p>}
                 </div>
@@ -618,13 +501,12 @@ const RelationshipAnalyzer = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-700/30 dark:border-slate-600">
                     <h4 className="text-lg font-medium flex items-center text-uganda-black dark:text-slate-100 mb-3">
-                      <Users className="mr-2 h-5 w-5 text-uganda-yellow" />
+                      <BarChart3 className="mr-2 h-5 w-5 text-uganda-yellow" />
                       Analysis Details
                     </h4>
                     <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-                      {relationshipResult.generationalDistance !== undefined && (
-                        <p><span className="font-medium">Generational Distance:</span> {relationshipResult.generationalDistance} generation(s)</p>
-                      )}
+                      {typeof relationshipResult.generationalDistanceP1 === 'number' && <p><span className="font-medium">{p1Data.name} to LCA:</span> {relationshipResult.generationalDistanceP1} gen.</p>}
+                      {typeof relationshipResult.generationalDistanceP2 === 'number' && <p><span className="font-medium">{p2Data.name} to LCA:</span> {relationshipResult.generationalDistanceP2} gen.</p>}
                       <p><span className="font-medium">Confidence Score:</span> {Math.round(relationshipResult.confidenceScore * 100)}%</p>
                       {relationshipResult.clanContext && <p className="mt-2"><span className="font-medium">Cultural Context:</span> {relationshipResult.clanContext}</p>}
                     </div>
@@ -638,7 +520,7 @@ const RelationshipAnalyzer = () => {
                       </h4>
                       <ul className="list-disc list-inside pl-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
                         {relationshipResult.commonAncestors.map((ancestor, idx) => (
-                          <li key={idx}>{ancestor.name} <span className="text-xs text-muted-foreground">({ancestor.type === 'clan_elder' ? 'Historical Elder' : 'Family Member'})</span></li>
+                          <li key={idx}>{ancestor.name} <span className="text-xs text-muted-foreground">({ancestor.type.replace('_', ' ')})</span></li>
                         ))}
                       </ul>
                     </div>
@@ -649,7 +531,7 @@ const RelationshipAnalyzer = () => {
                   <div className="p-4 border rounded-lg mt-6 bg-blue-50 dark:bg-blue-900/30 dark:border-blue-700">
                     <h4 className="text-lg font-medium flex items-center text-uganda-black dark:text-slate-100 mb-3">
                       <Info className="mr-2 h-5 w-5 text-blue-500" />
-                      Analysis Notes & Path
+                      Analysis Notes
                     </h4>
                     <ul className="list-disc list-inside pl-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                       {relationshipResult.analysisNotes.map((note, idx) => (
@@ -669,7 +551,8 @@ const RelationshipAnalyzer = () => {
         </div>
       </main>
       <Footer />
-      {showAuth && user === null && ( // Only show AuthForm if explicitly triggered and user is null
+      {/* showAuth state now controls the AuthForm modal if user isn't logged in initially */}
+      {showAuth && !user && (
         <AuthForm onClose={() => setShowAuth(false)} />
       )}
     </div>
