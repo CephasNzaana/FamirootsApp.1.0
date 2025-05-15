@@ -1,5 +1,5 @@
-
 project_id = "jiqnkvmyfdbivxllmemc"
 
-[functions.generate-family-tree]
-verify_jwt = true
+[functions.analyze-relationships] 
+verify_jwt = true                 
+import_map = "./import_map.json"  
