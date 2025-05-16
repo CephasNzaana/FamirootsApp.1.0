@@ -32,7 +32,7 @@ import Footer from "@/components/Footer";
 import { FamilyTree, FamilyMember, ElderReference, ClanElder as FullClanElderType, Tribe as TribeType, Clan as ClanType } from "@/types";
 import { ugandaTribesData } from "@/data/ugandaTribesClanData";
 import { Separator } from "@/components/ui/separator";
-import { useNavigate } from "react-router-dom"; // Ensure useNavigate is imported
+import { useNavigate } from "react-router-dom";
 
 interface RelationshipResult {
   isRelated: boolean;
@@ -65,12 +65,13 @@ interface PersonDetails {
 
 const RelationshipAnalyzer = () => {
   const { user, session } = useAuth();
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
   const [showAuth, setShowAuth] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const [userFamilyTrees, setUserFamilyTrees] = useState<FamilyTree[]>([]);
 
+  // Initialize Select-bound states to "" for controlled components
   const [person1Source, setPerson1Source] = useState<PersonInputType>("custom");
   const [selectedTreeIdP1, setSelectedTreeIdP1] = useState<string>(""); 
   const [selectedMemberIdP1, setSelectedMemberIdP1] = useState<string>(""); 
@@ -97,10 +98,7 @@ const RelationshipAnalyzer = () => {
   const getSafeGeneration = (member: Partial<FamilyMember> | Partial<PersonDetails> | { generation?: number | string } ): number => {
     const gen = member.generation;
     if (typeof gen === 'number') return gen;
-    if (typeof gen === 'string') {
-        const numGen = parseInt(gen, 10);
-        return isNaN(numGen) ? 0 : numGen;
-    }
+    if (typeof gen === 'string') { const numGen = parseInt(gen, 10); return isNaN(numGen) ? 0 : numGen; }
     return 0;
   };
 
@@ -126,18 +124,21 @@ const RelationshipAnalyzer = () => {
         }) as FamilyMember)
       }));
       setUserFamilyTrees(formattedTrees);
-      if (formattedTrees.length > 0 && !selectedTreeIdP1) { setSelectedTreeIdP1(formattedTrees[0].id); }
+      if (formattedTrees.length > 0 && selectedTreeIdP1 === "") { // Only set if not already set by user
+        setSelectedTreeIdP1(formattedTrees[0].id); 
+      }
     } catch (error: any) {
       console.error("Error fetching family trees:", error);
       toast.error(error.message || "Failed to load your family trees.");
     } finally { setIsLoading(false); }
-  }, [user?.id, selectedTreeIdP1]); // Added selectedTreeIdP1 to ensure it's stable if already set
+  }, [user?.id, selectedTreeIdP1]); // Keep selectedTreeIdP1 in deps for initial load case
 
   useEffect(() => {
     if (user) { setShowAuth(false); fetchFamilyTrees(); } 
     else if (!session && !isLoading) { setShowAuth(true); setUserFamilyTrees([]); }
     else if (!user && !isLoading) { setUserFamilyTrees([]); }
   }, [user, session, fetchFamilyTrees]);
+
 
   const setupDynamicSelects = useCallback((
     personSource: PersonInputType, 
@@ -149,17 +150,16 @@ const RelationshipAnalyzer = () => {
     setAvailableEldersList: React.Dispatch<React.SetStateAction<FullClanElderType[]>>,
     resetSelectedLineageElders: () => void
   ) => {
-    let effectiveTribeName: string | undefined;
-    let effectiveClanName: string | undefined;
+    let effectiveTribeName: string | undefined = customTribeForPerson; // Default to custom
+    let effectiveClanName: string | undefined = customClanForPerson;
 
-    if (personSource === 'custom') {
-      effectiveTribeName = customTribeForPerson;
-      effectiveClanName = customClanForPerson;
-    } else if (personSource === 'tree' && treeIdForPerson) {
+    if (personSource === 'tree' && treeIdForPerson) {
       const tree = userTreesList.find(t => t.id === treeIdForPerson);
       effectiveTribeName = tree?.tribe;
       effectiveClanName = tree?.clan; 
     }
+    
+    console.log(`[setupDynamicSelects] For ${personSource}, Effective Tribe: ${effectiveTribeName}, Effective Clan: ${effectiveClanName}`);
 
     if (effectiveTribeName) {
       const tribeData = ugandaTribesData.find(t => t.name === effectiveTribeName);
@@ -168,7 +168,7 @@ const RelationshipAnalyzer = () => {
         const clanData = tribeData?.clans.find(c => c.name === effectiveClanName);
         setAvailableEldersList(clanData?.elders || []);
       } else {
-        setAvailableEldersList([]);
+        setAvailableEldersList([]); // Reset if clan becomes undefined/empty
       }
     } else {
       setAvailableClansList([]);
@@ -185,6 +185,7 @@ const RelationshipAnalyzer = () => {
     setupDynamicSelects(person2Source, selectedTreeIdP1, userFamilyTrees, customTribeP2, customClanP2, setAvailableClansP2, setAvailableEldersP2, () => setSelectedLineageEldersP2([]));
   }, [person2Source, selectedTreeIdP1, customTribeP2, customClanP2, userFamilyTrees, setupDynamicSelects]);
   
+  // --- Graph Traversal and Analysis Helper Functions ---
   const getAncestryPath = (memberId: string, members: FamilyMember[], maxDepth = 10): FamilyMember[] => { 
     const path: FamilyMember[] = []; let currentMember = members.find(m => m.id === memberId);
     const visited = new Set<string>(); let depth = 0;
@@ -217,13 +218,10 @@ const RelationshipAnalyzer = () => {
           ancestry.push(currentElder);
           if (!currentElder.parentId || currentElder.parentId.startsWith("TA_")) break;
           currentElder = getFullClanElderById(currentElder.parentId);
-      } return ancestry.reverse(); // Oldest first
+      } return ancestry.reverse();
   };
 
-  const findCommonClanElders = (
-    elderIdsP1: string[],
-    elderIdsP2: string[]
-  ): FullClanElderType[] => {
+  const findCommonClanElders = (elderIdsP1: string[], elderIdsP2: string[]): FullClanElderType[] => {
     if (!elderIdsP1?.length || !elderIdsP2?.length) return [];
     const getAncestryForOneElder = (elderId: string, maxTraceDepth: number = 3): Set<string> => {
         const ancestors = new Set<string>(); let current = getFullClanElderById(elderId);
@@ -281,7 +279,7 @@ const RelationshipAnalyzer = () => {
     await new Promise(resolve => setTimeout(resolve, 500)); 
     let insights = ""; let confidenceBoost = 0; let additionalPath = "";
     if (ruleBasedResult.isRelated) {
-        insights += `The rule-based analysis found a '${ruleBasedResult.relationshipType}' connection. `;
+        insights += `The system's rule-based analysis found a '${ruleBasedResult.relationshipType}' connection. `;
         if (ruleBasedResult.commonAncestors && ruleBasedResult.commonAncestors.length > 0) {
             insights += `This involves shared known figures: ${ruleBasedResult.commonAncestors.map(a => a.name).join(', ')}. `;
         }
@@ -328,31 +326,30 @@ const RelationshipAnalyzer = () => {
     setIsLoading(true);
     setRelationshipResult(null);
 
-    const p1Data = getMemberDetailsForAnalysis(person1Source, selectedTreeIdP1, selectedMemberIdP1, customNameP1, customTribeP1, customClanP1, selectedLineageEldersP1);
-    const p2Data = getMemberDetailsForAnalysis(person2Source, person1Source === 'tree' && person2Source === 'tree' ? selectedTreeIdP1 : undefined, selectedMemberIdP2, customNameP2, customTribeP2, customClanP2, selectedLineageEldersP2);
+    const p1DetailsData = getMemberDetailsForAnalysis(person1Source, selectedTreeIdP1, selectedMemberIdP1, customNameP1, customTribeP1, customClanP1, selectedLineageEldersP1);
+    const p2DetailsData = getMemberDetailsForAnalysis(person2Source, person1Source === 'tree' && person2Source === 'tree' ? selectedTreeIdP1 : undefined, selectedMemberIdP2, customNameP2, customTribeP2, customClanP2, selectedLineageEldersP2);
     
-    setAnalyzedP1Data(p1Data); 
-    setAnalyzedP2Data(p2Data);
+    setAnalyzedP1Data(p1DetailsData); 
+    setAnalyzedP2Data(p2DetailsData);
 
-    if ((person1Source === 'custom' && !p1Data.name?.trim()) || (person1Source === 'tree' && !p1Data.id)) {
+    if ((person1Source === 'custom' && !p1DetailsData.name?.trim()) || (person1Source === 'tree' && !p1DetailsData.id)) {
         toast.error("Please complete information for Person 1."); setIsLoading(false); return;
     }
-    if ((person2Source === 'custom' && !p2Data.name?.trim()) || (person2Source === 'tree' && !p2Data.id)) {
+    if ((person2Source === 'custom' && !p2DetailsData.name?.trim()) || (person2Source === 'tree' && !p2DetailsData.id)) {
         toast.error("Please complete information for Person 2."); setIsLoading(false); return;
     }
     
-    console.log("Analyzing P1:", p1Data);
-    console.log("Analyzing P2:", p2Data);
+    console.log("Analyzing P1:", p1DetailsData);
+    console.log("Analyzing P2:", p2DetailsData);
 
     await new Promise(resolve => setTimeout(resolve, 1000)); 
     let currentAnalysisResult: RelationshipResult = { isRelated: false, confidenceScore: 0.05, analysisNotes: ["Initial assessment based on form data."] };
 
-    // 1. Direct Tree Analysis
-    if (person1Source === 'tree' && person2Source === 'tree' && selectedTreeIdP1 && p1Data.id && p2Data.id && p1Data.id !== p2Data.id) {
+    if (person1Source === 'tree' && person2Source === 'tree' && selectedTreeIdP1 && p1DetailsData.id && p2DetailsData.id && p1DetailsData.id !== p2DetailsData.id) {
         const tree = userFamilyTrees.find(t => t.id === selectedTreeIdP1);
         if (tree) {
-            const member1 = tree.members.find(m=>m.id === p1Data.id);
-            const member2 = tree.members.find(m=>m.id === p2Data.id);
+            const member1 = tree.members.find(m=>m.id === p1DetailsData.id);
+            const member2 = tree.members.find(m=>m.id === p2DetailsData.id);
             if (member1 && member2) {
                 currentAnalysisResult.analysisNotes?.push("Performing direct tree analysis...");
                 if (member1.spouseId === member2.id || member2.spouseId === member1.id) {
@@ -364,15 +361,13 @@ const RelationshipAnalyzer = () => {
                     if (lca) {
                         const distA = pathA.findIndex(m => m.id === lca.id);
                         const distB = pathB.findIndex(m => m.id === lca.id);
-                        const p1Gender = member1.gender;
-                        const p2Gender = member2.gender;
                         currentAnalysisResult = { ...currentAnalysisResult, isRelated: true, commonAncestors: [{id: lca.id, name: lca.name, type: 'family_member'}], confidenceScore: 0.9, generationalDistanceP1: distA, generationalDistanceP2: distB, analysisNotes: [...(currentAnalysisResult.analysisNotes || []), "Common ancestor found in family tree."] };
                         if (distA === 0) { 
-                            currentAnalysisResult.relationshipType = distB === 1 ? (p1Gender === 'female' ? `Mother of ${member2.name}` : `Father of ${member2.name}`) : (p1Gender === 'female' ? `Grandmother of ${member2.name}` : `Grandfather of ${member2.name}`);
+                            currentAnalysisResult.relationshipType = distB === 1 ? (member1.gender === 'female' ? `Mother of ${member2.name}` : `Father of ${member2.name}`) : (member1.gender === 'female' ? `Grandmother of ${member2.name}` : `Grandfather of ${member2.name}`);
                             if (distB > 2) currentAnalysisResult.relationshipType = `Direct Ancestor (${member1.name} to ${member2.name})`;
                             currentAnalysisResult.pathDescription = `${lca.name} is a direct ancestor of ${member2.name} (${distB} generation(s) apart).`;
                         } else if (distB === 0) { 
-                            currentAnalysisResult.relationshipType = distA === 1 ? (p2Gender === 'female' ? `Mother of ${member1.name}` : `Father of ${member1.name}`) : (p2Gender === 'female' ? `Grandmother of ${member1.name}` : `Grandfather of ${member1.name}`);
+                            currentAnalysisResult.relationshipType = distA === 1 ? (member2.gender === 'female' ? `Mother of ${member1.name}` : `Father of ${member1.name}`) : (member2.gender === 'female' ? `Grandmother of ${member1.name}` : `Grandfather of ${member1.name}`);
                             if (distA > 2) currentAnalysisResult.relationshipType = `Direct Ancestor (${member2.name} to ${member1.name})`;
                             currentAnalysisResult.pathDescription = `${lca.name} is a direct ancestor of ${member1.name} (${distA} generation(s) apart).`;
                         } else if (distA === 1 && distB === 1) {
@@ -392,7 +387,6 @@ const RelationshipAnalyzer = () => {
                             currentAnalysisResult.relationshipType = `Related (Common Ancestor: ${lca.name})`;
                             currentAnalysisResult.pathDescription = `${member1.name} and ${member2.name} share ${lca.name} as a common ancestor. ${member1.name} is ${distA} gen. from LCA, ${member2.name} is ${distB} gen. from LCA.`;
                         }
-                        // Check for in-law relationships (basic)
                         if (member1.spouseId) {
                             const p1Spouse = tree.members.find(m => m.id === member1.spouseId);
                             if (p1Spouse?.parentId === member2.id && member2.id !== member1.id) { 
@@ -425,7 +419,7 @@ const RelationshipAnalyzer = () => {
             currentAnalysisResult.isRelated = true;
             currentAnalysisResult.relationshipType = currentAnalysisResult.relationshipType || "Same Clan & Tribe";
             currentAnalysisResult.confidenceScore = Math.max(currentAnalysisResult.confidenceScore, 0.85);
-            currentAnalysisResult.culturalSignificance = `Individuals from the same clan (${p1DetailsData.clan}) and tribe (${p1DetailsData.tribe}) are traditionally considered to share a common lineage and are generally regarded as close kin. This often has cultural implications.`; // Neutral wording
+            currentAnalysisResult.culturalSignificance = `Individuals from the same clan (${p1DetailsData.clan}) and tribe (${p1DetailsData.tribe}) are traditionally considered to share a common lineage and are generally regarded as close kin. This often has cultural implications regarding marriage and other social customs.`;
             currentAnalysisResult.pathDescription = currentAnalysisResult.pathDescription || `Both individuals are identified with the ${p1DetailsData.clan} clan of the ${p1DetailsData.tribe} tribe.`;
             currentAnalysisResult.analysisNotes.push("Strong cultural link: shared clan and tribe.");
         }
@@ -492,7 +486,7 @@ const RelationshipAnalyzer = () => {
     setSelectedLineageEldersP2([]); 
     setAnalyzedP1Data(null);
     setAnalyzedP2Data(null);
-    // Reset available clans/elders for P1 and P2 based on their default source/tribe/clan
+    // Re-trigger dynamic selects for default states
     setupDynamicSelects('custom', undefined, userFamilyTrees, "", "", setAvailableClansP1, setAvailableEldersP1, () => setSelectedLineageEldersP1([]));
     setupDynamicSelects('custom', undefined, userFamilyTrees, "", "", setAvailableClansP2, setAvailableEldersP2, () => setSelectedLineageEldersP2([]));
   };
@@ -502,16 +496,16 @@ const RelationshipAnalyzer = () => {
     personNum: 1 | 2,
     source: PersonInputType,
     onSourceChange: (value: PersonInputType) => void,
-    selectedTreeIdProp: string, // Expect string, "" for none
+    selectedTreeIdProp: string, // Controlled with "" for no selection
     onTreeChange: (value: string) => void, 
-    selectedMemberIdProp: string, // Expect string, "" for none
+    selectedMemberIdProp: string, // Controlled with "" for no selection
     onMemberChange: (value: string) => void,  
     customNameState: string,
     onCustomNameChange: (value: string) => void,
-    customTribeState: string, // Expect string, "" for none
+    customTribeState: string, // Controlled with "" for no selection
     onCustomTribeChange: (value: string) => void,
     availableClansForCustom: ClanType[],
-    customClanState: string, // Expect string, "" for none
+    customClanState: string, // Controlled with "" for no selection
     onCustomClanChange: (value: string) => void,
     availableEldersForPerson: FullClanElderType[],
     selectedElderIdsState: string[], 
@@ -529,7 +523,7 @@ const RelationshipAnalyzer = () => {
         }
     };
 
-    const treeForThisPerson = personNum === 1 ? selectedTreeIdP1 : (person2Source === 'tree' ? selectedTreeIdP1 : ""); // Use "" if undefined
+    const treeForThisPerson = personNum === 1 ? selectedTreeIdP1 : (person2Source === 'tree' ? selectedTreeIdP1 : "");
     const membersInSelectedTree = treeForThisPerson ? (userFamilyTrees.find(t => t.id === treeForThisPerson)?.members || []) : [];
 
     return (
@@ -547,9 +541,7 @@ const RelationshipAnalyzer = () => {
                     onMemberChange(""); 
                     if(personNum === 1) onTreeChange(""); 
                 } else { 
-                    onCustomNameChange("");
-                    onCustomTribeChange(""); 
-                    onCustomClanChange("");
+                    onCustomNameChange(""); onCustomTribeChange(""); onCustomClanChange("");
                     onEldersChange([]);
                     if (personNum === 1 && userFamilyTrees.length > 0 && !selectedTreeIdP1){
                         onTreeChange(userFamilyTrees[0].id); 
@@ -634,7 +626,7 @@ const RelationshipAnalyzer = () => {
                     <div key={elder.id} className={`flex items-center justify-between p-1.5 border-b dark:border-slate-700 text-xs rounded-sm ${selectedElderIdsState.includes(elder.id) ? 'bg-uganda-yellow/20 dark:bg-uganda-yellow/10' : ''}`}>
                         <div> <span className="font-medium dark:text-slate-200">{elder.name}</span> <span className="text-muted-foreground dark:text-slate-400">({elder.approximateEra})</span> </div>
                         <Button 
-                            size="sm" // Changed from xs
+                            size="sm" 
                             variant={selectedElderIdsState.includes(elder.id) ? "secondary" : "outline"}
                             onClick={(e) => {e.preventDefault(); handleElderMultiSelect(elder.id);}}
                             disabled={!selectedElderIdsState.includes(elder.id) && selectedElderIdsState.length >= 2}
@@ -652,30 +644,7 @@ const RelationshipAnalyzer = () => {
     );
   };
 
-  // Main Return JSX for the page
-  if (isLoading && !relationshipResult) {
-    return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-uganda-yellow/10 via-uganda-red/5 to-uganda-black/10 dark:from-slate-900 dark:via-slate-800 dark:to-black">
-        <Header onLogin={() => {}} onSignup={() => {}} />
-        <main className="flex-grow flex flex-col items-center justify-center text-center p-8">
-            <Loader2 className="h-16 w-16 animate-spin text-uganda-red mb-6" />
-            <h2 className="text-3xl font-semibold text-uganda-black dark:text-slate-100 mb-3">
-                Analyzing Relationship...
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-                FamiRoots AI is consulting historical records and cultural patterns...
-            </p>
-            <div className="mt-8 w-full max-w-md">
-                <div className="h-2 bg-uganda-yellow/30 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-2 bg-uganda-yellow dark:bg-uganda-red animate-pulse" style={{ width: '75%' }}></div>
-                </div>
-            </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-  
+  // Auth & Login Prompts
   if (showAuth && !user) { 
     return (
         <div className="min-h-screen flex flex-col">
@@ -709,6 +678,29 @@ const RelationshipAnalyzer = () => {
     );
   }
 
+  // Main Loading State
+  if (isLoading && !relationshipResult) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-uganda-yellow/10 via-uganda-red/5 to-uganda-black/10 dark:from-slate-900 dark:via-slate-800 dark:to-black">
+        <Header onLogin={() => {}} onSignup={() => {}} /> 
+        <main className="flex-grow flex flex-col items-center justify-center text-center p-8">
+            <Loader2 className="h-16 w-16 animate-spin text-uganda-red mb-6" />
+            <h2 className="text-3xl font-semibold text-uganda-black dark:text-slate-100 mb-3">
+                {relationshipResult ? "Re-analyzing..." : "Analyzing Relationship..."}
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+                FamiRoots is consulting historical records and cultural patterns...
+            </p>
+            <div className="mt-8 w-full max-w-md">
+                <div className="h-2 bg-uganda-yellow/30 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-2 bg-uganda-yellow dark:bg-uganda-red animate-pulse" style={{ width: '75%' }}></div>
+                </div>
+            </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-uganda-yellow/5 via-uganda-red/5 to-uganda-black/10 dark:from-slate-900 dark:via-slate-800 dark:to-black">
@@ -743,7 +735,7 @@ const RelationshipAnalyzer = () => {
                       (val) => { setSelectedTreeIdP1(val); setSelectedMemberIdP1(""); setSelectedLineageEldersP1([]); if (person2Source === 'tree') setSelectedMemberIdP2("");},
                       selectedTreeIdP1 ? (userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.members || []) : [],
                       selectedMemberIdP1, 
-                      (val) => { setSelectedMemberIdP1(val); if(val && person1Source === 'tree') { const tree = userFamilyTrees.find(t=>t.id===selectedTreeIdP1); const m = tree?.members.find(mem=>mem.id===val); if (m) {setCustomNameP1(m.name); /* setCustomTribeP1(tree?.tribe || ""); setCustomClanP1(tree?.clan || ""); Don't auto-fill tribe/clan here as it might conflict */ } } else if (!val) {setCustomNameP1("");} },
+                      (val) => { setSelectedMemberIdP1(val); if(val && person1Source === 'tree') { const tree = userFamilyTrees.find(t=>t.id===selectedTreeIdP1); const m = tree?.members.find(mem=>mem.id===val); if (m) {setCustomNameP1(m.name); } } else if (!val) {setCustomNameP1("");} },
                       customNameP1, setCustomNameP1,
                       customTribeP1, (val) => { setCustomTribeP1(val || ""); setCustomClanP1(""); setSelectedLineageEldersP1([]); },
                       availableClansP1, customClanP1, (val) => { setCustomClanP1(val || ""); setSelectedLineageEldersP1([]); },
@@ -755,7 +747,7 @@ const RelationshipAnalyzer = () => {
                       selectedTreeIdP1, () => {}, 
                       person2Source === 'tree' && selectedTreeIdP1 ? (userFamilyTrees.find(t=>t.id === selectedTreeIdP1)?.members || []) : [],
                       selectedMemberIdP2, 
-                      (val) => { setSelectedMemberIdP2(val || ""); if(val && person2Source === 'tree' && selectedTreeIdP1) { const tree = userFamilyTrees.find(t=>t.id===selectedTreeIdP1); const m = tree?.members.find(mem=>mem.id===val); if (m) {setCustomNameP2(m.name); /* setCustomTribeP2(tree?.tribe || ""); setCustomClanP2(tree?.clan || ""); */ } } else if (!val) {setCustomNameP2("");} },
+                      (val) => { setSelectedMemberIdP2(val || ""); if(val && person2Source === 'tree' && selectedTreeIdP1) { const tree = userFamilyTrees.find(t=>t.id===selectedTreeIdP1); const m = tree?.members.find(mem=>mem.id===val); if (m) {setCustomNameP2(m.name); } } else if (!val) {setCustomNameP2("");} },
                       customNameP2, setCustomNameP2,
                       customTribeP2, (val) => {setCustomTribeP2(val || ""); setCustomClanP2(""); setSelectedLineageEldersP2([]); },
                       availableClansP2, customClanP2, (val) => {setCustomClanP2(val || ""); setSelectedLineageEldersP2([]); },
